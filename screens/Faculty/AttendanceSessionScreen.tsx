@@ -14,6 +14,7 @@ import {
   getAttendanceLive,
   endAttendanceSession,
 } from '../../services/attendance';
+import { startSessionFeedback } from '../../services/feedback';
 
 type RouteProps = RouteProp<RootStackParamList, 'AttendanceSession'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AttendanceSession'>;
@@ -27,6 +28,7 @@ const AttendanceSessionScreen = () => {
   const [live, setLive] = useState<AttendanceLiveCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [ending, setEnding] = useState(false);
+  const [startingFeedback, setStartingFeedback] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -88,6 +90,19 @@ const AttendanceSessionScreen = () => {
         },
       },
     ]);
+  };
+
+  const handleStartFeedback = async () => {
+    try {
+      setStartingFeedback(true);
+      await startSessionFeedback(sessionId);
+      await fetchData();
+    } catch (error: any) {
+      const message = error?.response?.data?.error || 'Could not start feedback.';
+      Alert.alert('Error', message);
+    } finally {
+      setStartingFeedback(false);
+    }
   };
 
   const handleBackToDashboard = () => {
@@ -179,9 +194,43 @@ const AttendanceSessionScreen = () => {
           {ending ? <ActivityIndicator color="white" /> : <Text style={styles.endButtonText}>End Session</Text>}
         </TouchableOpacity>
       ) : (
-        <TouchableOpacity style={styles.doneButton} onPress={handleBackToDashboard}>
-          <Text style={styles.doneButtonText}>Back to Dashboard</Text>
-        </TouchableOpacity>
+        <>
+          {session.feedbackStatus === 'not_set' && session.feedbackQuestions.length === 0 && (
+            <TouchableOpacity
+              style={styles.manageButton}
+              onPress={() => navigation.navigate('FeedbackQuestions', { sessionId, subject })}
+            >
+              <Text style={styles.manageButtonText}>📝 Add Feedback Questions (5)</Text>
+            </TouchableOpacity>
+          )}
+
+          {session.feedbackStatus === 'not_set' && session.feedbackQuestions.length === 5 && (
+            <TouchableOpacity
+              style={[styles.manageButton, startingFeedback && styles.endButtonDisabled]}
+              onPress={handleStartFeedback}
+              disabled={startingFeedback}
+            >
+              {startingFeedback ? (
+                <ActivityIndicator color={Theme.colors.primary} />
+              ) : (
+                <Text style={styles.manageButtonText}>▶️ Start Feedback</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {(session.feedbackStatus === 'open' || session.feedbackStatus === 'closed') && (
+            <TouchableOpacity
+              style={styles.manageButton}
+              onPress={() => navigation.navigate('FeedbackResponses', { sessionId })}
+            >
+              <Text style={styles.manageButtonText}>📊 View Feedback Responses</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={styles.doneButton} onPress={handleBackToDashboard}>
+            <Text style={styles.doneButtonText}>Back to Dashboard</Text>
+          </TouchableOpacity>
+        </>
       )}
     </SafeAreaView>
   );

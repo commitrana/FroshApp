@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useEventListener } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
-
+import { isLoggedIn, getCurrentUser, getUserRole } from "../../services/auth";
 import Theme from "../../theme/theme";
 
 // Local splash animation (played once, then we move to Login)
@@ -28,10 +28,42 @@ const SplashScreen = () => {
   const navigation = useNavigation<SplashScreenNavigationProp>();
   const hasNavigated = useRef(false);
 
-  const goToLogin = () => {
+  const goNext = async () => {
     if (hasNavigated.current) return;
     hasNavigated.current = true;
-    navigation.navigate("Login");
+
+    const loggedIn = await isLoggedIn();
+    console.log("LOGGED IN CHECK:", loggedIn);
+
+    if (!loggedIn) {
+      navigation.replace("Login");
+      return;
+    }
+
+    const user = await getCurrentUser();
+    console.log("CURRENT USER:", user);
+
+    const role = await getUserRole();
+    console.log("ROLE:", role);
+
+    // role ke hisaab se seedha uski screen par bhejo
+    switch (role) {
+      case "student":
+        navigation.replace("MainTabs");
+        break;
+      case "society":
+        navigation.replace("SocietyAdmin");
+        break;
+      case "member":
+        navigation.replace("MemberDashboard");
+        break;
+      case "faculty":
+        navigation.replace("FacultyDashboard");
+        break;
+      default:
+        navigation.replace("Login");
+        break;
+    }
   };
 
   const player = useVideoPlayer(splashVideoSource, (player) => {
@@ -42,12 +74,12 @@ const SplashScreen = () => {
 
   // Move on as soon as the animation finishes playing
   useEventListener(player, "playToEnd", () => {
-    goToLogin();
+    goNext();
   });
 
   // Fallback timer in case playToEnd never fires
   useEffect(() => {
-    const timer = setTimeout(goToLogin, FALLBACK_DURATION_MS);
+    const timer = setTimeout(goNext, FALLBACK_DURATION_MS);
     return () => clearTimeout(timer);
   }, []);
 

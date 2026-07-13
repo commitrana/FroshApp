@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import Theme from '../../theme/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getBatchTimetableImage } from '../../services/batches';
 import { getActiveSessionForStudent, ActiveSessionInfo } from '../../services/attendance';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
+import { darkTheme } from '../../constants/homeThemes';
 
-// ✅ Default image if no timetable image found
-const DEFAULT_TIMETABLE_IMAGE = 'https://via.placeholder.com/400x300/1F2937/FFFFFF?text=No+Timetable';
+// Same visual language as the Home / Life at Thapar / Login screens carried
+// over from the ui_ux design (dark gradient background, glowing cards,
+// accent-coloured section headings) — only the content/logic below is real.
+const theme = darkTheme;
 
 const BootcampScreen = () => {
   const navigation = useNavigation<any>();
@@ -30,28 +34,26 @@ const BootcampScreen = () => {
   const [activeSession, setActiveSession] = useState<ActiveSessionInfo>(null);
   const [alreadyMarked, setAlreadyMarked] = useState(false);
   const [myStatus, setMyStatus] = useState<string | null>(null);
+  const [cardType, setCardType] = useState<'attendance' | 'feedback'>('attendance');
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // ✅ Get student's batch from storage
+
       const studentData = await AsyncStorage.getItem('studentData');
       if (!studentData) {
         setLoading(false);
         return;
       }
-      
+
       const student = JSON.parse(studentData);
       const batchCode = student.batch; // e.g., "BlueA"
       setBatch(batchCode);
-      
-      // ✅ Fetch timetable image for this batch
+
       if (batchCode) {
         const imageUrl = await getBatchTimetableImage(batchCode);
         setTimetableImage(imageUrl);
       }
-      
     } catch (error) {
       console.error('Error fetching batch data:', error);
     } finally {
@@ -77,6 +79,7 @@ const BootcampScreen = () => {
       setActiveSession(data.session);
       setAlreadyMarked(data.alreadyMarked);
       setMyStatus(data.myStatus);
+      setCardType(data.type);
     } catch (error) {
       console.log('Error fetching active session:', error);
     }
@@ -88,243 +91,221 @@ const BootcampScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
-      </SafeAreaView>
+      <LinearGradient colors={theme.bgGradient as [string, string, ...string[]]} style={styles.container}>
+        <SafeAreaView style={styles.container}>
+          <ActivityIndicator color={theme.accent} size="large" style={styles.loader} />
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />
-        }
-      >
-        {activeSession && (
-          <View style={styles.liveCard}>
-            <View style={styles.liveBadgeRow}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveBadgeText}>LIVE CLASS</Text>
-            </View>
-            <Text style={styles.liveSubject}>{activeSession.subject}</Text>
-            {activeSession.faculty ? (
-              <Text style={styles.liveMeta}>
-                👨‍🏫 {activeSession.faculty.name} · {activeSession.faculty.department}
-              </Text>
-            ) : null}
-            {activeSession.venue ? <Text style={styles.liveMeta}>📍 {activeSession.venue}</Text> : null}
+    <LinearGradient colors={theme.bgGradient as [string, string, ...string[]]} style={styles.container}>
+      <SafeAreaView style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
+          }
+        >
+          <Text style={[styles.heading, { color: theme.textPrimary }]}>My Timetable</Text>
 
-            {alreadyMarked ? (
-              <View style={styles.markedBox}>
-                <Text style={styles.markedText}>
-                  {myStatus === 'present' && '✅ Attendance marked'}
-                  {myStatus === 'flagged' && '⚠️ Marked — pending review'}
-                  {myStatus === 'rejected' && '❌ Not verified — ask your professor to mark you manually'}
+          {activeSession && (
+            <View style={styles.liveSection}>
+              <View style={styles.liveHeadingRow}>
+                <View style={[styles.headingLine, { backgroundColor: theme.lineColor }]} />
+                <Text style={[styles.liveHeading, { color: theme.accent }]}>
+                  • {cardType === 'feedback' ? 'FEEDBACK OPEN' : 'LIVE CLASS'} •
                 </Text>
+                <View style={[styles.headingLine, { backgroundColor: theme.lineColor }]} />
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.markAttendanceBtn}
-                onPress={() => navigation.navigate('ScanAttendance')}
+
+              <View
+                style={[
+                  styles.liveCard,
+                  { backgroundColor: theme.liveCard.backgroundColor, shadowColor: theme.liveCard.shadowColor },
+                ]}
               >
-                <Text style={styles.markAttendanceBtnText}>📷 Mark Attendance</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
+                <LinearGradient colors={['#4DA2FF', '#2D7EFF']} style={styles.liveIcon}>
+                  <MaterialCommunityIcons
+                    name={cardType === 'feedback' ? 'clipboard-text-outline' : 'broadcast'}
+                    size={30}
+                    color="#fff"
+                  />
+                </LinearGradient>
 
-        <Text style={styles.heading}> My Timetable</Text>
-
-        {!batch ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>
-              You haven't been assigned to a batch yet. Check back soon!
-            </Text>
-          </View>
-        ) : (
-          <>
-            {/* ✅ Batch Info */}
-            <View style={styles.batchCard}>
-              <Text style={styles.batchLabel}>Your Batch</Text>
-              <Text style={styles.batchName}>{batch}</Text>
-            </View>
-
-            {/* ✅ Timetable Image */}
-            <View style={styles.timetableCard}>
-              <Text style={styles.timetableLabel}>Timetable</Text>
-              {timetableImage ? (
-                <Image
-                  source={{ uri: timetableImage }}
-                  style={styles.timetableImage}
-                  resizeMode="contain"
-                  onError={() => setTimetableImage(null)}
-                />
-              ) : (
-                <View style={styles.noImageBox}>
-                  <Text style={styles.noImageText}>No timetable uploaded yet</Text>
-                  <Text style={styles.noImageSubText}>Check back later!</Text>
+                <View style={styles.classInfo}>
+                  <Text style={[styles.classTitle, { color: theme.textPrimary }]}>
+                    {activeSession.subject}
+                  </Text>
+                  {activeSession.faculty ? (
+                    <Text style={[styles.liveMeta, { color: theme.textSecondary }]}>
+                      {activeSession.faculty.name} · {activeSession.faculty.department}
+                    </Text>
+                  ) : null}
+                  {activeSession.venue ? (
+                    <Text style={[styles.liveMeta, { color: theme.textSecondary }]}>
+                      📍 {activeSession.venue}
+                    </Text>
+                  ) : null}
                 </View>
+              </View>
+
+              {cardType === 'feedback' ? (
+                <TouchableOpacity
+                  style={[styles.markAttendanceBtn, { backgroundColor: theme.accent }]}
+                  onPress={() => navigation.navigate('GiveFeedback', { sessionId: activeSession._id })}
+                >
+                  <Text style={styles.markAttendanceBtnText}>📝 Give Feedback</Text>
+                </TouchableOpacity>
+              ) : alreadyMarked ? (
+                <View style={styles.markedBox}>
+                  <Text style={[styles.markedText, { color: theme.textSecondary }]}>
+                    {myStatus === 'present' && '✅ Attendance marked'}
+                    {myStatus === 'flagged' && '⚠️ Marked — pending review'}
+                    {myStatus === 'rejected' && '❌ Not verified — ask your professor to mark you manually'}
+                  </Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.markAttendanceBtn, { backgroundColor: theme.accent }]}
+                  onPress={() => navigation.navigate('ScanAttendance')}
+                >
+                  <Text style={styles.markAttendanceBtnText}>📷 Mark Attendance</Text>
+                </TouchableOpacity>
               )}
             </View>
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          )}
+
+          <View style={styles.timeTableHeader}>
+            <MaterialCommunityIcons name="calendar-month-outline" size={26} color={theme.accent} />
+            <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Your Batch</Text>
+          </View>
+
+          {!batch ? (
+            <View style={[styles.emptyBox, { backgroundColor: theme.topCard.backgroundColor }]}>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                You haven't been assigned to a batch yet. Check back soon!
+              </Text>
+            </View>
+          ) : (
+            <>
+              <View
+                style={[
+                  styles.batchCard,
+                  { backgroundColor: theme.topCard.backgroundColor, shadowColor: theme.topCard.shadowColor },
+                ]}
+              >
+                <Text style={[styles.batchLabel, { color: theme.textSecondary }]}>Your Batch</Text>
+                <Text style={[styles.batchName, { color: theme.accent }]}>{batch}</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.timetableCard,
+                  { backgroundColor: theme.topCard.backgroundColor, shadowColor: theme.topCard.shadowColor },
+                ]}
+              >
+                <Text style={[styles.timetableLabel, { color: theme.textSecondary }]}>Timetable</Text>
+                {timetableImage ? (
+                  <Image
+                    source={{ uri: timetableImage }}
+                    style={styles.timetableImage}
+                    resizeMode="contain"
+                    onError={() => setTimetableImage(null)}
+                  />
+                ) : (
+                  <View style={[styles.noImageBox, { backgroundColor: 'rgba(255,255,255,0.04)' }]}>
+                    <Text style={[styles.noImageText, { color: theme.textSecondary }]}>
+                      No timetable uploaded yet
+                    </Text>
+                    <Text style={[styles.noImageSubText, { color: theme.textSecondary }]}>
+                      Check back later!
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 110,
-  },
-  heading: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
+  container: { flex: 1 },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 110 },
+  heading: { fontSize: 28, fontWeight: '800', marginBottom: 20 },
+
+  liveSection: { marginBottom: 24 },
+  liveHeadingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  headingLine: { flex: 1, height: 2 },
+  liveHeading: { marginHorizontal: 10, fontWeight: '700', fontSize: 15, letterSpacing: 2 },
+
   liveCard: {
-    backgroundColor: '#132238',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Theme.colors.primary,
-  },
-  liveBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    borderRadius: 24,
+    padding: 16,
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
+    marginBottom: 14,
   },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Theme.colors.success,
-    marginRight: 8,
-  },
-  liveBadgeText: {
-    color: Theme.colors.success,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  liveSubject: {
-    color: 'white',
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  liveMeta: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  markAttendanceBtn: {
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  markAttendanceBtnText: {
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  markedBox: {
-    marginTop: 12,
-    paddingVertical: 12,
-  },
-  markedText: {
-    color: '#D1D5DB',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  batchCard: {
-    backgroundColor: '#1F2937',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  batchLabel: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  batchName: {
-    color: 'white',
-    fontSize: 34,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-  timetableCard: {
-    backgroundColor: '#1F2937',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-  },
-  timetableLabel: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
-  timetableImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-    backgroundColor: '#111827',
-  },
-  noImageBox: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#111827',
-    borderRadius: 12,
+  liveIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 14,
   },
-  noImageText: {
-    color: '#9CA3AF',
-    fontSize: 16,
-    fontWeight: '600',
+  classInfo: { flex: 1 },
+  classTitle: { fontSize: 18, fontWeight: '700' },
+  liveMeta: { fontSize: 13, marginTop: 2 },
+
+  markAttendanceBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  markAttendanceBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  markedBox: { paddingVertical: 10 },
+  markedText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+
+  timeTableHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  timeTableTitle: { fontSize: 20, fontWeight: '800' },
+
+  batchCard: {
+    borderRadius: 24,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 18,
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  noImageSubText: {
-    color: '#6B7280',
-    fontSize: 14,
-    marginTop: 4,
+  batchLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  batchName: { fontSize: 32, fontWeight: '800', marginTop: 6 },
+
+  timetableCard: {
+    borderRadius: 24,
+    padding: 18,
+    alignItems: 'center',
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
-  emptyBox: {
-    backgroundColor: '#1F2937',
-    borderRadius: 16,
-    padding: 24,
-  },
-  emptyText: {
-    color: '#D1D5DB',
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  timetableLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, alignSelf: 'flex-start' },
+  timetableImage: { width: '100%', height: 300, borderRadius: 14 },
+  noImageBox: { width: '100%', height: 180, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  noImageText: { fontSize: 16, fontWeight: '600' },
+  noImageSubText: { fontSize: 13, marginTop: 4 },
+
+  emptyBox: { borderRadius: 24, padding: 24 },
+  emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 });
 
 export default BootcampScreen;

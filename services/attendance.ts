@@ -26,6 +26,9 @@ export type AttendanceSession = {
   status: "active" | "ended";
   startedAt: string;
   endedAt: string | null;
+  feedbackQuestions: { text: string; order: number }[];
+  feedbackStatus: "not_set" | "open" | "closed";
+  feedbackStartedAt: string | null;
 };
 
 export type AttendanceLiveCounts = {
@@ -158,6 +161,11 @@ export type ActiveSessionInfo = {
 } | null;
 
 export type ActiveSessionResponse = {
+  // 'attendance' -> a live session is running, show "Mark Attendance"
+  // 'feedback'   -> no live session, but feedback is open for a session
+  //                 this student attended and hasn't submitted yet — show
+  //                 "Give Feedback" instead.
+  type: "attendance" | "feedback";
   session: ActiveSessionInfo;
   alreadyMarked: boolean;
   myStatus: "present" | "flagged" | "rejected" | null;

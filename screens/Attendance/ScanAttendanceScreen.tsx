@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import * as Location from 'expo-location';
@@ -13,10 +13,21 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ScanAttenda
 
 const ScanAttendanceScreen = () => {
   const navigation = useNavigation<NavigationProp>();
+  const isFocused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<MarkAttendanceResult | null>(null);
   const hasScannedRef = useRef(false);
+
+  const [cameraReady, setCameraReady] = useState(false);
+
+  useEffect(() => {
+    if (isFocused) {
+      const timer = setTimeout(() => setCameraReady(true), 250);
+      return () => clearTimeout(timer);
+    }
+    setCameraReady(false);
+  }, [isFocused]);
 
   const handleBarcodeScanned = async (scan: BarcodeScanningResult) => {
     if (hasScannedRef.current || processing) return;
@@ -109,12 +120,18 @@ const ScanAttendanceScreen = () => {
 
   return (
     <View style={styles.cameraContainer}>
-      <CameraView
-        style={StyleSheet.absoluteFillObject}
-        facing="back"
-        barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-        onBarcodeScanned={handleBarcodeScanned}
-      />
+      {cameraReady ? (
+        <CameraView
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+          onBarcodeScanned={handleBarcodeScanned}
+        />
+      ) : (
+        <View style={[StyleSheet.absoluteFill, styles.cameraLoading]}>
+          <ActivityIndicator color="white" size="large" />
+        </View>
+      )}
       <SafeAreaView style={styles.overlay}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
           <Text style={styles.closeBtnText}>✕</Text>
@@ -168,6 +185,10 @@ const styles = StyleSheet.create({
   cameraContainer: {
     flex: 1,
     backgroundColor: 'black',
+  },
+  cameraLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   overlay: {
     flex: 1,

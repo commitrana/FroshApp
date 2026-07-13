@@ -3,30 +3,32 @@ import {
   View,
   StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Theme from "../../theme/theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
-import AppLogo from "../../Components/Logo/AppLogo";
-import CustomInput from "../../Components/Input/CustomInput";
-import PrimaryButton from "../../Components/buttons/PrimaryButton";
 import { login } from "../../services/auth";
 
 export default function LoginScreen() {
   type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
   const navigation = useNavigation<LoginNavigationProp>();
+  const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Same backend login logic as before - only the UI around it has changed.
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Missing info", "Please enter both email and password.");
@@ -36,7 +38,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const result = await login(email.trim(), password.trim());
-      
+
       if (result.success) {
         if (result.role === "student") {
           navigation.replace("MainTabs");
@@ -51,7 +53,7 @@ export default function LoginScreen() {
     } catch (err: any) {
       console.error("Login error:", err);
       Alert.alert(
-        "Login failed", 
+        "Login failed",
         err?.message || "Invalid email or password. Please try again."
       );
     } finally {
@@ -59,48 +61,131 @@ export default function LoginScreen() {
     }
   };
 
+  
+
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <LinearGradient
+      colors={["#0b0f1a", "#1a1f2f"]}
+      style={[styles.gradient, { paddingTop: insets.top }]}
+    >
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
+        style={styles.container}
       >
         <ScrollView
-          contentContainerStyle={styles.container}
+          contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <AppLogo size={220} />
-          <Text style={styles.heading}>Welcome</Text>
+          <View style={styles.content}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../../assets/logos/frosh_logo.png")}
+                style={{
+                  width: 150,
+                  height: 150,
+                  marginBottom: 0,
+                  marginTop:8
+                }}
+                resizeMode="contain"
+              />
+            </View>
 
-          <CustomInput
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <CustomInput
-            placeholder="Password"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+            <View style={styles.welcomeContainer}>
+              <Text style={styles.welcomeTitle}>Welcome to FROSH!</Text>
+              <Text style={styles.welcomeSub}>
+                Your campus. Your events. Your Community
+              </Text>
+            </View>
 
-          {loading ? (
-            <ActivityIndicator size="large" color={Theme.colors.primary} />
-          ) : (
-            <PrimaryButton title="Login" onPress={handleLogin} />
-          )}
+            <View style={styles.form}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Email address</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  placeholderTextColor="#666"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={!loading}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Password</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#666"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
+                  editable={!loading}
+                />
+              </View>
+
+              
+
+              {loading ? (
+                <View style={styles.loginButton}>
+                  <ActivityIndicator size="small" color="#fff" />
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                  <Text style={styles.loginButtonText}>Login</Text>
+                </TouchableOpacity>
+              )}
+
+
+              
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Theme.colors.background },
-  container: { flexGrow: 1, padding: 24, justifyContent: "flex-start", alignItems: "center" },
-  heading: { color: "#fff", fontSize: 28, fontWeight: "700", marginBottom: 32, marginTop: 12 },
+  gradient: { flex: 1 },
+  container: { flex: 1 },
+  scrollContent: { flexGrow: 1, justifyContent: "center" },
+  content: { flex: 1, paddingHorizontal: 30, justifyContent: "flex-start" },
+  logoContainer: { alignItems: "center", marginBottom:0 },
+  logoImage: { width: 200, height: 200 },
+  welcomeContainer: { marginBottom: 20, alignItems: "center" },
+  welcomeTitle: { fontSize: 22, fontWeight: "600", color: "#fff", marginBottom:5,
+
+  },
+  welcomeSub: { fontSize: 14, color: "#aaa", textAlign: "center" },
+  form: { width: "100%" , marginBottom:20
+  },
+  inputGroup: { marginBottom: 20 },
+  label: { color: "#ddd", fontSize: 14, fontWeight: "500", marginBottom: 10 },
+  input: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    color: "#fff",
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
+  },
+  
+  loginButton: {
+    backgroundColor: "#6c8cff",
+    borderRadius: 25,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginBottom: 20,
+    justifyContent: "center",
+  },
+  loginButtonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  
+  createAccount: { color: "#aaa", fontSize: 15, textAlign: "center" },
+  createAccountBold: { color: "#6c8cff", fontWeight: "700" },
 });

@@ -15,8 +15,11 @@ export type RootStackParamList = {
   OurTeam: undefined;
   Hostels: undefined;
   Societies: undefined;
+  Boys: undefined;
+  Girls: undefined;
   LifeAtThapar: undefined;
   CampusMap: undefined;
+  Bootcamp: undefined;
   
   // Other Screens (add more as needed)
   Account: undefined;
@@ -51,6 +54,16 @@ export type RootStackParamList = {
     subject?: string;
   };
   ScanAttendance: undefined;
+  FeedbackQuestions: {
+    sessionId: string;
+    subject: string;
+  };
+  FeedbackResponses: {
+    sessionId: string;
+  };
+  GiveFeedback: {
+    sessionId: string;
+  };
 };
 
 // Bottom Tab Navigator Param List (if you have bottom tabs)

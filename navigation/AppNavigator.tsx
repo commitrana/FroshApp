@@ -6,6 +6,8 @@ import { RootStackParamList } from "../types/navigation";
 import DrawerNavigator from "./DrawerNavigator";
 import OurTeamScreen from "../screens/OurTeam/OurTeamScreen";
 import HostelsScreen from "../screens/Hostels/HostelsScreen";
+import BoysScreen from "../screens/Hostels/BoysScreen";
+import GirlsScreen from "../screens/Hostels/GirlsScreen";
 import SocietiesScreen from "../screens/Societies/SocietiesScreen";
 import LifeAtThaparScreen from "../screens/LifeAtThapar/LifeAtThaparScreen";
 import CampusMapScreen from "../screens/CampusMap/CampusMapScreen";
@@ -19,6 +21,9 @@ import FlaggedReviewScreen from '../screens/Faculty/FlaggedReviewScreen';
 import PresentListScreen from '../screens/Faculty/PresentListScreen';
 import AttendanceRosterScreen from '../screens/Faculty/AttendanceRosterScreen';
 import ScanAttendanceScreen from '../screens/Attendance/ScanAttendanceScreen';
+import FeedbackQuestionsScreen from '../screens/Faculty/FeedbackQuestionsScreen';
+import FeedbackResponsesScreen from '../screens/Faculty/FeedbackResponsesScreen';
+import GiveFeedbackScreen from '../screens/Feedback/GiveFeedbackScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -39,6 +44,8 @@ export default function AppNavigator() {
         <Stack.Screen name="MainTabs" component={DrawerNavigator} />
         <Stack.Screen name="OurTeam" component={OurTeamScreen} />
         <Stack.Screen name="Hostels" component={HostelsScreen} />
+        <Stack.Screen name="Boys" component={BoysScreen} />
+        <Stack.Screen name="Girls" component={GirlsScreen} />
         <Stack.Screen name="Societies" component={SocietiesScreen} />
         <Stack.Screen name="LifeAtThapar" component={LifeAtThaparScreen} />
         <Stack.Screen name="CampusMap" component={CampusMapScreen} />
@@ -49,6 +56,9 @@ export default function AppNavigator() {
         <Stack.Screen name="PresentList" component={PresentListScreen} />
         <Stack.Screen name="AttendanceRoster" component={AttendanceRosterScreen} />
         <Stack.Screen name="ScanAttendance" component={ScanAttendanceScreen} />
+        <Stack.Screen name="FeedbackQuestions" component={FeedbackQuestionsScreen} />
+        <Stack.Screen name="FeedbackResponses" component={FeedbackResponsesScreen} />
+        <Stack.Screen name="GiveFeedback" component={GiveFeedbackScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

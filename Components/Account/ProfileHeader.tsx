@@ -1,4 +1,4 @@
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
 type ProfileHeaderProps = {
   name: string;
@@ -11,13 +11,6 @@ export default function ProfileHeader({
 }: ProfileHeaderProps) {
   return (
     <View style={styles.container}>
-
-      <Image
-        source={{
-          uri: "https://i.pravatar.cc/300",
-        }}
-        style={styles.avatar}
-      />
 
       <Text style={styles.name}>
         {name}
@@ -36,13 +29,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
     marginBottom: 30,
-  },
-
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    marginBottom: 15,
   },
 
   name: {

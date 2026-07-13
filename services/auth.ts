@@ -162,6 +162,9 @@ export const getCurrentUser = async () => {
   }
 };
 
+export const getUserRole = async () => {
+  return await AsyncStorage.getItem('userRole');
+};
 // ============ LOGOUT ============ ✅ SIRF EK BAAR
 export const logout = async () => {
   try {
