@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
 import Theme from '../../theme/theme';
+import { logout } from "../../services/auth";
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -74,6 +75,7 @@ const FacultyDashboard = () => {
       setLoading(false);
     }
   };
+  
 
   useFocusEffect(
     useCallback(() => {
@@ -94,6 +96,7 @@ const FacultyDashboard = () => {
       [{ text: 'OK' }]
     );
   };
+  
 
   const getScheduleMap = (): { [day: string]: { [slot: string]: LectureSlot } } => {
     const sched = faculty?.timetable?.schedule;
@@ -106,7 +109,30 @@ const FacultyDashboard = () => {
     : [];
 
   const scheduleMap = getScheduleMap();
+  const handleLogout = () => {
+  Alert.alert(
+    "Logout",
+    "Are you sure you want to logout?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          await logout();
 
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          });
+        },
+      },
+    ]
+  );
+};
   const handleSlotPress = (day: string, slot: string, lecture: LectureSlot) => {
     navigation.navigate('ClassDetails', {
       day,
@@ -222,6 +248,7 @@ const FacultyDashboard = () => {
                               <Text style={styles.cellEmptyDash}>—</Text>
                             )}
                           </TouchableOpacity>
+                          
                         );
                       })}
                     </View>
@@ -236,7 +263,12 @@ const FacultyDashboard = () => {
         <TouchableOpacity style={styles.attendanceButton} onPress={handleAttendance}>
           <Text style={styles.attendanceButtonText}> Mark Attendance</Text>
         </TouchableOpacity>
-
+            <TouchableOpacity
+  style={styles.logoutButton}
+  onPress={handleLogout}
+>
+  <Text style={styles.logoutText}>Logout</Text>
+</TouchableOpacity>
         <View style={styles.footer} />
       </ScrollView>
     </SafeAreaView>
@@ -253,6 +285,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  logoutButton: {
+  marginTop: 16,
+  backgroundColor: "#EF4444",
+  paddingVertical: 12,
+  borderRadius: 10,
+  alignItems: "center",
+},
+
+logoutText: {
+  color: "#fff",
+  fontSize: 16,
+  fontWeight: "700",
+},
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 15,

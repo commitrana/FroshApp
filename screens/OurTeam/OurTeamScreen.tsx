@@ -1,187 +1,321 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import {
+  SafeAreaView,
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
+  Image,
+  StatusBar,
   FlatList,
-  ImageBackground,
-  ImageSourcePropType,
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import ElectricBorder from "../../Components/Common/ElectricBorder";
+  Dimensions,
+} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from '@expo/vector-icons/Ionicons';
 
-const logoImg = require("../../assets/uiux/logo.png");
-const bgImg = require("../../assets/uiux/bg.jpeg");
-const personImg = require("../../assets/uiux/person.jpg");
+const { width } = Dimensions.get('window');
 
-type TeamMember = { id: number; name: string; designation: string; image: ImageSourcePropType };
+const H_PADDING = 12;
+const GRID_GAP = 8;
+const CARD_SIZE = Math.floor((width - H_PADDING * 2 - GRID_GAP) / 2);
 
-// TODO: replace with a real /team endpoint from the backend once one exists.
-const teamData: Record<string, TeamMember[]> = {
-  Faculty: [
-    { id: 1, name: "Dr. XYZ", designation: "Faculty Advisor", image: personImg },
-    { id: 2, name: "Dr. ABC", designation: "Faculty Advisor", image: personImg },
-    { id: 3, name: "Dr. PQR", designation: "Faculty Advisor", image: personImg },
-    { id: 4, name: "Dr. LMN", designation: "Faculty Advisor", image: personImg },
-  ],
-  OSC: [
-    { id: 1, name: "Aman", designation: "President", image: personImg },
-    { id: 2, name: "Priya", designation: "Vice President", image: personImg },
-  ],
-  Core: [
-    { id: 1, name: "Riya", designation: "Technical", image: personImg },
-    { id: 2, name: "Harsh", designation: "Design", image: personImg },
-  ],
-  Mentor: [
-    { id: 1, name: "Ankit", designation: "Mentor", image: personImg },
-    { id: 2, name: "Sneha", designation: "Mentor", image: personImg },
-    { id: 3, name: "Ayush", designation: "Mentor", image: personImg },
-    { id: 4, name: "Shreya", designation: "Mentor", image: personImg },
-  ],
+const memberImg = require('../../assets/uiux/person.jpg');
+
+type Theme = {
+  bgGradient: [string, string, ...string[]];
+  textPrimary: string;
+  textSecondary: string;
+  cardBg: string;
+  accent: string;
+  lineColor: string;
 };
 
-const StarBorder = ({
-  children,
-  active,
-  onPress,
-}: {
-  children: React.ReactNode;
-  active: boolean;
-  onPress: () => void;
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={[styles.starBorderContainer, active && styles.starBorderActive]}
-    activeOpacity={0.8}
-  >
-    <LinearGradient
-      colors={active ? ["#3EE7FF", "#3EE7FF", "transparent"] : ["#3EE7FF", "transparent"]}
-      style={styles.starGradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    />
-    <View style={styles.starInnerContent}>
-      <Text style={[styles.starText, active && styles.starTextActive]}>{children}</Text>
-    </View>
-  </TouchableOpacity>
-);
+const fallbackTheme: Theme = {
+  bgGradient: ['#020B18', '#061528', '#041220'],
+  textPrimary: '#FFFFFF',
+  textSecondary: '#D5DDF0',
+  cardBg: '#0A1A2E',
+  accent: '#2F80FF',
+  lineColor: 'rgba(255,255,255,0.1)',
+};
 
-const MemberCard = ({ image, name, designation }: Omit<TeamMember, "id">) => (
-  <View style={styles.memberCard}>
-    <Image source={image} style={styles.memberImage} resizeMode="cover" />
-    <View style={styles.memberInfo}>
-      <Text style={styles.memberName}>{name}</Text>
-      <Text style={styles.memberDesignation}>{designation}</Text>
-    </View>
-  </View>
-);
+type FacultyMember = { id: number; name: string; designation: string };
+type BranchMember = { id: number; name: string; branch: string };
+type MentorMember = { id: number; name: string };
 
+// ---------- DATA ----------
+const facultyData: FacultyMember[] = [
+  { id: 1, name: 'Dr. MD Singh', designation: 'President' },
+  { id: 2, name: 'Dr. Hemdutt Joshi', designation: 'Vice President' },
+  { id: 3, name: 'Dr. Vishal Gupta', designation: 'Vice President' },
+  { id: 4, name: 'Dr. Avinash Chandra', designation: 'Vice President' },
+  { id: 5, name: 'Dr. Devendar Kumar', designation: 'Vice President' },
+  { id: 6, name: 'Dr. Tarunpreet Bhatia', designation: 'Vice President' },
+];
+
+const oscData: BranchMember[] = [
+  { id: 1, name: 'Nandini', branch: 'ENC' },
+  { id: 2, name: 'Snehil Jhanwar', branch: 'COPC' },
+  { id: 3, name: 'Vanshaj Kaushik', branch: 'ENC' },
+];
+
+const coreData: BranchMember[] = [
+  { id: 1, name: 'Aarush Sahu', branch: 'MEC' },
+  { id: 2, name: 'Agamjot Kaur', branch: 'EEC' },
+  { id: 3, name: 'Akshat Walia', branch: 'ENC' },
+  { id: 4, name: 'Arpit Kumar', branch: 'ENC' },
+  { id: 5, name: 'Dhruv Gupta', branch: 'AIML' },
+  { id: 6, name: 'Gyanvi Narayan', branch: 'ECE' },
+  { id: 7, name: 'Jatin Garg', branch: 'COE' },
+  { id: 8, name: 'Karanbir Singh', branch: 'MEC' },
+  { id: 9, name: 'Keshav Gupta', branch: 'ECE' },
+  { id: 10, name: 'Lakshya Kaushik', branch: 'ECE' },
+  { id: 11, name: 'Prabal Gupta', branch: 'EEC' },
+  { id: 12, name: 'Ritagya Chitkara', branch: 'ELE' },
+  { id: 13, name: 'Sabhya Mahajan', branch: 'ECE' },
+  { id: 14, name: 'Utkarshini Mishra', branch: 'CCA' },
+  { id: 15, name: 'Vignesh Jain', branch: 'COE' },
+];
+
+const mentorData: MentorMember[] = Array.from({ length: 94 }, (_, i) => ({
+  id: i + 1,
+  name: `Mentor ${i + 1}`,
+}));
+
+type TabKey = 'faculty' | 'osc' | 'core' | 'mentor';
+const TABS: TabKey[] = ['faculty', 'osc', 'core', 'mentor'];
+
+// ---------- COMPONENT ----------
 export default function OurTeamScreen() {
-  const [activeTab, setActiveTab] = useState("Faculty");
-  const tabs = ["Faculty", "OSC", "Core", "Mentor"];
+  const navigation = useNavigation();
+  const route = useRoute<any>();
+  const t: Theme = route.params?.theme || fallbackTheme;
+  const isDarkTheme = t.textPrimary?.toUpperCase() === '#FFFFFF';
+  const [activeTab, setActiveTab] = useState<TabKey>('faculty');
 
-  const renderMember = ({ item }: { item: TeamMember }) => (
-    <ElectricBorder
-      color="#7df9ff"
-      speed={5}
-      chaos={0.3}
-      thickness={2}
-      borderRadius={22}
-      style={{ marginBottom: 10 }}
-    >
-      <MemberCard image={item.image} name={item.name} designation={item.designation} />
-    </ElectricBorder>
+  const renderFacultyItem = ({ item }: { item: FacultyMember }) => (
+    <View style={styles.gridItem}>
+      <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.lineColor }]}>
+        <Image source={memberImg} style={styles.cardImage} />
+      </View>
+      <Text style={[styles.cardName, { color: t.textPrimary }]}>{item.name}</Text>
+      <Text style={[styles.cardDesignation, { color: t.textSecondary }]}>{item.designation}</Text>
+    </View>
   );
 
-  return (
-    <ImageBackground source={bgImg} style={styles.background} resizeMode="cover">
-      <View style={styles.overlay}>
-        <Image source={logoImg} style={styles.logo} resizeMode="contain" />
-
-        <View style={styles.tabsRow}>
-          {tabs.map((tab) => (
-            <StarBorder key={tab} active={activeTab === tab} onPress={() => setActiveTab(tab)}>
-              {tab}
-            </StarBorder>
-          ))}
-        </View>
-
-        <FlatList
-          data={teamData[activeTab]}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMember}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
-          contentContainerStyle={styles.gridContainer}
-          showsVerticalScrollIndicator={false}
-        />
+  const renderMentorItem = ({ item }: { item: MentorMember }) => (
+    <View style={styles.gridItem}>
+      <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.lineColor }]}>
+        <Image source={memberImg} style={styles.cardImage} />
       </View>
-    </ImageBackground>
+      <Text style={[styles.cardName, { color: t.textPrimary }]}>{item.name}</Text>
+    </View>
+  );
+
+  const renderBranchItem = ({ item, index }: { item: BranchMember; index: number }) => {
+    const isLeft = index % 2 === 0;
+    return (
+      <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
+        <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.lineColor }]}>
+          <Image source={memberImg} style={styles.cardImage} />
+        </View>
+        <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
+          <Text style={[styles.rowName, { color: t.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
+            {item.name}
+          </Text>
+          <Text
+            style={[styles.rowDesignation, { color: t.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}
+          >
+            {item.branch}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'faculty':
+        return (
+          <FlatList
+            key="faculty-cols-2"
+            data={facultyData}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={2}
+            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={styles.listContainer}
+            renderItem={renderFacultyItem}
+          />
+        );
+      case 'osc':
+        return (
+          <FlatList
+            key="osc-cols-1"
+            data={oscData}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContainer}
+            renderItem={renderBranchItem}
+          />
+        );
+      case 'core':
+        return (
+          <FlatList
+            key="core-cols-1"
+            data={coreData}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContainer}
+            renderItem={renderBranchItem}
+          />
+        );
+      case 'mentor':
+        return (
+          <FlatList
+            key="mentor-cols-2"
+            data={mentorData}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={2}
+            columnWrapperStyle={styles.gridRow}
+            contentContainerStyle={styles.listContainer}
+            renderItem={renderMentorItem}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
+      />
+      <LinearGradient colors={t.bgGradient} style={styles.container}>
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+              <Icon name="arrow-back" size={24} color={t.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: t.textPrimary }]}>OUR TEAM</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={[styles.tabContainer, { borderBottomColor: t.lineColor }]}>
+            {TABS.map((tab) => (
+              <TouchableOpacity
+                key={tab}
+                style={[
+                  styles.tab,
+                  activeTab === tab && { borderBottomWidth: 3, borderBottomColor: t.accent },
+                ]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text
+                  style={[
+                    styles.tabText,
+                    {
+                      color: activeTab === tab ? t.textPrimary : t.textSecondary,
+                      fontWeight: activeTab === tab ? '700' : '500',
+                    },
+                  ]}
+                >
+                  {tab.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={{ flex: 1 }}>{renderContent()}</View>
+        </SafeAreaView>
+      </LinearGradient>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  background: { flex: 1, width: "100%", height: "100%" },
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 30,
-    paddingBottom: 20,
-    alignItems: "center",
+    marginTop: 50,
+    paddingVertical: 8,
   },
-  logo: { width: 130, height: undefined, aspectRatio: 1, marginBottom: 4 },
-  tabsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    flexWrap: "nowrap",
-    gap: 4,
-    marginTop: 6,
-    marginBottom: 14,
-    width: "100%",
+  backBtn: { padding: 4 },
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
-  starBorderContainer: {
-    flex: 1,
-    position: "relative",
-    padding: 1.5,
-    borderRadius: 999,
-    overflow: "hidden",
-    marginHorizontal: 2,
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    marginHorizontal: 16,
   },
-  starBorderActive: {},
-  starGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 999 },
-  starInnerContent: {
-    backgroundColor: "rgba(18,22,30,0.95)",
-    borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1,
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
-  starText: { color: "#fff", fontSize: 12, fontWeight: "500" },
-  starTextActive: { color: "#3EE7FF", fontWeight: "700" },
-  gridContainer: { paddingBottom: 40, alignItems: "center" },
-  columnWrapper: { justifyContent: "center", gap: 16, marginBottom: 16 },
-  memberCard: {
-    width: 140,
-    height: 215,
-    borderRadius: 22,
-    overflow: "hidden",
-    backgroundColor: "rgba(255,255,255,0.08)",
+  tabText: {
+    fontSize: 14,
+    letterSpacing: 0.5,
+  },
+  listContainer: {
+    paddingHorizontal: H_PADDING,
+    paddingBottom: 30,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+  },
+  card: {
+    marginTop: 10,
+    width: CARD_SIZE,
+    height: CARD_SIZE,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
+    overflow: 'hidden',
   },
-  memberImage: { width: "100%", height: 165 },
-  memberInfo: {
-    height: 50,
-    backgroundColor: "rgba(10,25,55,0.8)",
-    justifyContent: "center",
-    alignItems: "center",
+  cardImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
-  memberName: { color: "#fff", fontSize: 14, fontWeight: "600", textAlign: "center" },
-  memberDesignation: { color: "#C8D6E5", fontSize: 11, textAlign: "center" },
+  gridItem: {
+    width: CARD_SIZE,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  cardName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  cardDesignation: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  alternatingRow: {
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: H_PADDING,
+  },
+  textContainer: {
+    flex: 1,
+    marginHorizontal: 12,
+    justifyContent: 'center',
+  },
+  rowName: {
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  rowDesignation: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 4,
+  },
 });
