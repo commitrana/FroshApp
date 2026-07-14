@@ -20,9 +20,8 @@ import { Feather, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { RootStackParamList } from "../../types/navigation";
-import { Event } from "../../constants/events";
+import { Event } from "../../services/events";
 import { getEvents } from "../../services/events";
 import { getMyTickets, registerForEvent } from "../../services/tickets";
 import { logout } from "../../services/auth";
@@ -31,6 +30,13 @@ import { lightTheme, darkTheme } from "../../constants/homeThemes";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+// Event photo paths from the backend are relative (e.g. "/uploads/events/xyz.jpg") —
+// prefix with the backend's own origin (not /api) to load them as an <Image> source.
+const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
+// Fallback image for events without a real photo (uses an asset that
+// actually exists — assets/images/event-placeholder.jpg was never added
+// to the project, which crashed Metro's bundler on this require()).
+const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -277,7 +283,10 @@ export default function HomeScreen() {
 
                 {liveEvent ? (
                   <>
-                    <Image source={require("../../assets/uiux/concert.jpg")} style={styles.eventImage} />
+                    <Image
+                      source={liveEvent.imageUrl ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` } : DEFAULT_IMAGE}
+                      style={styles.eventImage}
+                    />
 
                     <View style={[styles.liveNow, { borderColor: theme.accent }]}>
                       <Text style={[styles.liveNowText, { color: theme.accent }]}>LIVE NOW</Text>

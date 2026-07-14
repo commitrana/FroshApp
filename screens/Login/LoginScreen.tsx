@@ -18,6 +18,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
 import { login } from "../../services/auth";
+import { DEV_QUICK_LOGIN } from "../../constants/devQuickLogin";
 
 export default function LoginScreen() {
   type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
@@ -29,15 +30,20 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   // Same backend login logic as before - only the UI around it has changed.
-  const handleLogin = async () => {
-    if (!email || !password) {
+  // Accepts optional overrides so the dev quick-login buttons can pass
+  // credentials directly without waiting on setState to flush.
+  const handleLogin = async (overrideEmail?: string, overridePassword?: string) => {
+    const emailToUse = overrideEmail ?? email;
+    const passwordToUse = overridePassword ?? password;
+
+    if (!emailToUse || !passwordToUse) {
       Alert.alert("Missing info", "Please enter both email and password.");
       return;
     }
 
     setLoading(true);
     try {
-      const result = await login(email.trim(), password.trim());
+      const result = await login(emailToUse.trim(), passwordToUse.trim());
 
       if (result.success) {
         if (result.role === "student") {
@@ -59,6 +65,15 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // DEV-ONLY: fills the fields (so you can see which account is active) and
+  // logs straight in, so you can hop between the 4 demo roles while presenting
+  // without retyping credentials each time.
+  const quickLogin = (quickEmail: string, quickPassword: string) => {
+    setEmail(quickEmail);
+    setPassword(quickPassword);
+    handleLogin(quickEmail, quickPassword);
   };
 
   
@@ -134,11 +149,28 @@ export default function LoginScreen() {
                   <ActivityIndicator size="small" color="#fff" />
                 </View>
               ) : (
-                <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+                <TouchableOpacity style={styles.loginButton} onPress={() => handleLogin()}>
                   <Text style={styles.loginButtonText}>Login</Text>
                 </TouchableOpacity>
               )}
 
+              {__DEV__ && (
+                <View style={styles.devSection}>
+                  <Text style={styles.devLabel}>Dev quick login</Text>
+                  <View style={styles.devRow}>
+                    {DEV_QUICK_LOGIN.map((cred) => (
+                      <TouchableOpacity
+                        key={cred.role}
+                        style={styles.devButton}
+                        disabled={loading}
+                        onPress={() => quickLogin(cred.email, cred.password)}
+                      >
+                        <Text style={styles.devButtonText}>{cred.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
 
               
             </View>
@@ -185,6 +217,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loginButtonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+
+  devSection: { marginTop: 4, marginBottom: 12 },
+  devLabel: {
+    color: "#666",
+    fontSize: 12,
+    textAlign: "center",
+    marginBottom: 10,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  devRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 },
+  devButton: {
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.15)",
+  },
+  devButtonText: { color: "#aaa", fontSize: 12, fontWeight: "600" },
   
   createAccount: { color: "#aaa", fontSize: 15, textAlign: "center" },
   createAccountBold: { color: "#6c8cff", fontWeight: "700" },
