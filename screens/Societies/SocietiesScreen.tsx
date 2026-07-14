@@ -1,191 +1,294 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
-  SafeAreaView,
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-  StatusBar,
-  Modal,
-  TouchableWithoutFeedback,
-  Dimensions,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Modal,
+  ActivityIndicator, Alert, ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
-import Icon from "@expo/vector-icons/Ionicons";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const { width } = Dimensions.get("window");
+import Theme from "../../theme/theme";
+import Colors from "../../constants/colors";
+import { RootStackParamList } from "../../types/navigation";
+import AppCard from "../../Components/Common/AppCard";
+import CustomInput from "../../Components/Input/CustomInput";
+import PrimaryButton from "../../Components/buttons/PrimaryButton";
+import { logout } from "../../services/auth";
+import {
+  getSocietyMembers, createMember, updateMember, deleteMember,
+} from "../../services/societyAdmin";
 
-// Same dark theme used across the ui_ux screens (Login / Home / Life at
-// Thapar / Our Team) so Societies matches the rest of the app.
-const theme = {
-  bgGradient: ["#020B18", "#061528", "#041220"] as [string, string, ...string[]],
-  textPrimary: "#FFFFFF",
-  textSecondary: "#D5DDF0",
-  cardBg: "#0A1A2E",
-  accent: "#2F80FF",
-  shadowColor: "#2F80FF",
-  lineColor: "rgba(255,255,255,0.1)",
+const BRANCHES = ["CSE", "ECE", "ME", "CE", "EE", "IT", "Other"];
+const TOTAL_SLOT1 = 5;
+const TOTAL_SLOT2 = 2;
+const TOTAL_MEMBERS = TOTAL_SLOT1 + TOTAL_SLOT2;
+
+type Member = {
+  _id: string; name: string; branch: string; rollNo: string;
+  email: string; slotNumber: 1 | 2;
 };
 
-const logo = require("../../assets/uiux/logo.png");
+type NavProp = NativeStackNavigationProp<RootStackParamList, "SocietyAdmin">;
 
-type Society = {
-  id: number;
-  name: string;
-  category: "tech" | "cultural" | "other";
-  description: string;
-};
+export default function SocietyDashboardScreen() {
+  const navigation = useNavigation<NavProp>();
+  const [societyName, setSocietyName] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-// TODO: replace with a real /societies endpoint from the backend once one exists.
-const societies: Society[] = [
-  { id: 1, name: "ACM", category: "tech", description: "Association for Computing Machinery – the premier tech society." },
-  { id: 2, name: "OWASP", category: "tech", description: "Institute of Electrical and Electronics Engineers – empowering tech innovation." },
-  { id: 3, name: "CCS", category: "tech", description: "Computer Society of India – bridging academia and industry." },
-  { id: 4, name: "GDSC", category: "tech", description: "Google Developer Student Clubs – building with Google tech." },
-  { id: 5, name: "TNT", category: "cultural", description: "Express yourself through rhythm and movement." },
-  { id: 6, name: "MUDRA", category: "cultural", description: "Harmony, melody, and the joy of music." },
-  { id: 7, name: "DANCE CLUB", category: "cultural", description: "Act, improvise, and bring stories to life." },
-  { id: 8, name: "VIRSA", category: "cultural", description: "Unleash your creativity with colours and crafts." },
-  { id: 9, name: "FAPS", category: "other", description: "Capture moments, tell stories through the lens." },
-  { id: 10, name: "ECHOES", category: "other", description: "Ideate, innovate, and build your startup." },
-  { id: 11, name: "ECON", category: "other", description: "Protect nature, promote sustainability." },
-  { id: 12, name: "TICC", category: "other", description: "Speak, persuade, and argue with clarity." },
-];
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [form, setForm] = useState({
+    name: "", branch: "", rollNo: "", email: "", password: "", slotNumber: 1 as 1 | 2,
+  });
 
-const categories: { key: Society["category"]; label: string }[] = [
-  { key: "tech", label: "Tech" },
-  { key: "cultural", label: "Cultural" },
-  { key: "other", label: "Other" },
-];
+  const loadMembers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await getSocietyMembers();
+      setMembers(data.members || []);
+    } catch (err) {
+      Alert.alert("Error", "Could not load members.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-export default function SocietiesScreen() {
-  const navigation = useNavigation();
-  const [activeCategory, setActiveCategory] = useState<Society["category"]>("tech");
-  const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
+  useEffect(() => {
+    (async () => {
+      const raw = await AsyncStorage.getItem("societyData");
+      if (raw) setSocietyName(JSON.parse(raw).societyName || "");
+    })();
+    loadMembers();
+  }, [loadMembers]);
 
-  const filtered = societies.filter((s) => s.category === activeCategory);
+  const resetForm = () => {
+    setForm({ name: "", branch: "", rollNo: "", email: "", password: "", slotNumber: 1 });
+    setEditingMember(null);
+  };
+
+  const openAddModal = () => {
+    resetForm();
+    setModalVisible(true);
+  };
+
+  const openEditModal = (member: Member) => {
+    setEditingMember(member);
+    setForm({
+      name: member.name, branch: member.branch, rollNo: member.rollNo,
+      email: member.email, password: "", slotNumber: member.slotNumber,
+    });
+    setModalVisible(true);
+  };
+
+  const handleSubmit = async () => {
+    const { name, branch, rollNo, email, password, slotNumber } = form;
+    if (!name || !branch || !rollNo || !email || (!editingMember && !password)) {
+      Alert.alert("Missing info", "Please fill all required fields.");
+      return;
+    }
+    if (password && password.length < 6) {
+      Alert.alert("Weak password", "Password must be at least 6 characters.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editingMember) {
+        await updateMember(editingMember._id, {
+          name, branch, rollNo, email, ...(password ? { password } : {}),
+        });
+      } else {
+        if (members.length >= TOTAL_MEMBERS) {
+          Alert.alert("Full", `Maximum of ${TOTAL_MEMBERS} members reached.`);
+          setSaving(false);
+          return;
+        }
+        await createMember({ name, branch, rollNo, email, password }, slotNumber);
+      }
+      setModalVisible(false);
+      resetForm();
+      loadMembers();
+    } catch (err: any) {
+      Alert.alert("Error", err?.response?.data?.error || "Something went wrong.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = (member: Member) => {
+    Alert.alert("Remove member", `Remove "${member.name}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove", style: "destructive", onPress: async () => {
+          try {
+            await deleteMember(member._id);
+            loadMembers();
+          } catch {
+            Alert.alert("Error", "Could not remove member.");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigation.replace("Login");
+  };
+
+  const renderMember = ({ item }: { item: Member }) => (
+    <AppCard style={styles.memberCard}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.memberName}>{item.name}</Text>
+        <Text style={styles.memberMeta}>{item.branch} • {item.rollNo}</Text>
+        <Text style={styles.memberMeta}>{item.email}</Text>
+        <Text style={styles.slotTag}>Slot {item.slotNumber}</Text>
+      </View>
+      <View style={styles.actions}>
+        <TouchableOpacity onPress={() => openEditModal(item)} style={[styles.actionBtn, { backgroundColor: "#FF9800" }]}>
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionBtn, { backgroundColor: Colors.danger }]}>
+          <Text style={styles.actionText}>Remove</Text>
+        </TouchableOpacity>
+      </View>
+    </AppCard>
+  );
+
+  const isFull = members.length >= TOTAL_MEMBERS;
 
   return (
-    <>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-      <LinearGradient colors={theme.bgGradient} style={styles.container}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Icon name="arrow-back" size={24} color={theme.textPrimary} />
-            </TouchableOpacity>
-            <Text style={[styles.title, { color: theme.textPrimary }]}>SOCIETIES</Text>
-            <View style={{ width: 40 }} />
-          </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{societyName || "Society Dashboard"}</Text>
+        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
+          <Text style={styles.logout}>Logout</Text>
+        </TouchableOpacity>
+      </View>
 
-          <View style={styles.tabContainer}>
-            {categories.map((cat) => (
-              <TouchableOpacity
-                key={cat.key}
-                style={[
-                  styles.tab,
-                  { backgroundColor: theme.lineColor },
-                  activeCategory === cat.key && { backgroundColor: theme.accent },
-                ]}
-                onPress={() => setActiveCategory(cat.key)}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: activeCategory === cat.key ? "#FFFFFF" : theme.textSecondary },
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+      <AppCard style={styles.countCard}>
+        <Text style={styles.countNumber}>{members.length} / {TOTAL_MEMBERS}</Text>
+        <Text style={styles.memberMeta}>
+          {isFull ? "All slots are filled!" : `${TOTAL_MEMBERS - members.length} slot(s) remaining`}
+        </Text>
+      </AppCard>
 
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.grid}>
-              {filtered.map((society) => (
-                <TouchableOpacity
-                  key={society.id}
-                  style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}
-                  onPress={() => setSelectedSociety(society)}
-                  activeOpacity={0.8}
-                >
-                  <Image source={logo} style={styles.cardImage} />
-                  <Text style={[styles.cardName, { color: theme.textPrimary }]}>{society.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </LinearGradient>
+      {loading ? (
+        <ActivityIndicator size="large" color={Theme.colors.primary} style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={members}
+          keyExtractor={(item) => item._id}
+          renderItem={renderMember}
+          contentContainerStyle={{ padding: 16 }}
+          ListEmptyComponent={<Text style={styles.memberMeta}>No members yet.</Text>}
+        />
+      )}
 
-      <Modal visible={selectedSociety !== null} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={() => setSelectedSociety(null)}>
-          <BlurView intensity={80} style={styles.blurContainer} tint="dark">
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={[styles.popupCard, { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor }]}>
-                <View style={styles.popupHeader}>
-                  <Image source={logo} style={styles.popupLogo} />
-                  <Text style={[styles.popupName, { color: theme.textPrimary }]}>
-                    {selectedSociety?.name}
-                  </Text>
-                </View>
-                <Text style={[styles.popupDescription, { color: theme.textSecondary }]}>
-                  {selectedSociety?.description}
-                </Text>
-                <TouchableOpacity
-                  style={[styles.closeButton, { backgroundColor: theme.accent }]}
-                  onPress={() => setSelectedSociety(null)}
-                >
-                  <Text style={styles.closeText}>Close</Text>
+      {!isFull && (
+        <View style={{ padding: 16 }}>
+          <PrimaryButton title="+ Add Member" onPress={openAddModal} />
+        </View>
+      )}
+
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <ScrollView>
+              <Text style={styles.modalTitle}>{editingMember ? "Edit Member" : "Add Member"}</Text>
+
+              <CustomInput placeholder="Full Name" value={form.name} onChangeText={(t) => setForm({ ...form, name: t })} />
+              <CustomInput placeholder="Roll No" value={form.rollNo} onChangeText={(t) => setForm({ ...form, rollNo: t })} />
+              <CustomInput placeholder="Email" value={form.email} onChangeText={(t) => setForm({ ...form, email: t })} keyboardType="email-address" autoCapitalize="none" />
+              <CustomInput
+                placeholder={editingMember ? "New Password (optional)" : "Password"}
+                secureTextEntry
+                value={form.password}
+                onChangeText={(t) => setForm({ ...form, password: t })}
+              />
+
+              <Text style={styles.label}>Branch</Text>
+              <View style={styles.chipRow}>
+                {BRANCHES.map((b) => (
+                  <TouchableOpacity
+                    key={b}
+                    onPress={() => setForm({ ...form, branch: b })}
+                    style={[styles.chip, form.branch === b && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, form.branch === b && styles.chipTextActive]}>{b}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {!editingMember && (
+                <>
+                  <Text style={styles.label}>Slot</Text>
+                  <View style={styles.chipRow}>
+                    {[1, 2].map((s) => (
+                      <TouchableOpacity
+                        key={s}
+                        onPress={() => setForm({ ...form, slotNumber: s as 1 | 2 })}
+                        style={[styles.chip, form.slotNumber === s && styles.chipActive]}
+                      >
+                        <Text style={[styles.chipText, form.slotNumber === s && styles.chipTextActive]}>Slot {s}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              <View style={{ marginTop: 20, gap: 10 }}>
+                {saving ? (
+                  <ActivityIndicator color={Theme.colors.primary} />
+                ) : (
+                  <PrimaryButton title={editingMember ? "Update" : "Add"} onPress={handleSubmit} />
+                )}
+                <TouchableOpacity onPress={() => { setModalVisible(false); resetForm(); }}>
+                  <Text style={styles.cancel}>Cancel</Text>
                 </TouchableOpacity>
               </View>
-            </TouchableWithoutFeedback>
-          </BlurView>
-        </TouchableWithoutFeedback>
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  safeArea: { flex: 1, backgroundColor: Theme.colors.background },
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    marginTop: 50,
-    paddingVertical: 8,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    padding: 16,
   },
-  backBtn: { padding: 4 },
-  title: { fontSize: 20, fontWeight: "700", letterSpacing: 2 },
-  tabContainer: { flexDirection: "row", paddingHorizontal: 16, marginVertical: 12, justifyContent: "center" },
-  tab: { paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20, marginHorizontal: 5 },
-  tabText: { fontSize: 14, fontWeight: "600" },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 16 },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  card: { width: "48%", marginBottom: 16, borderRadius: 16, paddingVertical: 12, alignItems: "center", borderWidth: 1 },
-  cardImage: { width: 80, height: 80, resizeMode: "contain", marginBottom: 8 },
-  cardName: { fontSize: 16, fontWeight: "600", textAlign: "center" },
-  blurContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  popupCard: {
-    width: width * 0.85,
-    borderRadius: 28,
-    padding: 24,
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-    alignItems: "center",
+  title: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  logoutBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.danger,
   },
-  popupHeader: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  popupLogo: { width: 60, height: 60, resizeMode: "contain", marginRight: 16 },
-  popupName: { fontSize: 22, fontWeight: "700" },
-  popupDescription: { fontSize: 16, lineHeight: 24, textAlign: "center", marginBottom: 24 },
-  closeButton: { paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20 },
-  closeText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
+  logout: { color: Colors.danger, fontWeight: "600", fontSize: 13 },
+  countCard: { marginHorizontal: 16, alignItems: "center" },
+  countNumber: { color: Colors.primary, fontSize: 28, fontWeight: "700" },
+  memberMeta: { color: Colors.textSecondary, fontSize: 13, marginTop: 2 },
+  memberCard: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  memberName: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  slotTag: { color: Colors.primary, marginTop: 4, fontSize: 12, fontWeight: "600" },
+  actions: { gap: 8 },
+  actionBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+  actionText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  modalCard: { backgroundColor: Theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "85%" },
+  modalTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 16 },
+  label: { color: Colors.textSecondary, marginBottom: 8, fontWeight: "600" },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
+  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border },
+  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  chipText: { color: Colors.textSecondary, fontSize: 13 },
+  chipTextActive: { color: "#04121A", fontWeight: "700" },
+  cancel: { color: Colors.textMuted, textAlign: "center", marginTop: 4 },
 });

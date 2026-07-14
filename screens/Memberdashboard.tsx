@@ -123,7 +123,7 @@ export default function MemberDashboardScreen() {
             <Text style={styles.refreshText}>🔄</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>log Out</Text>
+            <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -211,8 +211,14 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: "row", gap: 15, alignItems: "center" },
   refreshBtn: { padding: 8 },
   refreshText: { fontSize: 20 },
-  logoutBtn: { padding: 8 },
-  logoutText: { fontSize: 18 },
+  logoutBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e74c3c",
+  },
+  logoutText: { fontSize: 13, color: "#e74c3c", fontWeight: "600" },
   card: { backgroundColor: "#1a1a2e", padding: 20, borderRadius: 12, marginBottom: 20 },
   welcomeText: { color: "#fff", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   infoSection: { gap: 12 },
