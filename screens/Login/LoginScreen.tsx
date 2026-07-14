@@ -19,7 +19,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
 import { login } from "../../services/auth";
 import { DEV_QUICK_LOGIN } from "../../constants/devQuickLogin";
-
+const showQuickLogin = true;
 export default function LoginScreen() {
   type LoginNavigationProp = NativeStackNavigationProp<RootStackParamList, "Login">;
   const navigation = useNavigation<LoginNavigationProp>();
@@ -154,23 +154,23 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               )}
 
-              {__DEV__ && (
-                <View style={styles.devSection}>
-                  <Text style={styles.devLabel}>Dev quick login</Text>
-                  <View style={styles.devRow}>
-                    {DEV_QUICK_LOGIN.map((cred) => (
-                      <TouchableOpacity
-                        key={cred.role}
-                        style={styles.devButton}
-                        disabled={loading}
-                        onPress={() => quickLogin(cred.email, cred.password)}
-                      >
-                        <Text style={styles.devButtonText}>{cred.label}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
+              {showQuickLogin && (
+  <View style={styles.devSection}>
+    <Text style={styles.devLabel}>Quick Login</Text>
+    <View style={styles.devRow}>
+      {DEV_QUICK_LOGIN.map((cred) => (
+        <TouchableOpacity
+          key={cred.role}
+          style={styles.devButton}
+          disabled={loading}
+          onPress={() => quickLogin(cred.email, cred.password)}
+        >
+          <Text style={styles.devButtonText}>{cred.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  </View>
+)}
 
               
             </View>
