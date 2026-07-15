@@ -8,7 +8,6 @@ import {
   StyleSheet,
   StatusBar,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useEventListener } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { isLoggedIn, getCurrentUser, getUserRole } from "../../services/auth";
@@ -84,22 +83,23 @@ const SplashScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={Theme.colors.background}
+        translucent
       />
 
       <View style={styles.container}>
         <VideoView
           style={styles.video}
           player={player}
-          contentFit="contain"
+          contentFit="cover"
           nativeControls={false}
           allowsPictureInPicture={false}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
