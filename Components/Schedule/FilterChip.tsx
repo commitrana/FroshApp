@@ -32,6 +32,12 @@ export default function FilterChip({
           styles.text,
           selected && styles.selectedText,
         ]}
+        // A previous fix here only bumped lineHeight, which isn't always
+        // enough — if the device has a larger system font-scale
+        // (accessibility setting), Android can still clip the bottom of
+        // descenders like the "p"/"g" in "Upcoming". Locking font scaling
+        // for this small fixed-size chip label is the more robust fix.
+        allowFontScaling={false}
       >
         {title}
       </Text>
@@ -42,7 +48,7 @@ export default function FilterChip({
 const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 30,
     backgroundColor: "#1F2937",
     marginRight: 12,
@@ -55,6 +61,8 @@ const styles = StyleSheet.create({
   text: {
     color: "#D1D5DB",
     fontWeight: "600",
+    fontSize: 14,
+    lineHeight: 22,
   },
 
   selectedText: {

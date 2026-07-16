@@ -14,7 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { getBatchTimetableImage } from '../../services/batches';
+import { getBatchTimetableImage, getMyBatch, getMyTimetable, MyTimetableResponse } from '../../services/batches';
 import { getActiveSessionForStudent, ActiveSessionInfo } from '../../services/attendance';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { darkTheme } from '../../constants/homeThemes';
@@ -28,6 +28,7 @@ const BootcampScreen = () => {
   const navigation = useNavigation<any>();
   const [batch, setBatch] = useState<string | null>(null);
   const [timetableImage, setTimetableImage] = useState<string | null>(null);
+  const [classSchedule, setClassSchedule] = useState<MyTimetableResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -47,13 +48,29 @@ const BootcampScreen = () => {
       }
 
       const student = JSON.parse(studentData);
-      const batchCode = student.batch; // e.g., "BlueA"
+
+      // Ask the server for the CURRENT batch instead of trusting the copy
+      // cached at login time — if an admin has reassigned this student's
+      // batch since then, the cached value is stale. Fall back to it only
+      // if the fresh lookup fails (e.g. no network right now).
+      const freshBatch = await getMyBatch();
+      const batchCode = freshBatch ?? student.batch;
       setBatch(batchCode);
+
+      // Keep the cached copy in sync so anything else in the app reading
+      // studentData.batch also sees the up-to-date value.
+      if (freshBatch && freshBatch !== student.batch) {
+        student.batch = freshBatch;
+        await AsyncStorage.setItem('studentData', JSON.stringify(student));
+      }
 
       if (batchCode) {
         const imageUrl = await getBatchTimetableImage(batchCode);
         setTimetableImage(imageUrl);
       }
+
+      const schedule = await getMyTimetable();
+      setClassSchedule(schedule);
     } catch (error) {
       console.error('Error fetching batch data:', error);
     } finally {
@@ -201,6 +218,65 @@ const BootcampScreen = () => {
                 <Text style={[styles.batchName, { color: theme.accent }]}>{batch}</Text>
               </View>
 
+              <View style={styles.timeTableHeader}>
+                <MaterialCommunityIcons name="table-large" size={22} color={theme.accent} />
+                <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Class Schedule</Text>
+              </View>
+
+              {!classSchedule || classSchedule.classes.length === 0 ? (
+                <View
+                  style={[
+                    styles.emptyBox,
+                    { backgroundColor: theme.topCard.backgroundColor, marginBottom: 18 },
+                  ]}
+                >
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    No classes have been assigned to your batch yet.
+                  </Text>
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.scheduleCard,
+                    { backgroundColor: theme.topCard.backgroundColor, shadowColor: theme.topCard.shadowColor },
+                  ]}
+                >
+                  {classSchedule.days.map((day) => {
+                    // Classes for this day, in chronological slot order —
+                    // classSchedule.timeSlots is already sorted by start time.
+                    const dayClasses = classSchedule.timeSlots
+                      .map((slot) => classSchedule.classes.find((c) => c.day === day && c.slot === slot))
+                      .filter((c): c is NonNullable<typeof c> => !!c);
+
+                    if (dayClasses.length === 0) return null;
+
+                    return (
+                      <View key={day} style={styles.scheduleDayBlock}>
+                        <Text style={[styles.scheduleDayLabel, { color: theme.accent }]}>{day}</Text>
+                        {dayClasses.map((cls) => (
+                          <View key={`${cls.day}-${cls.slot}`} style={styles.scheduleRow}>
+                            <View style={styles.scheduleTimeCol}>
+                              <Text style={[styles.scheduleTime, { color: theme.textSecondary }]}>
+                                {cls.slot}
+                              </Text>
+                            </View>
+                            <View style={styles.scheduleDetailsCol}>
+                              <Text style={[styles.scheduleSubject, { color: theme.textPrimary }]}>
+                                {cls.subject}
+                              </Text>
+                              <Text style={[styles.scheduleMeta, { color: theme.textSecondary }]}>
+                                {cls.faculty}
+                                {cls.venue ? ` · 📍 ${cls.venue}` : ''}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
               <View
                 style={[
                   styles.timetableCard,
@@ -288,6 +364,33 @@ const styles = StyleSheet.create({
   },
   batchLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   batchName: { fontSize: 32, fontWeight: '800', marginTop: 6 },
+
+  scheduleCard: {
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 18,
+    shadowOpacity: 0.2,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
+  },
+  scheduleDayBlock: { marginBottom: 16 },
+  scheduleDayLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  scheduleTimeCol: { width: 92 },
+  scheduleTime: { fontSize: 12, fontWeight: '600' },
+  scheduleDetailsCol: { flex: 1 },
+  scheduleSubject: { fontSize: 15, fontWeight: '700' },
+  scheduleMeta: { fontSize: 12, marginTop: 2 },
 
   timetableCard: {
     borderRadius: 24,
