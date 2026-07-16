@@ -1,3 +1,7 @@
+// Save as: src/screens/Faculty/AttendanceRosterScreen.tsx
+// LOGIC ZONE copied unchanged: search filter, markStudentManually. Only
+// JSX/styles were restyled.
+
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
@@ -13,21 +17,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { RosterStudent, getSessionRoster, markStudentManually } from '../../services/attendance';
+import FacultyTheme from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'AttendanceRoster'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AttendanceRoster'>;
 
 const STATUS_STYLE: Record<RosterStudent['status'], { label: string; color: string; bg: string }> = {
-  present: { label: 'Present', color: '#34D399', bg: 'rgba(52,211,153,0.15)' },
-  flagged: { label: 'Flagged', color: '#FBBF24', bg: 'rgba(251,191,36,0.15)' },
-  rejected: { label: 'Rejected', color: '#F87171', bg: 'rgba(248,113,113,0.15)' },
-  absent: { label: 'Absent', color: '#9CA3AF', bg: 'rgba(156,163,175,0.12)' },
+  present: { label: 'Present', color: FacultyTheme.success, bg: FacultyTheme.successBg },
+  flagged: { label: 'Flagged', color: FacultyTheme.warning, bg: FacultyTheme.warningBg },
+  rejected: { label: 'Rejected', color: FacultyTheme.danger, bg: FacultyTheme.dangerBg },
+  absent: { label: 'Absent', color: FacultyTheme.textSecondary, bg: 'rgba(111,136,178,0.12)' },
 };
 
+// ============ LOGIC ZONE (unchanged) ============
 const AttendanceRosterScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
@@ -90,11 +96,12 @@ const AttendanceRosterScreen = () => {
   }, [students, search]);
 
   const presentCount = students.filter((s) => s.status === 'present').length;
+  // ============ END LOGIC ZONE ============
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
+        <ActivityIndicator color={FacultyTheme.accent} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
@@ -103,7 +110,7 @@ const AttendanceRosterScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={FacultyTheme.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Manage Attendance</Text>
@@ -120,7 +127,7 @@ const AttendanceRosterScreen = () => {
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name, roll no, or batch"
-          placeholderTextColor="#6B7280"
+          placeholderTextColor={FacultyTheme.textSecondary}
           value={search}
           onChangeText={setSearch}
           autoCapitalize="none"
@@ -129,7 +136,7 @@ const AttendanceRosterScreen = () => {
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={FacultyTheme.accent} />}
       >
         {loadError ? (
           <View style={[styles.emptyState, styles.errorState]}>
@@ -161,7 +168,7 @@ const AttendanceRosterScreen = () => {
                 </View>
 
                 {markingId === student._id ? (
-                  <ActivityIndicator color={Theme.colors.primary} size="small" />
+                  <ActivityIndicator color={FacultyTheme.accent} size="small" />
                 ) : (
                   <View style={[styles.statusBadge, { backgroundColor: statusInfo.bg }]}>
                     <Text style={[styles.statusBadgeText, { color: statusInfo.color }]}>{statusInfo.label}</Text>
@@ -182,7 +189,7 @@ const AttendanceRosterScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: FacultyTheme.pageBg,
   },
   loader: {
     flex: 1,
@@ -197,30 +204,31 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1F2937',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: FacultyTheme.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  backBtnText: {
-    color: 'white',
-    fontSize: 20,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   headerTitle: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   headerSubtitle: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     marginTop: 2,
   },
   countBadge: {
-    backgroundColor: 'rgba(52,211,153,0.15)',
+    backgroundColor: FacultyTheme.successBg,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -228,7 +236,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countBadgeText: {
-    color: Theme.colors.success,
+    color: FacultyTheme.success,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -237,61 +245,66 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   searchInput: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 14,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: FacultyTheme.lineColor,
   },
   scroll: {
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
   emptyState: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     padding: 30,
     alignItems: 'center',
     marginTop: 20,
   },
   errorState: {
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.4)',
+    borderColor: 'rgba(239,68,68,0.3)',
   },
   errorStateText: {
-    color: '#EF4444',
+    color: FacultyTheme.danger,
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
   },
   emptyStateText: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   card: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   studentName: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   studentMeta: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
   statusBadge: {
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
     alignItems: 'center',
@@ -301,13 +314,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   manualTag: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 9,
     marginTop: 1,
     fontStyle: 'italic',
   },
   footerHint: {
-    color: '#6B7280',
+    color: FacultyTheme.textSecondary,
     fontSize: 12,
     textAlign: 'center',
     paddingVertical: 10,

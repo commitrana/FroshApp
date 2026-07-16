@@ -100,6 +100,7 @@ export default function ScheduleScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
           contentContainerStyle={styles.filterContainer}
         >
           <FilterChip
@@ -193,8 +194,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
+  // Without this, the ScrollView itself (not just its content) can stretch
+  // to fill whatever vertical space is left in the flex-column container —
+  // which is what caused the big empty gap around the chips even after
+  // they were centered.
+  filterScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+
   filterContainer: {
     paddingBottom: 20,
+    // A horizontal ScrollView's contentContainerStyle stretches children to
+    // fill its cross-axis (height) by default unless alignItems is set —
+    // that's what was making the filter chips balloon into tall capsules
+    // until layout settled. 'center' keeps every chip at its natural height.
+    alignItems: "center",
   },
 
   list: {

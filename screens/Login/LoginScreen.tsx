@@ -1,3 +1,7 @@
+// Save as: src/screens/Login/LoginScreen.tsx
+// Only change vs your current file: faculty now navigates to "FacultyTabs"
+// instead of "FacultyDashboard" on login. Everything else is untouched.
+
 import React, { useState } from "react";
 import {
   View,
@@ -53,7 +57,7 @@ export default function LoginScreen() {
         } else if (result.role === "member") {
           navigation.replace("MemberDashboard");
         } else if (result.role === "faculty") {
-          navigation.replace("FacultyDashboard");
+          navigation.replace("FacultyTabs");
         }
       }
     } catch (err: any) {

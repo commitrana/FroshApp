@@ -1,15 +1,25 @@
+// Save as: src/types/navigation.ts
+// Only additions vs your current file: `FacultyTabs` route, and the new
+// `FacultyBottomTabParamList` type. Everything else (including
+// `FacultyDashboard`, kept for AttendanceSessionScreen's internal
+// back-navigation — see FacultyBootcampScreen.tsx comment) is unchanged.
+
 export type RootStackParamList = {
   // Auth Screens
   Splash: undefined;
   Login: undefined;
-  
+
   // Main App
   MainTabs: undefined;
-  
+
+  // Faculty entry point — Login now routes faculty here instead of
+  // directly to "FacultyDashboard".
+  FacultyTabs: undefined;
+
   // Dashboards
   SocietyAdmin: undefined;
   MemberDashboard: undefined;
-  
+
   // Static Screens
   Home: undefined;
   OurTeam: undefined;
@@ -20,7 +30,7 @@ export type RootStackParamList = {
   LifeAtThapar: undefined;
   CampusMap: undefined;
   Bootcamp: undefined;
-  
+
   // Other Screens (add more as needed)
   Account: undefined;
   Profile: undefined;
@@ -30,7 +40,12 @@ export type RootStackParamList = {
   About: undefined;
   QR: undefined;
   Schedule: undefined;
+
+  // Kept as a route (now rendering FacultyBootcampScreen directly, full
+  // screen without tab bar) purely so AttendanceSessionScreen's existing
+  // `navigation.navigate('FacultyDashboard')` call keeps working unchanged.
   FacultyDashboard: undefined;
+
   ClassDetails: {
     day: string;
     slot: string;
@@ -66,12 +81,22 @@ export type RootStackParamList = {
   };
 };
 
-// Bottom Tab Navigator Param List (if you have bottom tabs)
+// Bottom Tab Navigator Param List (student)
 export type BottomTabParamList = {
   Home: undefined;
   Explore: undefined;
   Schedule: undefined;
   QR: undefined;
+  Profile: undefined;
+};
+
+// Bottom Tab Navigator Param List (faculty) — same shape minus QR, plus
+// Bootcamp (the faculty schedule/attendance tab).
+export type FacultyBottomTabParamList = {
+  Home: undefined;
+  Bootcamp: undefined;
+  Explore: undefined;
+  Schedule: undefined;
   Profile: undefined;
 };
 

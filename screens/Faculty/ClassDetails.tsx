@@ -1,25 +1,29 @@
+// Save as: src/screens/Faculty/ClassDetails.tsx
+// LOGIC ZONE copied unchanged from your existing ClassDetails.tsx (the real
+// one — location permission, startAttendanceSession(), the "already ran
+// today" check). Only the JSX/StyleSheet was restyled.
+
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
 import { startAttendanceSession, getTodaysSessionForSlot, AttendanceSession } from '../../services/attendance';
+import FacultyTheme from '../../constants/facultyTheme';
 
 type ClassDetailsRouteProp = RouteProp<RootStackParamList, 'ClassDetails'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ClassDetails'>;
 
+// ============ LOGIC ZONE (unchanged) ============
 const ClassDetails = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<ClassDetailsRouteProp>();
   const { day, slot, subject, venue, batches } = route.params;
   const [starting, setStarting] = useState(false);
 
-  // Whether a session for this exact day+slot was already started today.
-  // Once one exists, this screen shows "View Attendance" instead of letting
-  // the professor start a second/duplicate session for the same class.
   const [todaysSession, setTodaysSession] = useState<AttendanceSession | null>(null);
   const [checkingToday, setCheckingToday] = useState(true);
 
@@ -88,12 +92,13 @@ const ClassDetails = () => {
     if (!todaysSession) return;
     navigation.navigate('AttendanceSession', { sessionId: todaysSession._id, subject: todaysSession.subject });
   };
+  // ============ END LOGIC ZONE ============
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={FacultyTheme.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Class Details</Text>
         <View style={styles.backBtnPlaceholder} />
@@ -102,21 +107,25 @@ const ClassDetails = () => {
       <View style={styles.content}>
         <View style={styles.card}>
           <Text style={styles.subject}>{subject}</Text>
+          <View style={styles.divider} />
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>📅 Day</Text>
             <Text style={styles.detailValue}>{day}</Text>
           </View>
+          <View style={styles.divider} />
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>🕒 Time</Text>
             <Text style={styles.detailValue}>{slot}</Text>
           </View>
+          <View style={styles.divider} />
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>📍 Venue</Text>
             <Text style={styles.detailValue}>{venue ? venue : 'Not specified'}</Text>
           </View>
+          <View style={styles.divider} />
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>🎯 Batches</Text>
@@ -128,7 +137,7 @@ const ClassDetails = () => {
 
         {checkingToday ? (
           <View style={styles.checkingBox}>
-            <ActivityIndicator color={Theme.colors.primary} />
+            <ActivityIndicator color={FacultyTheme.accent} />
           </View>
         ) : todaysSession ? (
           <>
@@ -164,7 +173,7 @@ const ClassDetails = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: FacultyTheme.pageBg,
   },
   header: {
     flexDirection: 'row',
@@ -175,22 +184,23 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1F2937',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: FacultyTheme.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backBtnText: {
-    color: 'white',
-    fontSize: 20,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   backBtnPlaceholder: {
-    width: 36,
+    width: 40,
   },
   headerTitle: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 20,
     fontWeight: '700',
   },
@@ -199,32 +209,39 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   card: {
-    backgroundColor: '#1F2937',
-    borderRadius: 16,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 20,
     padding: 24,
     marginBottom: 24,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   subject: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 24,
     fontWeight: '700',
-    marginBottom: 20,
+    marginBottom: 8,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: FacultyTheme.lineColor,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#374151',
+    paddingVertical: 14,
   },
   detailLabel: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 15,
     fontWeight: '600',
   },
   detailValue: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 15,
     fontWeight: '600',
     flexShrink: 1,
@@ -235,20 +252,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   alreadyRanBanner: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 14,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   alreadyRanText: {
-    color: '#D1D5DB',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     textAlign: 'center',
     fontWeight: '600',
   },
   attendanceButton: {
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.accent,
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
   },

@@ -1,3 +1,9 @@
+// Save as: src/screens/Faculty/AttendanceSessionScreen.tsx
+// LOGIC ZONE copied unchanged: polling via useAutoRefresh, back-button-block
+// while active, end-session confirm, conditional feedback buttons based on
+// session.feedbackStatus, QR code, handleBackToDashboard. Only JSX/styles
+// were restyled.
+
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,7 +11,6 @@ import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import QRCode from 'react-native-qrcode-svg';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import {
   AttendanceSession,
@@ -15,10 +20,12 @@ import {
   endAttendanceSession,
 } from '../../services/attendance';
 import { startSessionFeedback } from '../../services/feedback';
+import FacultyTheme from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'AttendanceSession'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AttendanceSession'>;
 
+// ============ LOGIC ZONE (unchanged) ============
 const AttendanceSessionScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
@@ -45,11 +52,8 @@ const AttendanceSessionScreen = () => {
     }
   }, [sessionId]);
 
-  // Live counter refreshes every 5s while this screen is focused.
   useAutoRefresh(fetchData, 5000);
 
-  // While the session is active, block hardware back button + swipe-back
-  // gesture so the professor can't accidentally leave without ending it.
   useFocusEffect(
     useCallback(() => {
       const isActive = session?.status === 'active';
@@ -58,9 +62,9 @@ const AttendanceSessionScreen = () => {
       const onBackPress = () => {
         if (session?.status === 'active') {
           Alert.alert('Session in progress', 'Please end the attendance session before leaving this screen.');
-          return true; // swallow the back press
+          return true;
         }
-        return false; // let it behave normally (e.g. once ended)
+        return false;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -78,8 +82,6 @@ const AttendanceSessionScreen = () => {
           try {
             setEnding(true);
             await endAttendanceSession(sessionId);
-            // Stay on this screen in its "ended" view-only state instead of
-            // popping back to ClassDetails (which has the Start Attendance button).
             await fetchData();
           } catch (error: any) {
             const message = error?.response?.data?.error || 'Could not end session.';
@@ -106,20 +108,23 @@ const AttendanceSessionScreen = () => {
   };
 
   const handleBackToDashboard = () => {
-    // Jumps straight to FacultyDashboard, skipping past ClassDetails
-    // (and its Start Attendance button) in the stack.
+    // Jumps straight back to the faculty Bootcamp tab, skipping past
+    // ClassDetails in the stack. Kept pointing at the 'FacultyDashboard'
+    // route name unchanged (still registered in AppNavigator) so this
+    // logic didn't need to be touched.
     navigation.navigate('FacultyDashboard');
   };
 
   if (loading || !session) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
+        <ActivityIndicator color={FacultyTheme.accent} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
 
   const isEnded = session.status === 'ended';
+  // ============ END LOGIC ZONE ============
 
   return (
     <SafeAreaView style={styles.container}>
@@ -150,21 +155,21 @@ const AttendanceSessionScreen = () => {
           style={styles.statBox}
           onPress={() => navigation.navigate('PresentList', { sessionId, subject })}
         >
-          <Text style={styles.statValue}>{live?.presentCount ?? 0}</Text>
+          <Text style={[styles.statValue, { color: FacultyTheme.success }]}>{live?.presentCount ?? 0}</Text>
           <Text style={styles.statLabel}>Present</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statBox}
           onPress={() => navigation.navigate('FlaggedReview', { sessionId })}
         >
-          <Text style={[styles.statValue, styles.statFlagged]}>{live?.flaggedCount ?? 0}</Text>
+          <Text style={[styles.statValue, { color: FacultyTheme.warning }]}>{live?.flaggedCount ?? 0}</Text>
           <Text style={styles.statLabel}>Flagged</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.statBox}
           onPress={() => navigation.navigate('FlaggedReview', { sessionId })}
         >
-          <Text style={[styles.statValue, styles.statRejected]}>{live?.rejectedCount ?? 0}</Text>
+          <Text style={[styles.statValue, { color: FacultyTheme.danger }]}>{live?.rejectedCount ?? 0}</Text>
           <Text style={styles.statLabel}>Rejected</Text>
         </TouchableOpacity>
       </View>
@@ -211,7 +216,7 @@ const AttendanceSessionScreen = () => {
               disabled={startingFeedback}
             >
               {startingFeedback ? (
-                <ActivityIndicator color={Theme.colors.primary} />
+                <ActivityIndicator color={FacultyTheme.accent} />
               ) : (
                 <Text style={styles.manageButtonText}>▶️ Start Feedback</Text>
               )}
@@ -239,7 +244,7 @@ const AttendanceSessionScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: FacultyTheme.pageBg,
     paddingHorizontal: 20,
     paddingTop: 15,
   },
@@ -253,12 +258,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   headerTitle: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 24,
     fontWeight: '700',
   },
   headerSubtitle: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 14,
     marginTop: 4,
   },
@@ -266,11 +271,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     alignSelf: 'center',
     padding: 20,
-    borderRadius: 16,
+    borderRadius: 20,
     marginBottom: 14,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   hint: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     textAlign: 'center',
     marginBottom: 20,
@@ -283,60 +293,58 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginHorizontal: 4,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   statValue: {
-    color: Theme.colors.success,
     fontSize: 26,
     fontWeight: '700',
   },
-  statFlagged: {
-    color: Theme.colors.warning,
-  },
-  statRejected: {
-    color: Theme.colors.danger,
-  },
   statLabel: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 12,
     marginTop: 4,
     fontWeight: '600',
   },
   flaggedButton: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: FacultyTheme.lineColor,
   },
   flaggedButtonText: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   manageButton: {
-    backgroundColor: 'rgba(79,70,229,0.15)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(55,148,255,0.1)',
+    borderRadius: 14,
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Theme.colors.primary,
+    borderColor: FacultyTheme.accent,
   },
   manageButtonText: {
-    color: Theme.colors.primary,
+    color: FacultyTheme.accent,
     fontSize: 15,
     fontWeight: '700',
   },
   endButton: {
-    backgroundColor: Theme.colors.danger,
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.danger,
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 20,
@@ -350,8 +358,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   doneButton: {
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.accent,
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 20,

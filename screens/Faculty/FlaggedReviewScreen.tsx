@@ -1,3 +1,7 @@
+// Save as: src/screens/Faculty/FlaggedReviewScreen.tsx
+// LOGIC ZONE copied unchanged: reviewAttendanceRecord (approve/reject).
+// Only JSX/styles were restyled.
+
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -12,14 +16,16 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { FlaggedRecord, getFlaggedRecords, reviewAttendanceRecord } from '../../services/attendance';
+import FacultyTheme from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'FlaggedReview'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FlaggedReview'>;
 
+// ============ LOGIC ZONE (unchanged) ============
 const FlaggedReviewScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
@@ -66,11 +72,12 @@ const FlaggedReviewScreen = () => {
     record.status === 'flagged'
       ? `Borderline — ${record.distanceFromAnchor}m away`
       : `Too far — ${record.distanceFromAnchor}m away`;
+  // ============ END LOGIC ZONE ============
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
+        <ActivityIndicator color={FacultyTheme.accent} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
@@ -79,7 +86,7 @@ const FlaggedReviewScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={FacultyTheme.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Flagged for Review</Text>
         <View style={styles.backBtnPlaceholder} />
@@ -87,7 +94,7 @@ const FlaggedReviewScreen = () => {
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={FacultyTheme.accent} />}
       >
         {records.length === 0 ? (
           <View style={styles.emptyState}>
@@ -105,7 +112,9 @@ const FlaggedReviewScreen = () => {
                   </Text>
                 </View>
                 <View style={[styles.reasonChip, record.status === 'rejected' && styles.reasonChipRejected]}>
-                  <Text style={styles.reasonChipText}>{reasonFor(record)}</Text>
+                  <Text style={[styles.reasonChipText, record.status === 'rejected' && { color: FacultyTheme.danger }]}>
+                    {reasonFor(record)}
+                  </Text>
                 </View>
               </View>
 
@@ -148,7 +157,7 @@ const FlaggedReviewScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: FacultyTheme.pageBg,
   },
   loader: {
     flex: 1,
@@ -164,22 +173,23 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1F2937',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: FacultyTheme.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  backBtnText: {
-    color: 'white',
-    fontSize: 20,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   backBtnPlaceholder: {
-    width: 36,
+    width: 40,
   },
   headerTitle: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
@@ -188,27 +198,32 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   emptyState: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     padding: 30,
     alignItems: 'center',
     marginTop: 40,
   },
   emptyStateText: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 17,
     fontWeight: '700',
   },
   emptyStateSubText: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 14,
     marginTop: 6,
   },
   card: {
-    backgroundColor: '#1F2937',
-    borderRadius: 14,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 14,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   cardTop: {
     flexDirection: 'row',
@@ -216,26 +231,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   studentName: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 16,
     fontWeight: '700',
   },
   studentMeta: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     marginTop: 2,
   },
   reasonChip: {
-    backgroundColor: 'rgba(255,204,0,0.15)',
-    borderRadius: 8,
+    backgroundColor: FacultyTheme.warningBg,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
   reasonChipRejected: {
-    backgroundColor: 'rgba(255,59,48,0.15)',
+    backgroundColor: FacultyTheme.dangerBg,
   },
   reasonChipText: {
-    color: Theme.colors.warning,
+    color: FacultyTheme.warning,
     fontSize: 11,
     fontWeight: '700',
   },
@@ -244,8 +259,8 @@ const styles = StyleSheet.create({
   },
   approveBtn: {
     flex: 1,
-    backgroundColor: Theme.colors.success,
-    borderRadius: 10,
+    backgroundColor: FacultyTheme.success,
+    borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     marginRight: 8,
@@ -258,14 +273,14 @@ const styles = StyleSheet.create({
   rejectBtn: {
     flex: 1,
     backgroundColor: 'transparent',
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: FacultyTheme.lineColor,
   },
   rejectBtnText: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -273,7 +288,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   resolvedText: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },

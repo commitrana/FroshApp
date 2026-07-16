@@ -1,3 +1,7 @@
+// Save as: src/screens/Faculty/FeedbackQuestionsScreen.tsx
+// LOGIC ZONE copied unchanged: setSessionFeedbackQuestions save + 5-question
+// validation. Only JSX/styles were restyled.
+
 import React, { useState } from 'react';
 import {
   View,
@@ -14,17 +18,17 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
 import { setSessionFeedbackQuestions } from '../../services/feedback';
+import FacultyTheme from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'FeedbackQuestions'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FeedbackQuestions'>;
 
-// Faculty must add exactly 5 questions — not more, not less — before
-// feedback can be opened to students.
 const QUESTION_COUNT = 5;
 
+// ============ LOGIC ZONE (unchanged) ============
 const FeedbackQuestionsScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
@@ -57,12 +61,13 @@ const FeedbackQuestionsScreen = () => {
       setSaving(false);
     }
   };
+  // ============ END LOGIC ZONE ============
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={FacultyTheme.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Feedback Questions</Text>
@@ -86,7 +91,7 @@ const FeedbackQuestionsScreen = () => {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Was the pace of the class appropriate?"
-                placeholderTextColor="#6B7280"
+                placeholderTextColor={FacultyTheme.textSecondary}
                 value={q}
                 onChangeText={(text) => updateQuestion(i, text)}
                 multiline
@@ -108,7 +113,7 @@ const FeedbackQuestionsScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
+  container: { flex: 1, backgroundColor: FacultyTheme.pageBg },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -117,45 +122,54 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1F2937',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: FacultyTheme.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  backBtnText: { color: 'white', fontSize: 20 },
-  headerTitle: { color: 'white', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
+  headerTitle: { color: FacultyTheme.textPrimary, fontSize: 18, fontWeight: '700' },
+  headerSubtitle: { color: FacultyTheme.textSecondary, fontSize: 13, marginTop: 2 },
   scroll: { paddingHorizontal: 20, paddingBottom: 40 },
   hint: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     lineHeight: 19,
     marginBottom: 20,
   },
   questionCard: {
-    backgroundColor: '#1F2937',
-    borderRadius: 14,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 14,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   questionLabel: {
-    color: Theme.colors.primary,
+    color: FacultyTheme.accent,
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 8,
   },
   input: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 15,
     minHeight: 44,
     textAlignVertical: 'top',
   },
   saveButton: {
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.accent,
+    borderRadius: 16,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 10,

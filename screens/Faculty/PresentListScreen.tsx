@@ -1,3 +1,7 @@
+// Save as: src/screens/Faculty/PresentListScreen.tsx
+// LOGIC ZONE copied unchanged: time-formatting, error-states. Only
+// JSX/styles were restyled.
+
 import React, { useCallback, useState } from 'react';
 import {
   View,
@@ -11,10 +15,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { PresentRecord, getPresentRecords } from '../../services/attendance';
+import FacultyTheme from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'PresentList'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'PresentList'>;
@@ -22,6 +27,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'PresentList
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+// ============ LOGIC ZONE (unchanged) ============
 const PresentListScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
@@ -49,7 +55,6 @@ const PresentListScreen = () => {
     }
   }, [sessionId]);
 
-  // Keep the list live while the session is still running.
   useAutoRefresh(fetchRecords, 8000);
 
   const onRefresh = useCallback(async () => {
@@ -57,11 +62,12 @@ const PresentListScreen = () => {
     await fetchRecords();
     setRefreshing(false);
   }, [fetchRecords]);
+  // ============ END LOGIC ZONE ============
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
+        <ActivityIndicator color={FacultyTheme.accent} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
@@ -70,7 +76,7 @@ const PresentListScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={FacultyTheme.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Present Students</Text>
@@ -83,7 +89,7 @@ const PresentListScreen = () => {
 
       <ScrollView
         contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={FacultyTheme.accent} />}
       >
         {loadError ? (
           <View style={[styles.emptyState, styles.errorState]}>
@@ -122,7 +128,7 @@ const PresentListScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
+    backgroundColor: FacultyTheme.pageBg,
   },
   loader: {
     flex: 1,
@@ -137,30 +143,31 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1F2937',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: FacultyTheme.cardBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
-  },
-  backBtnText: {
-    color: 'white',
-    fontSize: 20,
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   headerTitle: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   headerSubtitle: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 13,
     marginTop: 2,
   },
   countBadge: {
-    backgroundColor: 'rgba(52,211,153,0.15)',
+    backgroundColor: FacultyTheme.successBg,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -168,7 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   countBadgeText: {
-    color: Theme.colors.success,
+    color: FacultyTheme.success,
     fontWeight: '700',
     fontSize: 14,
   },
@@ -177,61 +184,66 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   emptyState: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     padding: 30,
     alignItems: 'center',
     marginTop: 40,
   },
   errorState: {
     borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.4)',
+    borderColor: 'rgba(239,68,68,0.3)',
   },
   errorStateText: {
-    color: '#EF4444',
+    color: FacultyTheme.danger,
     fontSize: 16,
     fontWeight: '700',
   },
   emptyStateText: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 17,
     fontWeight: '700',
   },
   emptyStateSubText: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 14,
     marginTop: 6,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#1F2937',
-    borderRadius: 14,
+    backgroundColor: FacultyTheme.cardBg,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: FacultyTheme.shadowColor,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   rowIndex: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(52,211,153,0.15)',
+    backgroundColor: FacultyTheme.successBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   rowIndexText: {
-    color: Theme.colors.success,
+    color: FacultyTheme.success,
     fontSize: 12,
     fontWeight: '700',
   },
   studentName: {
-    color: 'white',
+    color: FacultyTheme.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
   studentMeta: {
-    color: '#9CA3AF',
+    color: FacultyTheme.textSecondary,
     fontSize: 12,
     marginTop: 2,
   },
@@ -239,12 +251,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   scanTime: {
-    color: '#D1D5DB',
+    color: FacultyTheme.textPrimary,
     fontSize: 13,
     fontWeight: '600',
   },
   scanDistance: {
-    color: '#6B7280',
+    color: FacultyTheme.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },

@@ -22,8 +22,13 @@ export default function EventCard({
   registering = false,
   onRegisterPress,
 }: Props) {
-  // Past events can't be registered for — nothing to show.
-  const showButton = event.status !== "past" && !!onRegisterPress;
+  // Registration should only be possible while an event is actually live —
+  // the backend already enforces this (tickets.js rejects non-live
+  // registrations), but the button was showing for "upcoming" events too,
+  // letting students tap Register and hit a confusing rejection error.
+  // Still show "View Ticket" for anyone who already has one, even if the
+  // event's status later changes (e.g. moves to "past").
+  const showButton = (event.status === "live" || hasTicket) && !!onRegisterPress;
 
   return (
     <View style={styles.card}>
@@ -113,4 +118,4 @@ const styles = StyleSheet.create({
   buttonTextSecondary: {
     color: "#22D3EE",
   },
-});
+}); 

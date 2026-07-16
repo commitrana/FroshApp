@@ -1,486 +1,452 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  Image,
+  TouchableOpacity,
+  StatusBar,
+  Dimensions,
+  Modal,
+  TouchableWithoutFeedback,
+  Animated,
+  Alert,
   ActivityIndicator,
   RefreshControl,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { RootStackParamList } from "../../types/navigation";
+import { Event } from "../../services/events";
+import { getEvents } from "../../services/events";
+import { getMyTickets, registerForEvent } from "../../services/tickets";
 import { logout } from "../../services/auth";
+import { useAutoRefresh } from "../../hooks/useAutoRefresh";
+import { lightTheme, darkTheme } from "../../constants/homeThemes";
+import HomeAboutTab from "../../Components/Home/HomeAboutTab";
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+// Event photo paths from the backend are relative (e.g. "/uploads/events/xyz.jpg") —
+// prefix with the backend's own origin (not /api) to load them as an <Image> source.
+const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
+// Fallback image for events without a real photo (uses an asset that
+// actually exists — assets/images/event-placeholder.jpg was never added
+// to the project, which crashed Metro's bundler on this require()).
+const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
 
-interface LectureSlot {
-  subject: string;
-  venue?: string;
-  batches?: string[];
-}
+type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
 
-interface FacultyData {
-  _id: string;
-  name: string;
-  email: string;
-  department: string;
-  phoneNo: string;
-  photo: string;
-  teacherNo: string;
-  timetableImage: string;
-  timetable: {
-    timeSlots?: string[];
-    days?: string[];
-    schedule: { [day: string]: { [slot: string]: LectureSlot } } | any[];
-  };
-}
+export default function HomeScreen() {
+  const navigation = useNavigation<HomeNavProp>();
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FacultyDashboard'>;
+  // ----- ui_ux Home shell state (exact behaviour from the design) -----
+  const [activeTab, setActiveTab] = useState("frosh"); // "frosh" tab (live event) shown by default
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-const FacultyDashboard = () => {
-  const navigation = useNavigation<NavigationProp>();
-  const [faculty, setFaculty] = useState<FacultyData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const isFrosh = activeTab === "frosh";
+  const isAbout = activeTab === "about";
+
+  // ----- Real backend data (unchanged logic from the original Home screen) -----
+  const [liveEvent, setLiveEvent] = useState<Event | null>(null);
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState("");
 
-  const fetchFacultyProfile = async () => {
+  useEffect(() => {
+    const getUserName = async () => {
+      try {
+        const studentData = await AsyncStorage.getItem("studentData");
+        if (studentData) {
+          const student = JSON.parse(studentData);
+          setUserName(student.name || "");
+        }
+      } catch (error) {
+        console.log("Error fetching user:", error);
+      }
+    };
+    getUserName();
+  }, []);
+
+  const fetchEvents = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('facultyToken');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch('https://frosh-app-backend.onrender.com/api/faculty/profile', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setFaculty(data.faculty);
-      } else {
-        console.log('Failed to fetch faculty profile:', data.error);
-      }
-    } catch (error) {
-      console.log('Error fetching faculty profile:', error);
-    } finally {
-      setLoading(false);
+      const [events, tickets] = await Promise.all([getEvents(), getMyTickets()]);
+      setLiveEvent(events.find((e) => e.status === "live") || null);
+      setUpcomingEvents(events.filter((e) => e.status === "upcoming"));
+    } catch (err) {
+      console.log("Failed to fetch events:", err);
     }
-  };
-  
+  }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchFacultyProfile();
-    }, [])
-  );
+  useAutoRefresh(fetchEvents, 30000);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchFacultyProfile();
+    await fetchEvents();
     setRefreshing(false);
-  }, []);
+  }, [fetchEvents]);
 
-  const handleAttendance = () => {
-    Alert.alert(
-      'Attendance',
-      'This feature is coming soon! ',
-      [{ text: 'OK' }]
-    );
-  };
-  
+ 
 
-  const getScheduleMap = (): { [day: string]: { [slot: string]: LectureSlot } } => {
-    const sched = faculty?.timetable?.schedule;
-    if (!sched || Array.isArray(sched)) return {};
-    return sched;
-  };
-
-  const timeSlots: string[] = (faculty?.timetable?.timeSlots && faculty.timetable.timeSlots.length)
-    ? faculty.timetable.timeSlots
-    : [];
-
-  const scheduleMap = getScheduleMap();
   const handleLogout = () => {
-  Alert.alert(
-    "Logout",
-    "Are you sure you want to logout?",
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
+    setModalVisible(false);
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
         style: "destructive",
         onPress: async () => {
-          await logout();
-
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "Login" }],
-          });
+          try {
+            await logout();
+            navigation.replace("Login");
+          } catch (error) {
+            console.error("Logout error:", error);
+            Alert.alert("Error", "Failed to logout. Please try again.");
+          }
         },
       },
-    ]
-  );
-};
-  const handleSlotPress = (day: string, slot: string, lecture: LectureSlot) => {
-    navigation.navigate('ClassDetails', {
-      day,
-      slot,
-      subject: lecture.subject,
-      venue: lecture.venue,
-      batches: lecture.batches || [],
-    });
+    ]);
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
-      </SafeAreaView>
-    );
-  }
+  const menuOptions = [
+    { id: "account", label: "Account", icon: "person-outline" as const },
+    { id: "help", label: "Help & Support", icon: "help-circle-outline" as const },
+    { id: "about", label: "About Frosh", icon: "information-circle-outline" as const },
+    { id: "connect", label: "Connect with us", icon: "chatbubble-outline" as const },
+    {
+      id: "switch",
+      label: "Switch Mode",
+      icon: isDarkMode ? ("sunny-outline" as const) : ("moon-outline" as const),
+    },
+    { id: "logout", label: "Logout", icon: "log-out-outline" as const },
+  ];
 
-  if (!faculty) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContent}>
-          <Text style={styles.errorText}>Failed to load profile</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const handleMenuPress = (id: string) => {
+    if (id === "switch") {
+      setIsDarkMode(!isDarkMode);
+      setModalVisible(false);
+      return;
+    }
+    if (id === "logout") {
+      handleLogout();
+      return;
+    }
+    setModalVisible(false);
+    if (id === "account") navigation.navigate("Account");
+    else if (id === "help") navigation.navigate("Help");
+    else if (id === "about") navigation.navigate("About");
+    else if (id === "connect") navigation.navigate("Connect");
+  };
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: modalVisible ? 1 : 0,
+      useNativeDriver: true,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [modalVisible]);
+
+  const translateY = slideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [screenHeight * 0.5, 0],
+  });
+
+  const theme = isDarkMode ? darkTheme : lightTheme;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />
-        }
+    <>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+
+      <LinearGradient
+        colors={theme.bgGradient as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Faculty Dashboard</Text>
-        </View>
-
-        {/* Profile Card */}
-        <View style={styles.profileCard}>
-          <Text style={styles.facultyName}>{faculty.name}</Text>
-          <Text style={styles.facultyDepartment}>{faculty.department}</Text>
-          <Text style={styles.facultyEmail}>{faculty.email}</Text>
-          <Text style={styles.facultyPhone}> {faculty.phoneNo}</Text>
-          {faculty.teacherNo ? (
-            <Text style={styles.facultyTeacherNo}> Teacher ID: {faculty.teacherNo}</Text>
-          ) : null}
-        </View>
-
-        {/* Weekly Schedule Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Weekly Schedule</Text>
-          {timeSlots.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No schedule assigned yet</Text>
-              <Text style={styles.emptyStateSubText}>Please contact admin</Text>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 110 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
+          }
+        >
+          {/* HEADER */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.hello, { color: theme.textPrimary }]}>
+                Hi, {userName || "Guest"}
+              </Text>
+              <Text style={[styles.welcome, { color: theme.textSecondary }]}>Welcome back!</Text>
             </View>
-          ) : (
-            <View style={styles.gridWrapper}>
-              {/* Fixed day-name column */}
-              <View style={styles.dayColumn}>
-                <View style={styles.cornerSpacer} />
-                {DAYS.map((day) => (
-                  <View key={day} style={styles.dayLabelCell}>
-                    <Text style={styles.dayLabelText}>{day.slice(0, 3)}</Text>
-                  </View>
-                ))}
+            <TouchableOpacity
+              style={[
+                styles.profileCircle,
+                { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor },
+              ]}
+              onPress={() => setModalVisible(true)}
+            >
+              <Feather name="user" size={24} color={theme.iconColor} />
+            </TouchableOpacity>
+          </View>
+
+          {/* TOP CARD - 3 tabs, same as the ui_ux design */}
+          <View style={[styles.topCard, theme.topCard]}>
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={styles.tab}
+                onPress={() => navigation.navigate("Bootcamp")}
+              >
+                <View style={styles.tabContent}>
+                  <Ionicons name="calendar-outline" size={24} color={theme.tabInactiveText} />
+                  <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>
+                    Bootcamp
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.tab, isFrosh && { backgroundColor: theme.tabActiveBg }]}
+                onPress={() => setActiveTab("frosh")}
+              >
+                <View style={styles.tabContent}>
+                  <Image
+                    source={require("../../assets/uiux/star.png")}
+                    resizeMode="contain"
+                    style={{
+                      width:130,
+                      height:150
+                    }}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.tab, isAbout && { backgroundColor: theme.tabActiveBg }]}
+                onPress={() => setActiveTab("about")}
+              >
+                <View style={styles.tabContent}>
+                  <Ionicons
+                    name="information-circle-outline"
+                    size={28}
+                    color={isAbout ? theme.tabActiveText : theme.tabInactiveText}
+                  />
+                  <Text
+                    style={[
+                      isAbout ? styles.tabActive : styles.tabInactive,
+                      { color: isAbout ? theme.tabActiveText : theme.tabInactiveText },
+                    ]}
+                  >
+                    About
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* CONTENT */}
+          {isFrosh ? (
+            <>
+              <View style={[styles.liveCard, theme.liveCard]}>
+                <View style={styles.liveHeadingContainer}>
+                  <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                  <Text style={[styles.liveHeading, { color: theme.accent }]}>• LIVE EVENT •</Text>
+                  <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                </View>
+
+                {liveEvent ? (
+                  <>
+                    <Image
+                      source={liveEvent.imageUrl ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` } : DEFAULT_IMAGE}
+                      style={styles.eventImage}
+                    />
+
+                    <View style={[styles.liveNow, { borderColor: theme.accent }]}>
+                      <Text style={[styles.liveNowText, { color: theme.accent }]}>LIVE NOW</Text>
+                    </View>
+
+                    <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
+                      {liveEvent.title}
+                    </Text>
+
+                    <View style={styles.infoRow}>
+                      <Ionicons name="location" size={18} color={theme.accent} />
+                      <Text style={[styles.location, { color: theme.accent }]}>
+                        {liveEvent.venue}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Feather name="calendar" size={16} color={theme.accent} />
+                      <Text style={[styles.infoText, { color: theme.textPrimary }]}>
+                        {liveEvent.date}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.bottomRow, { marginTop: 0 }]}>
+                      <View style={styles.infoRow}>
+                        <Feather name="clock" size={16} color={theme.accent} />
+                        <Text style={[styles.infoText, { color: theme.textPrimary }]}>
+                          {liveEvent.time}
+                        </Text>
+                      </View>
+                      
+                    </View>
+                  </>
+                ) : (
+                  <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
+                    No live event right now. Check back soon!
+                  </Text>
+                )} 
               </View>
 
-              {/* Horizontally scrollable time-slot grid */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View>
-                  <View style={styles.headerRow}>
-                    {timeSlots.map((slot) => (
-                      <View key={slot} style={styles.slotHeaderCell}>
-                        <Text style={styles.slotHeaderText}>{slot}</Text>
-                      </View>
-                    ))}
-                  </View>
-
-                  {DAYS.map((day) => (
-                    <View key={day} style={styles.gridRow}>
-                      {timeSlots.map((slot) => {
-                        const lecture = scheduleMap[day]?.[slot];
-                        return (
-                          <TouchableOpacity
-                            key={slot}
-                            style={[styles.gridCell, lecture ? styles.gridCellFilled : null]}
-                            disabled={!lecture}
-                            onPress={() => lecture && handleSlotPress(day, slot, lecture)}
-                          >
-                            {lecture ? (
-                              <>
-                                <Text style={styles.cellSubject} numberOfLines={2}>
-                                  {lecture.subject}
-                                </Text>
-                                {lecture.venue ? (
-                                  <Text style={styles.cellVenue} numberOfLines={1}>
-                                    📍 {lecture.venue}
-                                  </Text>
-                                ) : null}
-                                {lecture.batches && lecture.batches.length > 0 ? (
-                                  <Text style={styles.cellBatches} numberOfLines={1}>
-                                    🎯 {lecture.batches.join(', ')}
-                                  </Text>
-                                ) : null}
-                              </>
-                            ) : (
-                              <Text style={styles.cellEmptyDash}>—</Text>
-                            )}
-                          </TouchableOpacity>
-                          
-                        );
-                      })}
+              {upcomingEvents.length > 0 && (
+                <View style={styles.upcomingSection}>
+                  <Text style={[styles.upcomingHeading, { color: theme.textPrimary }]}>
+                    Upcoming Events
+                  </Text>
+                  {upcomingEvents.map((event) => (
+                    <View
+                      key={event.id}
+                      style={[styles.upcomingCard, { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor }]}
+                    >
+                      <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
+                        {event.title}
+                      </Text>
+                      <Text style={[styles.upcomingDate, { color: theme.textSecondary }]}>
+                        {event.date}
+                      </Text>
                     </View>
                   ))}
                 </View>
-              </ScrollView>
-            </View>
+              )}
+            </>
+          ) : (
+            <HomeAboutTab theme={theme} />
           )}
-        </View>
+        </ScrollView>
+      </LinearGradient>
 
-        {/* Attendance Button - Non Working */}
-        <TouchableOpacity style={styles.attendanceButton} onPress={handleAttendance}>
-          <Text style={styles.attendanceButtonText}> Mark Attendance</Text>
-        </TouchableOpacity>
+      {/* PROFILE MENU */}
+      <Modal
+        animationType="none"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={styles.modalOverlay} />
+        </TouchableWithoutFeedback>
+
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            { transform: [{ translateY }] },
+            { backgroundColor: theme.modalBg },
+          ]}
+        >
+          <View style={[styles.modalHandle, { backgroundColor: theme.lineColor }]} />
+
+          {menuOptions.map((item) => (
             <TouchableOpacity
-  style={styles.logoutButton}
-  onPress={handleLogout}
->
-  <Text style={styles.logoutText}>Logout</Text>
-</TouchableOpacity>
-        <View style={styles.footer} />
-      </ScrollView>
-    </SafeAreaView>
+              key={item.id}
+              style={[styles.menuItem, { borderBottomColor: theme.lineColor }]}
+              onPress={() => handleMenuPress(item.id)}
+            >
+              <Ionicons name={item.icon} size={24} color={theme.textPrimary} />
+              <Text style={[styles.menuText, { color: theme.textPrimary }]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+
+          <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+            <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
+    </>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Theme.colors.background,
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  logoutButton: {
-  marginTop: 16,
-  backgroundColor: "#EF4444",
-  paddingVertical: 12,
-  borderRadius: 10,
-  alignItems: "center",
-},
-
-logoutText: {
-  color: "#fff",
-  fontSize: 16,
-  fontWeight: "700",
-},
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 30,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
   header: {
-    marginBottom: 20,
+    marginTop: 55,
+    paddingHorizontal: 24,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  headerTitle: {
-    color: 'white',
-    fontSize: 28,
-    fontWeight: '700',
+  hello: { fontSize: 28, fontWeight: "800" },
+  welcome: { marginTop: 2, fontSize: 16, fontWeight: "500" },
+  profileCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  profileCard: {
-    backgroundColor: '#1F2937',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  facultyName: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  facultyDepartment: {
-    color: Theme.colors.primary,
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  facultyEmail: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  facultyPhone: {
-    color: '#9CA3AF',
-    fontSize: 14,
-  },
-  facultyTeacherNo: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  timetableContainer: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
+  topCard: { marginHorizontal: 22, marginTop: 18, borderRadius: 28, height: 80, overflow: "hidden" },
+  tabsContainer: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-around" },
+  tab: { flex: 1, height: 80, justifyContent: "center", alignItems: "center", backgroundColor: "transparent", borderRadius: 20 },
+  tabContent: { justifyContent: "center", alignItems: "center", gap: 2 },
+  tabLogoLarge: { width: 100, height: 100 },
+  tabActive: { fontSize: 12, fontWeight: "700" },
+  tabInactive: { fontSize: 12, fontWeight: "500" },
+  liveCard: { marginHorizontal: 22, marginTop: 24, borderRadius: 28, padding: 18 },
+  liveHeadingContainer: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
+  line: { flex: 1, height: 2 },
+  liveHeading: { marginHorizontal: 10, fontWeight: "700", fontSize: 16, letterSpacing: 2 },
+  eventImage: { width: "100%", height: 200, borderRadius: 20 },
+  liveNow: { marginTop: 14, borderWidth: 2, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4, alignSelf: "flex-start" },
+  liveNowText: { fontSize: 14, fontWeight: "700" },
+  eventTitle: { marginTop: 12, fontSize: 26, fontWeight: "800" },
+  infoRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  location: { marginLeft: 10, fontSize: 18, fontWeight: "700" },
+  infoText: { marginLeft: 10, fontSize: 16 },
+  bottomRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  arrowCircle: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, justifyContent: "center", alignItems: "center" },
+  upcomingSection: { marginHorizontal: 22, marginTop: 24 },
+  upcomingHeading: { fontSize: 20, fontWeight: "800", marginBottom: 10 },
+  upcomingCard: {
+    borderRadius: 20,
     padding: 16,
-    alignItems: 'center',
+    marginBottom: 12,
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
-  gridWrapper: {
-    flexDirection: 'row',
+  upcomingTitle: { fontSize: 16, fontWeight: "700" },
+  upcomingDate: { fontSize: 13, marginTop: 4 },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.3)" },
+  modalContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 10,
   },
-  dayColumn: {
-    width: 52,
-  },
-  cornerSpacer: {
-    height: 40,
-  },
-  dayLabelCell: {
-    height: 64,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1F2937',
-  },
-  dayLabelText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    height: 40,
-  },
-  slotHeaderCell: {
-    width: 110,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1F2937',
-    marginLeft: 4,
-    borderRadius: 6,
-  },
-  slotHeaderText: {
-    color: Theme.colors.primary,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  gridRow: {
-    flexDirection: 'row',
-    height: 64,
-    borderBottomWidth: 1,
-    borderBottomColor: '#111827',
-  },
-  gridCell: {
-    width: 110,
-    marginLeft: 4,
-    marginVertical: 4,
-    borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    backgroundColor: 'transparent',
-  },
-  gridCellFilled: {
-    backgroundColor: '#1F2937',
-  },
-  cellSubject: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  cellVenue: {
-    color: '#9CA3AF',
-    fontSize: 10,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  cellBatches: {
-    color: Theme.colors.primary,
-    fontSize: 9,
-    marginTop: 2,
-    textAlign: 'center',
-    fontWeight: '700',
-  },
-  cellEmptyDash: {
-    color: '#374151',
-    fontSize: 14,
-  },
-  emptyState: {
-    backgroundColor: '#1F2937',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    color: '#9CA3AF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptyStateSubText: {
-    color: '#6B7280',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  attendanceButton: {
-    backgroundColor: Theme.colors.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  attendanceButtonText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 16,
-  },
-  footer: {
-    height: 20,
-  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
+  menuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1 },
+  menuText: { fontSize: 18, fontWeight: "500", marginLeft: 16 },
+  closeButton: { marginTop: 8, paddingVertical: 14, alignItems: "center" },
+  closeButtonText: { fontSize: 18, fontWeight: "600" },
 });
-
-export default FacultyDashboard;
