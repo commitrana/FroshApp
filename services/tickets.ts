@@ -34,8 +34,16 @@ export const registerForEvent = async (eventId: string): Promise<Ticket> => {
 
 // All tickets belonging to the logged-in student — used to decide
 // whether to show "Register" or "View Ticket" for each event.
+// Student-only: if there's no student token in storage (e.g. a faculty
+// account, which stores its token under "facultyToken" instead), skip the
+// network call entirely instead of sending "Authorization: Bearer null"
+// and letting the backend 401.
 export const getMyTickets = async (): Promise<Ticket[]> => {
-  const config = await authHeader();
-  const res = await API.get("/tickets/my-tickets", config);
+  const token = await AsyncStorage.getItem("studentToken");
+  if (!token) return [];
+
+  const res = await API.get("/tickets/my-tickets", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.data.tickets || [];
 };

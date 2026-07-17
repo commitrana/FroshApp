@@ -59,14 +59,25 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
+  // Faculty can only view events, not book tickets — drives both the
+  // "which token to fetch tickets with" logic and the UI (hides the
+  // register/ticket button below).
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     const getUserName = async () => {
       try {
-        const studentData = await AsyncStorage.getItem("studentData");
-        if (studentData) {
-          const student = JSON.parse(studentData);
-          setUserName(student.name || "");
+        const role = await AsyncStorage.getItem("userRole");
+        setUserRole(role);
+
+        // Faculty data is stored under a different key than student data —
+        // reading "studentData" unconditionally meant faculty always saw
+        // "Hi, Guest".
+        const dataKey = role === "faculty" ? "facultyData" : "studentData";
+        const rawData = await AsyncStorage.getItem(dataKey);
+        if (rawData) {
+          const parsed = JSON.parse(rawData);
+          setUserName(parsed.name || "");
         }
       } catch (error) {
         console.log("Error fetching user:", error);
@@ -77,10 +88,39 @@ export default function HomeScreen() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const [events, tickets] = await Promise.all([getEvents(), getMyTickets()]);
-      setLiveEvent(events.find((e) => e.status === "live") || null);
-      setUpcomingEvents(events.filter((e) => e.status === "upcoming"));
-      setTicketedEventIds(new Set(tickets.map((t) => t.event?._id).filter(Boolean)));
+      // Faculty never book tickets, and getMyTickets() always sends the
+      // *student* token — for a faculty account that token doesn't exist,
+      // so the request 401s. Previously this call was bundled into a
+      // single Promise.all with getEvents(), so that one failure rejected
+      // the whole batch and events never rendered for faculty at all.
+      // Fetching them independently (Promise.allSettled) means an events
+      // fetch failure and a tickets fetch failure can no longer take each
+      // other down.
+      const role = await AsyncStorage.getItem("userRole");
+      const isStudent = role === "student";
+
+      const eventsPromise = getEvents();
+      const ticketsPromise = isStudent ? getMyTickets() : Promise.resolve([]);
+
+      const [eventsResult, ticketsResult] = await Promise.allSettled([
+        eventsPromise,
+        ticketsPromise,
+      ]);
+
+      if (eventsResult.status === "fulfilled") {
+        setLiveEvent(eventsResult.value.find((e) => e.status === "live") || null);
+        setUpcomingEvents(eventsResult.value.filter((e) => e.status === "upcoming"));
+      } else {
+        console.log("Failed to fetch events:", eventsResult.reason);
+      }
+
+      if (ticketsResult.status === "fulfilled") {
+        setTicketedEventIds(
+          new Set(ticketsResult.value.map((t) => t.event?._id).filter(Boolean))
+        );
+      } else {
+        console.log("Failed to fetch tickets:", ticketsResult.reason);
+      }
     } catch (err) {
       console.log("Failed to fetch events:", err);
     }
@@ -317,23 +357,27 @@ export default function HomeScreen() {
                           {liveEvent.time}
                         </Text>
                       </View>
-                      <TouchableOpacity
-                        style={[styles.arrowCircle, { borderColor: theme.accent }]}
-                        onPress={() =>
-                          handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
-                        }
-                        disabled={registeringId === liveEvent.id}
-                      >
-                        {registeringId === liveEvent.id ? (
-                          <ActivityIndicator size="small" color={theme.accent} />
-                        ) : (
-                          <Ionicons
-                            name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
-                            size={24}
-                            color={theme.accent}
-                          />
-                        )}
-                      </TouchableOpacity>
+                      {/* Faculty can view events but not book tickets — the
+                          register/QR button is student-only. */}
+                      {userRole !== "faculty" && (
+                        <TouchableOpacity
+                          style={[styles.arrowCircle, { borderColor: theme.accent }]}
+                          onPress={() =>
+                            handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
+                          }
+                          disabled={registeringId === liveEvent.id}
+                        >
+                          {registeringId === liveEvent.id ? (
+                            <ActivityIndicator size="small" color={theme.accent} />
+                          ) : (
+                            <Ionicons
+                              name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
+                              size={24}
+                              color={theme.accent}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </>
                 ) : (
