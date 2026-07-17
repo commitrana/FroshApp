@@ -176,15 +176,10 @@ export default function HomeScreen() {
   };
 
   const menuOptions = [
-    { id: "account", label: "Account", icon: "person-outline" as const },
-    { id: "help", label: "Help & Support", icon: "help-circle-outline" as const },
-    { id: "about", label: "About Frosh", icon: "information-circle-outline" as const },
-    { id: "connect", label: "Connect with us", icon: "chatbubble-outline" as const },
-    {
-      id: "switch",
-      label: "Switch Mode",
-      icon: isDarkMode ? ("sunny-outline" as const) : ("moon-outline" as const),
-    },
+    { id: "account", label: "Account", icon: "people-outline" as const },
+    { id: "schedule", label: "Schedule", icon: "home-outline" as const },
+    { id: "help", label: "Help", icon: "help-circle-outline" as const },
+    { id: "about", label: "About", icon: "sparkles-outline" as const },
     { id: "logout", label: "Logout", icon: "log-out-outline" as const },
   ];
 
@@ -200,6 +195,8 @@ export default function HomeScreen() {
     }
     setModalVisible(false);
     if (id === "account") navigation.navigate("Account");
+    else if (id === "schedule") navigation.navigate("Schedule");   
+
     else if (id === "help") navigation.navigate("Help");
     else if (id === "about") navigation.navigate("About");
     else if (id === "connect") navigation.navigate("Connect");
@@ -262,8 +259,8 @@ export default function HomeScreen() {
             <View style={styles.tabsContainer}>
               <TouchableOpacity
                 style={styles.tab}
-                onPress={() => navigation.navigate("Bootcamp")}
-              >
+                onPress={() => navigation.navigate(userRole === "faculty" ? "FacultyDashboard" : "Bootcamp")}
+>
                 <View style={styles.tabContent}>
                   <Ionicons name="calendar-outline" size={24} color={theme.tabInactiveText} />
                   <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>
