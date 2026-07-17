@@ -36,7 +36,10 @@ import AttendanceRosterScreen from "../screens/Faculty/AttendanceRosterScreen";
 import ScanAttendanceScreen from "../screens/Attendance/ScanAttendanceScreen";
 import FeedbackQuestionsScreen from "../screens/Faculty/FeedbackQuestionsScreen";
 import FeedbackResponsesScreen from "../screens/Faculty/FeedbackResponsesScreen";
-import GiveFeedbackScreen from "../screens/Feedback/GiveFeedbackScreen";
+import GiveFeedbackScreen from "../screens/Feedback/GiveFeedbackScreen";import HelpScreen from "../screens/Help/HelpScreen";
+import AccountScreen from "../screens/Account/AccountScreen";
+import AboutScreen from "../screens/About/AboutScreen";
+import ConnectScreen from "../screens/Connect/ConnectScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -62,6 +65,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Societies" component={SocietiesScreen} />
         <Stack.Screen name="LifeAtThapar" component={LifeAtThaparScreen} />
         <Stack.Screen name="CampusMap" component={CampusMapScreen} />
+        <Stack.Screen name="Help" component={HelpScreen} />
+        <Stack.Screen name="Account" component={AccountScreen} />
+        <Stack.Screen name="About" component={AboutScreen} />
+        <Stack.Screen name="Connect" component={ConnectScreen} />
 
         {/* Faculty entry point — Login sends faculty here now */}
         <Stack.Screen name="FacultyTabs" component={FacultyBottomTabs} />
