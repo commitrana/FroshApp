@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { useLifeTheme } from "../../constants/lifeThemes";
+import { useTheme } from "../../theme/theme"; // ← Changed: using useTheme instead of useLifeTheme
 import { useAppTheme } from "../../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
@@ -61,11 +61,22 @@ const pages = [
 
 export default function LifeAtThaparScreen() {
   const navigation = useNavigation();
-  const { isDarkMode } = useAppTheme(); // ← Get global dark mode state
-  const theme = useLifeTheme(); // ← Use the hook instead of hardcoded lightTheme
-
+  const { colors, isDarkMode } = useTheme(); // ← Changed: using useTheme
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  // Create theme object from global theme (same pattern as OurTeamScreen)
+  const theme = {
+    bgGradient: isDarkMode 
+      ? ['#0A0E27', '#1A1040', '#2D1B4E'] as [string, string, string]
+      : ['#F8FBFF', '#EEF6FF', '#DDEEFF'] as [string, string, string],
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    cardBg: colors.card,
+    accent: colors.primary,
+    shadowColor: colors.primary,
+    lineColor: colors.border,
+  };
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
@@ -100,15 +111,25 @@ export default function LifeAtThaparScreen() {
       </View>
 
       <View style={styles.pagination}>
-        {pages.map((_, dotIndex) => (
-          <View
-            key={dotIndex}
-            style={[
-              styles.dot,
-              dotIndex === currentIndex && [styles.activeDot, { backgroundColor: theme.accent }],
-            ]}
-          />
-        ))}
+        {pages.map((_, dotIndex) => {
+          const isActive = dotIndex === currentIndex;
+          return (
+            <View
+              key={dotIndex}
+              style={[
+                styles.dot,
+                { backgroundColor: isDarkMode ? theme.textSecondary : '#D3E3F5' },
+                isActive && [
+                  styles.activeDot,
+                  { 
+                    backgroundColor: theme.accent,
+                    width: 20,
+                  }
+                ],
+              ]}
+            />
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -118,10 +139,10 @@ export default function LifeAtThaparScreen() {
       <StatusBar 
         translucent 
         backgroundColor="transparent" 
-        barStyle={isDarkMode ? "light-content" : "dark-content"} // ← Dynamic status bar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
       />
       <LinearGradient
-        colors={theme.bgGradient as [string, string, ...string[]]}
+        colors={theme.bgGradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.background}
@@ -219,6 +240,13 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginTop: 4,
   },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#D3E3F5", marginHorizontal: 6 },
-  activeDot: { width: 20 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginHorizontal: 6,
+  },
+  activeDot: {
+    borderRadius: 4,
+  },
 });
