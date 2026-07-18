@@ -11,6 +11,8 @@ import {
   Modal,
   TouchableWithoutFeedback,
   Animated,
+  Easing,
+  Platform,
   Alert,
   ActivityIndicator,
   RefreshControl,
@@ -29,6 +31,8 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import { useHomeTheme } from "../../constants/homeThemes";
 import { useAppTheme } from "../../context/ThemeContext";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
+import { BlurView } from "expo-blur";
+
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
