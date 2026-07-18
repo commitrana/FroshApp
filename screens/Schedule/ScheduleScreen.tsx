@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useTheme } from "../../theme/theme"; // ← Changed
 import { Event, EventStatus } from "../../constants/events";
@@ -31,7 +32,10 @@ export default function ScheduleScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
-
+  const [userRole, setUserRole] = useState<string | null>(null);
+    useEffect(() => {
+     AsyncStorage.getItem("userRole").then(setUserRole);
+   }, []);
   const fetchEvents = useCallback(async () => {
     try {
       const [data, tickets] = await Promise.all([getEvents(), getMyTickets()]);
@@ -128,6 +132,8 @@ export default function ScheduleScreen() {
                 event={item}
                 hasTicket={ticketedEventIds.has(item.id)}
                 registering={registeringId === item.id}
+                hideRegister={userRole === "faculty"}
+
                 onRegisterPress={() =>
                   handleRegisterPress(item.id, ticketedEventIds.has(item.id))
                 }

@@ -1,14 +1,4 @@
 // Save as: src/navigation/AppNavigator.tsx
-// Changes vs your current file:
-//   1. New import: FacultyBottomTabs (the tab shell) and FacultyBootcampScreen
-//      (replaces the old FacultyDashboard import).
-//   2. New <Stack.Screen name="FacultyTabs" .../> — this is where Login now
-//      sends faculty on login.
-//   3. <Stack.Screen name="FacultyDashboard" .../> now points at
-//      FacultyBootcampScreen instead of the old FacultyDashboard component,
-//      kept only so AttendanceSessionScreen's existing
-//      navigation.navigate('FacultyDashboard') call still resolves.
-// Everything else — every other Stack.Screen — is untouched.
 
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
@@ -26,7 +16,6 @@ import CampusMapScreen from "../screens/CampusMap/CampusMapScreen";
 import SocietyDashboardScreen from "../screens/SocietyAdmin/SocietyDashboardScreen";
 import MemberDashboardScreen from "../screens/Memberdashboard";
 import SplashScreen from "../screens/Splash/splashscreen";
-import FacultyBottomTabs from "./FacultyBottomTabs";
 import FacultyBootcampScreen from "../screens/Faculty/FacultyBootcampScreen";
 import ClassDetails from "../screens/Faculty/ClassDetails";
 import AttendanceSessionScreen from "../screens/Faculty/AttendanceSessionScreen";
@@ -37,6 +26,15 @@ import ScanAttendanceScreen from "../screens/Attendance/ScanAttendanceScreen";
 import FeedbackQuestionsScreen from "../screens/Faculty/FeedbackQuestionsScreen";
 import FeedbackResponsesScreen from "../screens/Faculty/FeedbackResponsesScreen";
 import GiveFeedbackScreen from "../screens/Feedback/GiveFeedbackScreen";
+import AccountScreen from "../screens/Account/AccountScreen";
+import AboutScreen from "../screens/About/AboutScreen";
+import ConnectScreen from "../screens/Connect/ConnectScreen";
+import HelpScreen from "../screens/Help/HelpScreen";
+import ScheduleScreen from "../screens/Schedule/ScheduleScreen";
+import QRScreen from "../screens/QR/QRScreen";
+import ExploreScreen from "../screens/Explore/ExploreScreen";
+import ProfileScreen from "../screens/Profile/ProfileScreen";
+import HomeScreen from "../screens/Home/HomeScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -63,12 +61,21 @@ export default function AppNavigator() {
         <Stack.Screen name="LifeAtThapar" component={LifeAtThaparScreen} />
         <Stack.Screen name="CampusMap" component={CampusMapScreen} />
 
-        {/* Faculty entry point — Login sends faculty here now */}
-        <Stack.Screen name="FacultyTabs" component={FacultyBottomTabs} />
+        {/* Shared screens reachable from any nested tree */}
+        <Stack.Screen name="Help" component={HelpScreen} />
+        <Stack.Screen name="Account" component={AccountScreen} />
+        <Stack.Screen name="About" component={AboutScreen} />
+        <Stack.Screen name="Connect" component={ConnectScreen} />
+        <Stack.Screen name="Schedule" component={ScheduleScreen} />
+        <Stack.Screen name="QR" component={QRScreen} />
+        <Stack.Screen name="Explore" component={ExploreScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+
+        {/* Faculty entry point — now renders Home directly, no tab bar */}
+        <Stack.Screen name="FacultyTabs" component={HomeScreen} />
 
         {/* Kept for AttendanceSessionScreen's internal
-            navigation.navigate('FacultyDashboard') call — renders the same
-            Bootcamp content, just without the tab bar around it. */}
+            navigation.navigate('FacultyDashboard') call. */}
         <Stack.Screen name="FacultyDashboard" component={FacultyBootcampScreen} />
 
         <Stack.Screen name="ClassDetails" component={ClassDetails} />
