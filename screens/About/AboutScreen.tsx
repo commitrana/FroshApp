@@ -1,130 +1,224 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Ionicons } from "@expo/vector-icons";
-import { RootStackParamList } from "../../types/navigation";
+  ScrollView,
+  StatusBar,
+  Animated,
+  Easing,
+} from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import { RootStackParamList } from '../../types/navigation';
+import { useTheme } from '../../theme/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-import { useTheme } from "../../theme/theme";
+
+type Section = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: string;
+  onPress: () => void;
+};
 
 const AboutScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, isDarkMode } = useTheme();
 
-  const sections = [
+  // Animation for fade-in
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 400,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  // Theme object matching SocietiesScreen pattern
+  const t = {
+    bgGradient: isDarkMode
+      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
+      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    cardBg: colors.card,
+    accent: colors.primary,
+    shadowColor: colors.primary,
+    borderColor: colors.border,
+  };
+
+  const sections: Section[] = [
     {
-      id: "team",
-      title: "OUR TEAM",
-      subtitle: "Meet the minds behind Frosh",
-      onPress: () => navigation.navigate("OurTeam"),
+      id: 'team',
+      title: 'OUR TEAM',
+      subtitle: 'Meet the minds behind Frosh',
+      icon: 'people-outline',
+      onPress: () => navigation.navigate('OurTeam'),
     },
     {
-      id: "hostels",
-      title: "HOSTELS",
-      subtitle: "Your home away from home",
-      onPress: () => navigation.navigate("Hostels"),
+      id: 'hostels',
+      title: 'HOSTELS',
+      subtitle: 'Your home away from home',
+      icon: 'home-outline',
+      onPress: () => navigation.navigate('Hostels'),
     },
     {
-      id: "societies",
-      title: "SOCIETIES",
-      subtitle: "Where passions find a platform",
-      onPress: () => navigation.navigate("Societies"),
+      id: 'societies',
+      title: 'SOCIETIES',
+      subtitle: 'Where passions find a platform',
+      icon: 'bulb-outline',
+      onPress: () => navigation.navigate('Societies'),
     },
     {
-      id: "life",
-      title: "LIFE AT THAPAR",
-      subtitle: "Beyond classrooms, a world of experiences",
-      onPress: () => navigation.navigate("LifeAtThapar"),
+      id: 'life',
+      title: 'LIFE AT THAPAR',
+      subtitle: 'Beyond classrooms, a world of experiences',
+      icon: 'school-outline',
+      onPress: () => navigation.navigate('LifeAtThapar'),
     },
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.bigCard,
-          {
-            backgroundColor: colors.card,
-            shadowColor: colors.glowCyan || colors.primary, // ← Changed to use glowCyan
-          },
-        ]}
-      >
-        <Text style={[styles.bigCardTitle, { color: colors.textPrimary }]}>
-          About Us
-        </Text>
+    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+      />
+      <LinearGradient colors={t.bgGradient} style={styles.container}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity 
+              style={styles.backBtn} 
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={24} color={t.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: t.textPrimary }]}>
+              About
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
 
-        <View
-          style={[styles.divider, { backgroundColor: colors.border }]}
-        />
-
-        {sections.map((item, index) => (
-          <TouchableOpacity
-            key={item.id}
+          {/* Main About Card */}
+          <View
             style={[
-              styles.optionRow,
-              index < sections.length - 1 && {
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
+              styles.bigCard,
+              {
+                backgroundColor: t.cardBg,
+                shadowColor: t.shadowColor,
+                borderColor: t.borderColor,
               },
             ]}
-            onPress={item.onPress}
-            activeOpacity={0.7}
           >
-            <View style={styles.optionTextContainer}>
-              <Text
-                style={[
-                  styles.optionTitle,
-                  { color: colors.textPrimary },
-                ]}
-              >
-                {item.title}
+            <View style={styles.aboutHeader}>
+              <Text style={[styles.bigCardTitle, { color: t.textPrimary }]}>
+                About Us
               </Text>
-
-              <Text
-                style={[
-                  styles.optionSubtitle,
-                  { color: colors.textSecondary },
-                ]}
-              >
-                {item.subtitle}
-              </Text>
+              <View style={[styles.divider, { backgroundColor: t.borderColor }]} />
             </View>
 
-            <Ionicons
-              name="chevron-forward"
-              size={22}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
+            {/* Sections as cards - matching HomeAboutTab layout */}
+            {sections.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: t.cardBg,
+                    shadowColor: t.shadowColor,
+                    borderColor: t.borderColor,
+                  },
+                ]}
+                onPress={item.onPress}
+                activeOpacity={0.8}
+              >
+                <View style={styles.cardContent}>
+                  <View style={styles.cardLeft}>
+                    <View style={[styles.iconContainer, { backgroundColor: t.accent + '15' }]}>
+                      <Ionicons name={item.icon as any} size={24} color={t.accent} />
+                    </View>
+                    <View style={styles.cardTextContainer}>
+                      <Text style={[styles.cardTitle, { color: t.textPrimary }]}>
+                        {item.title}
+                      </Text>
+                      <Text style={[styles.cardSubtitle, { color: t.textSecondary }]}>
+                        {item.subtitle}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons 
+                    name="chevron-forward" 
+                    size={24} 
+                    color={t.textSecondary} 
+                  />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Footer spacer */}
+          <View style={{ height: 20 }} />
+        </ScrollView>
+      </LinearGradient>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginTop: 50,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 2,
   },
   bigCard: {
+    marginHorizontal: 16,
     borderRadius: 28,
     paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     shadowOpacity: 0.25,
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
+    borderWidth: 1,
+  },
+  aboutHeader: {
+    marginBottom: 8,
   },
   bigCardTitle: {
     fontSize: 24,
-    fontWeight: "800",
+    fontWeight: '800',
     letterSpacing: 0.5,
     marginBottom: 6,
   },
@@ -132,24 +226,47 @@ const styles = StyleSheet.create({
     height: 1,
     marginBottom: 16,
   },
-  optionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+  card: {
+    borderRadius: 20,
     paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    borderWidth: 1,
   },
-  optionTextContainer: {
+  cardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  optionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  cardTextContainer: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  optionSubtitle: {
-    fontSize: 14,
-    fontWeight: "400",
+  cardSubtitle: {
+    fontSize: 13,
+    fontWeight: '400',
   },
 });
 
