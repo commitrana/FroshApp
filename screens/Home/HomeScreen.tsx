@@ -181,6 +181,7 @@ export default function HomeScreen() {
     { id: "help", label: "Help", icon: "help-circle-outline" as const },
     { id: "about", label: "About", icon: "sparkles-outline" as const },
     { id: "logout", label: "Logout", icon: "log-out-outline" as const },
+    {id: "switch" , label: "Switch Mode" as const}
   ];
 
   const handleMenuPress = (id: string) => {
