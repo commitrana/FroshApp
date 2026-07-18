@@ -1,9 +1,3 @@
-// Save as: src/screens/Faculty/AttendanceSessionScreen.tsx
-// LOGIC ZONE copied unchanged: polling via useAutoRefresh, back-button-block
-// while active, end-session confirm, conditional feedback buttons based on
-// session.feedbackStatus, QR code, handleBackToDashboard. Only JSX/styles
-// were restyled.
-
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,16 +14,16 @@ import {
   endAttendanceSession,
 } from '../../services/attendance';
 import { startSessionFeedback } from '../../services/feedback';
-import FacultyTheme from '../../constants/facultyTheme';
+import { useFacultyTheme } from '../../constants/facultyTheme'; // ← Changed
 
 type RouteProps = RouteProp<RootStackParamList, 'AttendanceSession'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'AttendanceSession'>;
 
-// ============ LOGIC ZONE (unchanged) ============
 const AttendanceSessionScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { sessionId, subject } = route.params;
+  const FacultyTheme = useFacultyTheme(); // ← Added
 
   const [session, setSession] = useState<AttendanceSession | null>(null);
   const [live, setLive] = useState<AttendanceLiveCounts | null>(null);
@@ -108,34 +102,29 @@ const AttendanceSessionScreen = () => {
   };
 
   const handleBackToDashboard = () => {
-    // Jumps straight back to the faculty Bootcamp tab, skipping past
-    // ClassDetails in the stack. Kept pointing at the 'FacultyDashboard'
-    // route name unchanged (still registered in AppNavigator) so this
-    // logic didn't need to be touched.
     navigation.navigate('FacultyDashboard');
   };
 
   if (loading || !session) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: FacultyTheme.pageBg }]}>
         <ActivityIndicator color={FacultyTheme.accent} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
 
   const isEnded = session.status === 'ended';
-  // ============ END LOGIC ZONE ============
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: FacultyTheme.pageBg }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{subject}</Text>
-        <Text style={styles.headerSubtitle}>
+        <Text style={[styles.headerTitle, { color: FacultyTheme.textPrimary }]}>{subject}</Text>
+        <Text style={[styles.headerSubtitle, { color: FacultyTheme.textSecondary }]}>
           {isEnded ? '⚪ Session ended — viewing attendance' : '🟢 Session active'}
         </Text>
       </View>
 
-      <View style={styles.qrCard}>
+      <View style={[styles.qrCard, { shadowColor: FacultyTheme.shadowColor }]}>
         <QRCode
           value={session.qrToken}
           size={220}
@@ -144,7 +133,7 @@ const AttendanceSessionScreen = () => {
         />
       </View>
 
-      <Text style={styles.hint}>
+      <Text style={[styles.hint, { color: FacultyTheme.textSecondary }]}>
         {isEnded
           ? 'This session has ended. QR code is no longer accepting scans.'
           : "Show this QR code to your students — they'll scan it to mark attendance."}
@@ -152,47 +141,47 @@ const AttendanceSessionScreen = () => {
 
       <View style={styles.statsRow}>
         <TouchableOpacity
-          style={styles.statBox}
+          style={[styles.statBox, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}
           onPress={() => navigation.navigate('PresentList', { sessionId, subject })}
         >
           <Text style={[styles.statValue, { color: FacultyTheme.success }]}>{live?.presentCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Present</Text>
+          <Text style={[styles.statLabel, { color: FacultyTheme.textSecondary }]}>Present</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.statBox}
+          style={[styles.statBox, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}
           onPress={() => navigation.navigate('FlaggedReview', { sessionId })}
         >
           <Text style={[styles.statValue, { color: FacultyTheme.warning }]}>{live?.flaggedCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Flagged</Text>
+          <Text style={[styles.statLabel, { color: FacultyTheme.textSecondary }]}>Flagged</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.statBox}
+          style={[styles.statBox, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}
           onPress={() => navigation.navigate('FlaggedReview', { sessionId })}
         >
           <Text style={[styles.statValue, { color: FacultyTheme.danger }]}>{live?.rejectedCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Rejected</Text>
+          <Text style={[styles.statLabel, { color: FacultyTheme.textSecondary }]}>Rejected</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
-        style={styles.flaggedButton}
+        style={[styles.flaggedButton, { backgroundColor: FacultyTheme.cardBg, borderColor: FacultyTheme.lineColor }]}
         onPress={() => navigation.navigate('FlaggedReview', { sessionId })}
       >
-        <Text style={styles.flaggedButtonText}>
+        <Text style={[styles.flaggedButtonText, { color: FacultyTheme.textPrimary }]}>
           View Flagged ({(live?.flaggedCount ?? 0) + (live?.rejectedCount ?? 0)})
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.manageButton}
+        style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }]}
         onPress={() => navigation.navigate('AttendanceRoster', { sessionId, subject })}
       >
-        <Text style={styles.manageButtonText}>👥 Manage Attendance (mark manually)</Text>
+        <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>👥 Manage Attendance (mark manually)</Text>
       </TouchableOpacity>
 
       {!isEnded ? (
         <TouchableOpacity
-          style={[styles.endButton, ending && styles.endButtonDisabled]}
+          style={[styles.endButton, { backgroundColor: FacultyTheme.danger }, ending && styles.endButtonDisabled]}
           onPress={handleEndSession}
           disabled={ending}
         >
@@ -202,37 +191,40 @@ const AttendanceSessionScreen = () => {
         <>
           {session.feedbackStatus === 'not_set' && session.feedbackQuestions.length === 0 && (
             <TouchableOpacity
-              style={styles.manageButton}
+              style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }]}
               onPress={() => navigation.navigate('FeedbackQuestions', { sessionId, subject })}
             >
-              <Text style={styles.manageButtonText}>📝 Add Feedback Questions (5)</Text>
+              <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>📝 Add Feedback Questions (5)</Text>
             </TouchableOpacity>
           )}
 
           {session.feedbackStatus === 'not_set' && session.feedbackQuestions.length === 5 && (
             <TouchableOpacity
-              style={[styles.manageButton, startingFeedback && styles.endButtonDisabled]}
+              style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }, startingFeedback && styles.endButtonDisabled]}
               onPress={handleStartFeedback}
               disabled={startingFeedback}
             >
               {startingFeedback ? (
                 <ActivityIndicator color={FacultyTheme.accent} />
               ) : (
-                <Text style={styles.manageButtonText}>▶️ Start Feedback</Text>
+                <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>▶️ Start Feedback</Text>
               )}
             </TouchableOpacity>
           )}
 
           {(session.feedbackStatus === 'open' || session.feedbackStatus === 'closed') && (
             <TouchableOpacity
-              style={styles.manageButton}
+              style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }]}
               onPress={() => navigation.navigate('FeedbackResponses', { sessionId })}
             >
-              <Text style={styles.manageButtonText}>📊 View Feedback Responses</Text>
+              <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>📊 View Feedback Responses</Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.doneButton} onPress={handleBackToDashboard}>
+          <TouchableOpacity
+            style={[styles.doneButton, { backgroundColor: FacultyTheme.accent }]}
+            onPress={handleBackToDashboard}
+          >
             <Text style={styles.doneButtonText}>Back to Dashboard</Text>
           </TouchableOpacity>
         </>
@@ -242,133 +234,26 @@ const AttendanceSessionScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: FacultyTheme.pageBg,
-    paddingHorizontal: 20,
-    paddingTop: 15,
-  },
-  loader: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    color: FacultyTheme.textPrimary,
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  headerSubtitle: {
-    color: FacultyTheme.textSecondary,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  qrCard: {
-    backgroundColor: 'white',
-    alignSelf: 'center',
-    padding: 20,
-    borderRadius: 20,
-    marginBottom: 14,
-    shadowColor: FacultyTheme.shadowColor,
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-  hint: {
-    color: FacultyTheme.textSecondary,
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 10,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: FacultyTheme.cardBg,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    shadowColor: FacultyTheme.shadowColor,
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: '700',
-  },
-  statLabel: {
-    color: FacultyTheme.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
-    fontWeight: '600',
-  },
-  flaggedButton: {
-    backgroundColor: FacultyTheme.cardBg,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: FacultyTheme.lineColor,
-  },
-  flaggedButtonText: {
-    color: FacultyTheme.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  manageButton: {
-    backgroundColor: 'rgba(55,148,255,0.1)',
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: FacultyTheme.accent,
-  },
-  manageButtonText: {
-    color: FacultyTheme.accent,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  endButton: {
-    backgroundColor: FacultyTheme.danger,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  endButtonDisabled: {
-    opacity: 0.6,
-  },
-  endButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  doneButton: {
-    backgroundColor: FacultyTheme.accent,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  doneButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  container: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
+  loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { alignItems: 'center', marginBottom: 16 },
+  headerTitle: { fontSize: 24, fontWeight: '700' },
+  headerSubtitle: { fontSize: 14, marginTop: 4 },
+  qrCard: { backgroundColor: 'white', alignSelf: 'center', padding: 20, borderRadius: 20, marginBottom: 14, shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  hint: { fontSize: 13, textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  statBox: { flex: 1, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginHorizontal: 4, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  statValue: { fontSize: 26, fontWeight: '700' },
+  statLabel: { fontSize: 12, marginTop: 4, fontWeight: '600' },
+  flaggedButton: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 12, borderWidth: 1 },
+  flaggedButtonText: { fontSize: 15, fontWeight: '700' },
+  manageButton: { borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginBottom: 12, borderWidth: 1 },
+  manageButtonText: { fontSize: 15, fontWeight: '700' },
+  endButton: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginBottom: 20 },
+  endButtonDisabled: { opacity: 0.6 },
+  endButtonText: { color: 'white', fontSize: 16, fontWeight: '700' },
+  doneButton: { borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginBottom: 20 },
+  doneButtonText: { color: 'white', fontSize: 16, fontWeight: '700' },
 });
 
 export default AttendanceSessionScreen;

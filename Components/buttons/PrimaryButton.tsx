@@ -2,7 +2,7 @@ import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-import Colors from "../../constants/colors";
+import { useTheme } from "../../theme/theme"; // ← Changed
 
 interface Props {
   title: string;
@@ -10,10 +10,12 @@ interface Props {
 }
 
 export default function PrimaryButton({ title, onPress }: Props) {
+  const { colors, isDarkMode } = useTheme(); // ← Added
+
   return (
     <TouchableOpacity style={styles.wrapper} activeOpacity={0.85} onPress={onPress}>
       <LinearGradient
-        colors={[Colors.primary, Colors.secondary]}
+        colors={[colors.primary, colors.secondary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.button}

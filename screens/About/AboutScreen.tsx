@@ -10,11 +10,12 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { RootStackParamList } from "../../types/navigation";
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-import { lightTheme } from "../../theme/theme";
+import { useTheme } from "../../theme/theme";
 
+const AboutScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { colors, isDarkMode } = useTheme();
 
-const AboutScreen = () => {  const navigation = useNavigation<NavigationProp>();
-  const theme = lightTheme;
   const sections = [
     {
       id: "team",
@@ -43,22 +44,22 @@ const AboutScreen = () => {  const navigation = useNavigation<NavigationProp>();
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View
         style={[
           styles.bigCard,
           {
-            backgroundColor: theme.cardBg,
-            shadowColor: theme.shadowColor,
+            backgroundColor: colors.card,
+            shadowColor: colors.glowCyan || colors.primary, // ← Changed to use glowCyan
           },
         ]}
       >
-        <Text style={[styles.bigCardTitle, { color: theme.textPrimary }]}>
+        <Text style={[styles.bigCardTitle, { color: colors.textPrimary }]}>
           About Us
         </Text>
 
         <View
-          style={[styles.divider, { backgroundColor: theme.lineColor }]}
+          style={[styles.divider, { backgroundColor: colors.border }]}
         />
 
         {sections.map((item, index) => (
@@ -68,7 +69,7 @@ const AboutScreen = () => {  const navigation = useNavigation<NavigationProp>();
               styles.optionRow,
               index < sections.length - 1 && {
                 borderBottomWidth: 1,
-                borderBottomColor: theme.lineColor,
+                borderBottomColor: colors.border,
               },
             ]}
             onPress={item.onPress}
@@ -78,7 +79,7 @@ const AboutScreen = () => {  const navigation = useNavigation<NavigationProp>();
               <Text
                 style={[
                   styles.optionTitle,
-                  { color: theme.textPrimary },
+                  { color: colors.textPrimary },
                 ]}
               >
                 {item.title}
@@ -87,7 +88,7 @@ const AboutScreen = () => {  const navigation = useNavigation<NavigationProp>();
               <Text
                 style={[
                   styles.optionSubtitle,
-                  { color: theme.textSecondary },
+                  { color: colors.textSecondary },
                 ]}
               >
                 {item.subtitle}
@@ -97,7 +98,7 @@ const AboutScreen = () => {  const navigation = useNavigation<NavigationProp>();
             <Ionicons
               name="chevron-forward"
               size={22}
-              color={theme.textSecondary}
+              color={colors.textSecondary}
             />
           </TouchableOpacity>
         ))}

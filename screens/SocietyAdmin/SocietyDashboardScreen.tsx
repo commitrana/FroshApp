@@ -8,7 +8,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme";
 import Colors from "../../constants/colors";
 import { RootStackParamList } from "../../types/navigation";
 import AppCard from "../../Components/Common/AppCard";
@@ -33,6 +33,7 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, "SocietyAdmin">;
 
 export default function SocietyDashboardScreen() {
   const navigation = useNavigation<NavProp>();
+  const { colors, isDarkMode } = useTheme();
   const [societyName, setSocietyName] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,18 +140,18 @@ export default function SocietyDashboardScreen() {
   };
 
   const renderMember = ({ item }: { item: Member }) => (
-    <AppCard style={styles.memberCard}>
+    <AppCard style={{ ...styles.memberCard, backgroundColor: colors.card }}>  {/* ← Merged styles */}
       <View style={{ flex: 1 }}>
-        <Text style={styles.memberName}>{item.name}</Text>
-        <Text style={styles.memberMeta}>{item.branch} • {item.rollNo}</Text>
-        <Text style={styles.memberMeta}>{item.email}</Text>
-        <Text style={styles.slotTag}>Slot {item.slotNumber}</Text>
+        <Text style={[styles.memberName, { color: colors.textPrimary }]}>{item.name}</Text>
+        <Text style={[styles.memberMeta, { color: colors.textSecondary }]}>{item.branch} • {item.rollNo}</Text>
+        <Text style={[styles.memberMeta, { color: colors.textSecondary }]}>{item.email}</Text>
+        <Text style={[styles.slotTag, { color: colors.primary }]}>Slot {item.slotNumber}</Text>
       </View>
       <View style={styles.actions}>
         <TouchableOpacity onPress={() => openEditModal(item)} style={[styles.actionBtn, { backgroundColor: "#FF9800" }]}>
           <Text style={styles.actionText}>Edit</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionBtn, { backgroundColor: Colors.danger }]}>
+        <TouchableOpacity onPress={() => handleDelete(item)} style={[styles.actionBtn, { backgroundColor: colors.danger }]}>
           <Text style={styles.actionText}>Remove</Text>
         </TouchableOpacity>
       </View>
@@ -160,30 +161,30 @@ export default function SocietyDashboardScreen() {
   const isFull = members.length >= TOTAL_MEMBERS;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>{societyName || "Society Dashboard"}</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{societyName || "Society Dashboard"}</Text>
         <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logout}>Logout</Text>
+          <Text style={[styles.logout, { color: colors.danger }]}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      <AppCard style={styles.countCard}>
-        <Text style={styles.countNumber}>{members.length} / {TOTAL_MEMBERS}</Text>
-        <Text style={styles.memberMeta}>
+      <AppCard style={{ ...styles.countCard, backgroundColor: colors.card }}>  {/* ← Merged styles */}
+        <Text style={[styles.countNumber, { color: colors.primary }]}>{members.length} / {TOTAL_MEMBERS}</Text>
+        <Text style={[styles.memberMeta, { color: colors.textSecondary }]}>
           {isFull ? "All slots are filled!" : `${TOTAL_MEMBERS - members.length} slot(s) remaining`}
         </Text>
       </AppCard>
 
       {loading ? (
-        <ActivityIndicator size="large" color={Theme.colors.primary} style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={members}
           keyExtractor={(item) => item._id}
           renderItem={renderMember}
           contentContainerStyle={{ padding: 16 }}
-          ListEmptyComponent={<Text style={styles.memberMeta}>No members yet.</Text>}
+          ListEmptyComponent={<Text style={[styles.memberMeta, { color: colors.textSecondary }]}>No members yet.</Text>}
         />
       )}
 
@@ -195,9 +196,9 @@ export default function SocietyDashboardScreen() {
 
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+          <View style={[styles.modalCard, { backgroundColor: colors.surface }]}>
             <ScrollView>
-              <Text style={styles.modalTitle}>{editingMember ? "Edit Member" : "Add Member"}</Text>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{editingMember ? "Edit Member" : "Add Member"}</Text>
 
               <CustomInput placeholder="Full Name" value={form.name} onChangeText={(t) => setForm({ ...form, name: t })} />
               <CustomInput placeholder="Roll No" value={form.rollNo} onChangeText={(t) => setForm({ ...form, rollNo: t })} />
@@ -209,30 +210,56 @@ export default function SocietyDashboardScreen() {
                 onChangeText={(t) => setForm({ ...form, password: t })}
               />
 
-              <Text style={styles.label}>Branch</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>Branch</Text>
               <View style={styles.chipRow}>
                 {BRANCHES.map((b) => (
                   <TouchableOpacity
                     key={b}
                     onPress={() => setForm({ ...form, branch: b })}
-                    style={[styles.chip, form.branch === b && styles.chipActive]}
+                    style={[
+                      styles.chip, 
+                      form.branch === b && styles.chipActive, 
+                      { 
+                        backgroundColor: colors.card, 
+                        borderColor: colors.border 
+                      }
+                    ]}
                   >
-                    <Text style={[styles.chipText, form.branch === b && styles.chipTextActive]}>{b}</Text>
+                    <Text style={[
+                      styles.chipText, 
+                      form.branch === b && styles.chipTextActive, 
+                      { color: colors.textSecondary }
+                    ]}>
+                      {b}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
               {!editingMember && (
                 <>
-                  <Text style={styles.label}>Slot</Text>
+                  <Text style={[styles.label, { color: colors.textSecondary }]}>Slot</Text>
                   <View style={styles.chipRow}>
                     {[1, 2].map((s) => (
                       <TouchableOpacity
                         key={s}
                         onPress={() => setForm({ ...form, slotNumber: s as 1 | 2 })}
-                        style={[styles.chip, form.slotNumber === s && styles.chipActive]}
+                        style={[
+                          styles.chip, 
+                          form.slotNumber === s && styles.chipActive, 
+                          { 
+                            backgroundColor: colors.card, 
+                            borderColor: colors.border 
+                          }
+                        ]}
                       >
-                        <Text style={[styles.chipText, form.slotNumber === s && styles.chipTextActive]}>Slot {s}</Text>
+                        <Text style={[
+                          styles.chipText, 
+                          form.slotNumber === s && styles.chipTextActive, 
+                          { color: colors.textSecondary }
+                        ]}>
+                          Slot {s}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -241,12 +268,12 @@ export default function SocietyDashboardScreen() {
 
               <View style={{ marginTop: 20, gap: 10 }}>
                 {saving ? (
-                  <ActivityIndicator color={Theme.colors.primary} />
+                  <ActivityIndicator color={colors.primary} />
                 ) : (
                   <PrimaryButton title={editingMember ? "Update" : "Add"} onPress={handleSubmit} />
                 )}
                 <TouchableOpacity onPress={() => { setModalVisible(false); resetForm(); }}>
-                  <Text style={styles.cancel}>Cancel</Text>
+                  <Text style={[styles.cancel, { color: colors.textMuted }]}>Cancel</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -258,30 +285,65 @@ export default function SocietyDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Theme.colors.background },
+  safeArea: { flex: 1 },
   header: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center",
     padding: 16,
   },
-  title: { color: "#fff", fontSize: 20, fontWeight: "700" },
-  logout: { color: Colors.danger, fontWeight: "600" },
-  countCard: { marginHorizontal: 16, alignItems: "center" },
-  countNumber: { color: Colors.primary, fontSize: 28, fontWeight: "700" },
-  memberMeta: { color: Colors.textSecondary, fontSize: 13, marginTop: 2 },
-  memberCard: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  memberName: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  slotTag: { color: Colors.primary, marginTop: 4, fontSize: 12, fontWeight: "600" },
+  title: { fontSize: 20, fontWeight: "700" },
+  logout: { fontWeight: "600" },
+  countCard: { 
+    marginHorizontal: 16, 
+    alignItems: "center" 
+  },
+  countNumber: { fontSize: 28, fontWeight: "700" },
+  memberMeta: { fontSize: 13, marginTop: 2 },
+  memberCard: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center" 
+  },
+  memberName: { fontWeight: "700", fontSize: 16 },
+  slotTag: { marginTop: 4, fontSize: 12, fontWeight: "600" },
   actions: { gap: 8 },
-  actionBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
+  actionBtn: { 
+    paddingVertical: 6, 
+    paddingHorizontal: 12, 
+    borderRadius: 6 
+  },
   actionText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
-  modalCard: { backgroundColor: Theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "85%" },
-  modalTitle: { color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 16 },
-  label: { color: Colors.textSecondary, marginBottom: 8, fontWeight: "600" },
-  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
-  chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, backgroundColor: Colors.card, borderWidth: 1, borderColor: Colors.border },
-  chipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  chipText: { color: Colors.textSecondary, fontSize: 13 },
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: "rgba(0,0,0,0.6)", 
+    justifyContent: "flex-end" 
+  },
+  modalCard: { 
+    borderTopLeftRadius: 20, 
+    borderTopRightRadius: 20, 
+    padding: 20, 
+    maxHeight: "85%" 
+  },
+  modalTitle: { fontSize: 18, fontWeight: "700", marginBottom: 16 },
+  label: { marginBottom: 8, fontWeight: "600" },
+  chipRow: { 
+    flexDirection: "row", 
+    flexWrap: "wrap", 
+    gap: 8, 
+    marginBottom: 16 
+  },
+  chip: { 
+    paddingVertical: 8, 
+    paddingHorizontal: 14, 
+    borderRadius: 20, 
+    borderWidth: 1 
+  },
+  chipActive: { 
+    backgroundColor: Colors.primary, 
+    borderColor: Colors.primary 
+  },
+  chipText: { fontSize: 13 },
   chipTextActive: { color: "#04121A", fontWeight: "700" },
-  cancel: { color: Colors.textMuted, textAlign: "center", marginTop: 4 },
+  cancel: { textAlign: "center", marginTop: 4 },
 });

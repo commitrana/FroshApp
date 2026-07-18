@@ -15,24 +15,32 @@ import Icon from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 
-// Same dark theme used across the ui_ux screens (Login / Home / Life at
-// Thapar / Our Team / Societies) so Hostels matches the rest of the app.
-const theme = {
-  bgGradient: ["#020B18", "#061528", "#041220"] as [string, string, ...string[]],
-  textPrimary: "#FFFFFF",
-  textSecondary: "#D5DDF0",
-  accent: "#2F80FF",
-  cardBg: "#0A1A2E",
-};
+import { useTheme } from "../../theme/theme"; // ← Added
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
 export default function HostelsScreen() {
   const navigation = useNavigation<any>();
+  const { colors, isDarkMode } = useTheme(); // ← Added
+
+  // Create theme object from global theme
+  const theme = {
+    bgGradient: isDarkMode 
+      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
+      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    accent: colors.primary,
+    cardBg: colors.card,
+  };
 
   return (
     <>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar 
+        translucent 
+        backgroundColor="transparent" 
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+      />
       <LinearGradient colors={theme.bgGradient} style={styles.container}>
         <SafeAreaView style={{ flex: 1 }}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
@@ -97,10 +105,10 @@ export default function HostelsScreen() {
                 <View style={styles.cardContent}>
                   <View>
                     <Text style={[styles.hostelTitle, { color: theme.textPrimary }]}>GIRLS HOSTEL</Text>
-                    <Text style={[styles.hostelSubtitle, { color: "#C99DFF" }]}>A space to thrive.</Text>
-                    <Text style={[styles.hostelSubtitle, { color: "#C99DFF" }]}>A community to grow.</Text>
+                    <Text style={[styles.hostelSubtitle, { color: '#C99DFF' }]}>A space to thrive.</Text>
+                    <Text style={[styles.hostelSubtitle, { color: '#C99DFF' }]}>A community to grow.</Text>
                   </View>
-                  <View style={[styles.separatorPurple, { backgroundColor: "#A86CFF" }]} />
+                  <View style={[styles.separatorPurple, { backgroundColor: '#A86CFF' }]} />
                   <View style={styles.facilityRow}>
                     <View style={styles.facilityItem}>
                       <Feather name="wifi" size={18} color="#A86CFF" />

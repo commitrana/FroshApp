@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import * as Location from 'expo-location';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
+import { useTheme } from '../../theme/theme'; // ← Changed
 import { markAttendance, MarkAttendanceResult } from '../../services/attendance';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ScanAttendance'>;
@@ -14,6 +14,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ScanAttenda
 const ScanAttendanceScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const isFocused = useIsFocused();
+  const { colors, isDarkMode } = useTheme(); // ← Added
   const [permission, requestPermission] = useCameraPermissions();
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<MarkAttendanceResult | null>(null);
@@ -73,18 +74,18 @@ const ScanAttendanceScreen = () => {
 
   if (!permission) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} style={styles.loader} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} style={styles.loader} />
       </SafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.permissionBox}>
-          <Text style={styles.permissionText}>We need camera access to scan the attendance QR code.</Text>
-          <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+          <Text style={[styles.permissionText, { color: colors.textPrimary }]}>We need camera access to scan the attendance QR code.</Text>
+          <TouchableOpacity style={[styles.permissionBtn, { backgroundColor: colors.primary }]} onPress={requestPermission}>
             <Text style={styles.permissionBtnText}>Grant Camera Access</Text>
           </TouchableOpacity>
         </View>
@@ -97,20 +98,20 @@ const ScanAttendanceScreen = () => {
     const isFlagged = result.status === 'flagged';
 
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.resultBox}>
           <Text style={styles.resultIcon}>{isPresent ? '✅' : isFlagged ? '⚠️' : '❌'}</Text>
-          <Text style={styles.resultTitle}>
+          <Text style={[styles.resultTitle, { color: colors.textPrimary }]}>
             {isPresent ? 'Marked Present' : isFlagged ? 'Pending Review' : 'Not Verified'}
           </Text>
-          <Text style={styles.resultMessage}>{result.message}</Text>
+          <Text style={[styles.resultMessage, { color: colors.textSecondary }]}>{result.message}</Text>
 
-          <TouchableOpacity style={styles.doneBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={[styles.doneBtn, { backgroundColor: colors.primary }]} onPress={() => navigation.goBack()}>
             <Text style={styles.doneBtnText}>Done</Text>
           </TouchableOpacity>
           {!isPresent && (
             <TouchableOpacity style={styles.scanAgainBtn} onPress={handleScanAgain}>
-              <Text style={styles.scanAgainBtnText}>Scan Again</Text>
+              <Text style={[styles.scanAgainBtnText, { color: colors.textSecondary }]}>Scan Again</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -136,7 +137,7 @@ const ScanAttendanceScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
           <Text style={styles.closeBtnText}>✕</Text>
         </TouchableOpacity>
-        <View style={styles.scanFrame} />
+        <View style={[styles.scanFrame, { borderColor: colors.primary }]} />
         <Text style={styles.scanHint}>Point your camera at the attendance QR code</Text>
         {processing && (
           <View style={styles.processingOverlay}>
@@ -152,7 +153,6 @@ const ScanAttendanceScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
   loader: {
     flex: 1,
@@ -166,13 +166,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   permissionText: {
-    color: 'white',
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 20,
   },
   permissionBtn: {
-    backgroundColor: Theme.colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -214,7 +212,6 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderWidth: 3,
-    borderColor: Theme.colors.primary,
     borderRadius: 20,
     backgroundColor: 'transparent',
   },
@@ -254,20 +251,17 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   resultTitle: {
-    color: 'white',
     fontSize: 24,
     fontWeight: '700',
     marginBottom: 10,
   },
   resultMessage: {
-    color: '#9CA3AF',
     fontSize: 15,
     textAlign: 'center',
     marginBottom: 30,
     lineHeight: 22,
   },
   doneBtn: {
-    backgroundColor: Theme.colors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 40,
@@ -283,7 +277,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   scanAgainBtnText: {
-    color: '#9CA3AF',
     fontWeight: '600',
     fontSize: 14,
   },

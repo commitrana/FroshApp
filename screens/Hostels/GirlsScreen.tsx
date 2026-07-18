@@ -13,13 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "@expo/vector-icons/Ionicons";
 
-const theme = {
-  bgGradient: ["#020B18", "#061528", "#041220"] as [string, string, ...string[]],
-  textPrimary: "#FFFFFF",
-  textSecondary: "#D5DDF0",
-  cardBg: "#0A1A2E",
-  accent: "#2F80FF",
-};
+import { useTheme } from "../../theme/theme"; // ← Added
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
@@ -34,10 +28,26 @@ const rooms = [
 
 export default function GirlsScreen() {
   const navigation = useNavigation();
+  const { colors, isDarkMode } = useTheme(); // ← Added
+
+  // Create theme object from global theme
+  const theme = {
+    bgGradient: isDarkMode 
+      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
+      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    accent: colors.primary,
+    cardBg: colors.card,
+  };
 
   return (
     <>
-      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
+      <StatusBar 
+        translucent 
+        backgroundColor="transparent" 
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+      />
       <LinearGradient colors={theme.bgGradient} style={styles.container}>
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>

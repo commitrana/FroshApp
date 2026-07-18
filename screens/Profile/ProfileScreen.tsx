@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme";
 import { getMyProfile, StudentProfile } from "../../services/student";
 import { logout } from "../../services/auth";
 
@@ -30,8 +30,8 @@ const formatDob = (iso: string) => {
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
-  // Profile sits inside the bottom tabs, which sit inside the root Stack.
   const rootNavigation = navigation.getParent<RootNavProp>();
+  const { colors, isDarkMode } = useTheme();
 
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,41 +78,87 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
 
   if (loadError || !profile) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
         <View style={styles.errorBox}>
-          <Text style={styles.errorText}>⚠️ {loadError || "Could not load your profile."}</Text>
+          <Text style={[styles.errorText, { color: colors.danger || "#EF4444" }]}>
+            ⚠️ {loadError || "Could not load your profile."}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh} 
+            tintColor={colors.textSecondary} 
+          />
+        }
       >
-        <Text style={styles.heading}>My Profile</Text>
+        <Text style={[styles.heading, { color: colors.textPrimary }]}>My Profile</Text>
 
-        <ProfileHeader name={profile.name} email={profile.email} />
+        {/* Pass theme colors to ProfileHeader */}
+        <ProfileHeader 
+          name={profile.name} 
+          email={profile.email} 
+          theme={colors}
+        />
 
-        <InfoCard label="Roll Number" value={profile.rollNo} />
-        <InfoCard label="Branch" value={profile.branch} />
-        <InfoCard label="Phone Number" value={profile.phoneNo} />
-        <InfoCard label="Date of Birth" value={formatDob(profile.dob)} />
-        <InfoCard label="Slot" value={`Slot ${profile.slotNumber}`} />
-        <InfoCard label="Bootcamp Batch" value={profile.batch || "Not assigned yet"} />
-        <InfoCard label="Father's Name" value={profile.fatherName} />
-        <InfoCard label="Mother's Name" value={profile.motherName} />
+        {/* Pass theme colors to InfoCard */}
+        <InfoCard 
+          label="Roll Number" 
+          value={profile.rollNo} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Branch" 
+          value={profile.branch} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Phone Number" 
+          value={profile.phoneNo} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Date of Birth" 
+          value={formatDob(profile.dob)} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Slot" 
+          value={`Slot ${profile.slotNumber}`} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Bootcamp Batch" 
+          value={profile.batch || "Not assigned yet"} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Father's Name" 
+          value={profile.fatherName} 
+          theme={colors}
+        />
+        <InfoCard 
+          label="Mother's Name" 
+          value={profile.motherName} 
+          theme={colors}
+        />
 
         <View style={{ marginTop: 10 }}>
           <PrimaryButton title="Logout" onPress={handleLogout} />
@@ -125,7 +171,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
   loader: {
     flex: 1,
@@ -139,7 +184,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   errorText: {
-    color: "#EF4444",
     fontSize: 15,
     textAlign: "center",
   },
@@ -148,7 +192,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heading: {
-    color: "white",
     fontSize: 26,
     fontWeight: "700",
     marginBottom: 6,

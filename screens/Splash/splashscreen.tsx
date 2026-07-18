@@ -11,13 +11,9 @@ import {
 import { useEventListener } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { isLoggedIn, getCurrentUser, getUserRole } from "../../services/auth";
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 
-// Local splash animation (played once, then we move to Login)
 const splashVideoSource = require("../../assets/videos/froshlogo_anim.mp4");
-
-// Safety-net duration in case the video's playToEnd event doesn't fire
-// (e.g. slow devices/emulators). Matches the animation's real length + a small buffer.
 const FALLBACK_DURATION_MS = 6500;
 
 const SplashScreen = () => {
@@ -26,6 +22,7 @@ const SplashScreen = () => {
 
   const navigation = useNavigation<SplashScreenNavigationProp>();
   const hasNavigated = useRef(false);
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   const goNext = async () => {
     if (hasNavigated.current) return;
@@ -45,7 +42,6 @@ const SplashScreen = () => {
     const role = await getUserRole();
     console.log("ROLE:", role);
 
-    // role ke hisaab se seedha uski screen par bhejo
     switch (role) {
       case "student":
         navigation.replace("MainTabs");
@@ -71,22 +67,20 @@ const SplashScreen = () => {
     player.play();
   });
 
-  // Move on as soon as the animation finishes playing
   useEventListener(player, "playToEnd", () => {
     goNext();
   });
 
-  // Fallback timer in case playToEnd never fires
   useEffect(() => {
     const timer = setTimeout(goNext, FALLBACK_DURATION_MS);
     return () => clearTimeout(timer);
   }, []);
 
   return (
-    <View style={styles.safeArea}>
+    <View style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar
         barStyle="light-content"
-        backgroundColor={Theme.colors.background}
+        backgroundColor={colors.background}
         translucent
       />
 
@@ -108,15 +102,12 @@ export default SplashScreen;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
-
   container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-
   video: {
     width: "100%",
     height: "100%",

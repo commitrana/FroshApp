@@ -26,33 +26,30 @@ import { getEvents } from "../../services/events";
 import { getMyTickets, registerForEvent } from "../../services/tickets";
 import { logout } from "../../services/auth";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
-import { lightTheme, darkTheme } from "../../constants/homeThemes";
+import { useHomeTheme } from "../../constants/homeThemes";
+import { useAppTheme } from "../../context/ThemeContext";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-// Event photo paths from the backend are relative (e.g. "/uploads/events/xyz.jpg") —
-// prefix with the backend's own origin (not /api) to load them as an <Image> source.
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
-// Fallback image for events without a real photo (uses an asset that
-// actually exists — assets/images/event-placeholder.jpg was never added
-// to the project, which crashed Metro's bundler on this require()).
 const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
 
-export default function HomeScreen() {
+export default function FacultyDashboard() { // ← Note: renamed from HomeScreen to FacultyDashboard
   const navigation = useNavigation<HomeNavProp>();
+  const { isDarkMode, toggleDarkMode } = useAppTheme(); // ← Use global context
+  const theme = useHomeTheme(); // ← Use the hook
 
-  // ----- ui_ux Home shell state (exact behaviour from the design) -----
-  const [activeTab, setActiveTab] = useState("frosh"); // "frosh" tab (live event) shown by default
+  // ----- ui_ux Home shell state -----
+  const [activeTab, setActiveTab] = useState("frosh");
   const [modalVisible, setModalVisible] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const isFrosh = activeTab === "frosh";
   const isAbout = activeTab === "about";
 
-  // ----- Real backend data (unchanged logic from the original Home screen) -----
+  // ----- Real backend data -----
   const [liveEvent, setLiveEvent] = useState<Event | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,8 +88,6 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [fetchEvents]);
 
- 
-
   const handleLogout = () => {
     setModalVisible(false);
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -128,7 +123,7 @@ export default function HomeScreen() {
 
   const handleMenuPress = (id: string) => {
     if (id === "switch") {
-      setIsDarkMode(!isDarkMode);
+      toggleDarkMode(); // ← Use global toggle instead of local state
       setModalVisible(false);
       return;
     }
@@ -156,8 +151,6 @@ export default function HomeScreen() {
     inputRange: [0, 1],
     outputRange: [screenHeight * 0.5, 0],
   });
-
-  const theme = isDarkMode ? darkTheme : lightTheme;
 
   return (
     <>
@@ -195,7 +188,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* TOP CARD - 3 tabs, same as the ui_ux design */}
+          {/* TOP CARD */}
           <View style={[styles.topCard, theme.topCard]}>
             <View style={styles.tabsContainer}>
               <TouchableOpacity
@@ -295,14 +288,13 @@ export default function HomeScreen() {
                           {liveEvent.time}
                         </Text>
                       </View>
-                      
                     </View>
                   </>
                 ) : (
                   <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
                     No live event right now. Check back soon!
                   </Text>
-                )} 
+                )}
               </View>
 
               {upcomingEvents.length > 0 && (

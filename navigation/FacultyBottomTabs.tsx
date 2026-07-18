@@ -37,7 +37,7 @@ import ProfileScreen from "../screens/Profile/ProfileScreen";
 import FacultyBootcampScreen from "../screens/Faculty/FacultyBootcampScreen";
 
 import { FacultyBottomTabParamList } from "../types/navigation";
-import Colors from "../constants/colors";
+import { useTheme } from "../theme/theme"; // ← Changed
 
 const Tab = createBottomTabNavigator<FacultyBottomTabParamList>();
 
@@ -54,13 +54,14 @@ const BASE_BOTTOM_PADDING = 10;
 
 export default function FacultyBottomTabs() {
   const insets = useSafeAreaInsets();
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: [
           styles.tabBar,
           {
@@ -71,7 +72,7 @@ export default function FacultyBottomTabs() {
         tabBarBackground: () => (
           <BlurView
             intensity={50}
-            tint="dark"
+            tint={isDarkMode ? "dark" : "light"} // ← Dynamic tint
             experimentalBlurMethod="dimezisBlurView"
             style={StyleSheet.absoluteFill}
           />

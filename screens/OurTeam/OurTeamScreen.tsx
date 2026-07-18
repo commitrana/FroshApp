@@ -14,6 +14,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from '@expo/vector-icons/Ionicons';
 
+import { useTheme } from '../../theme/theme';
+
 const { width } = Dimensions.get('window');
 
 const H_PADDING = 12;
@@ -21,24 +23,6 @@ const GRID_GAP = 8;
 const CARD_SIZE = Math.floor((width - H_PADDING * 2 - GRID_GAP) / 2);
 
 const memberImg = require('../../assets/uiux/person.jpg');
-
-type Theme = {
-  bgGradient: [string, string, ...string[]];
-  textPrimary: string;
-  textSecondary: string;
-  cardBg: string;
-  accent: string;
-  lineColor: string;
-};
-
-const fallbackTheme: Theme = {
-  bgGradient: ['#020B18', '#061528', '#041220'],
-  textPrimary: '#FFFFFF',
-  textSecondary: '#D5DDF0',
-  cardBg: '#0A1A2E',
-  accent: '#2F80FF',
-  lineColor: 'rgba(255,255,255,0.1)',
-};
 
 type FacultyMember = { id: number; name: string; designation: string };
 type BranchMember = { id: number; name: string; branch: string };
@@ -89,27 +73,37 @@ const TABS: TabKey[] = ['faculty', 'osc', 'core', 'mentor'];
 // ---------- COMPONENT ----------
 export default function OurTeamScreen() {
   const navigation = useNavigation();
-  const route = useRoute<any>();
-  const t: Theme = route.params?.theme || fallbackTheme;
-  const isDarkTheme = t.textPrimary?.toUpperCase() === '#FFFFFF';
+  const { colors, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('faculty');
+
+  // Create theme object from global theme with proper gradient types
+  const theme = {
+    bgGradient: isDarkMode 
+      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
+      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    cardBg: colors.card,
+    accent: colors.primary,
+    lineColor: colors.border,
+  };
 
   const renderFacultyItem = ({ item }: { item: FacultyMember }) => (
     <View style={styles.gridItem}>
-      <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.lineColor }]}>
+      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
         <Image source={memberImg} style={styles.cardImage} />
       </View>
-      <Text style={[styles.cardName, { color: t.textPrimary }]}>{item.name}</Text>
-      <Text style={[styles.cardDesignation, { color: t.textSecondary }]}>{item.designation}</Text>
+      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
+      <Text style={[styles.cardDesignation, { color: theme.textSecondary }]}>{item.designation}</Text>
     </View>
   );
 
   const renderMentorItem = ({ item }: { item: MentorMember }) => (
     <View style={styles.gridItem}>
-      <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.lineColor }]}>
+      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
         <Image source={memberImg} style={styles.cardImage} />
       </View>
-      <Text style={[styles.cardName, { color: t.textPrimary }]}>{item.name}</Text>
+      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
     </View>
   );
 
@@ -117,15 +111,15 @@ export default function OurTeamScreen() {
     const isLeft = index % 2 === 0;
     return (
       <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
-        <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.lineColor }]}>
+        <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
           <Image source={memberImg} style={styles.cardImage} />
         </View>
         <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
-          <Text style={[styles.rowName, { color: t.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
+          <Text style={[styles.rowName, { color: theme.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
             {item.name}
           </Text>
           <Text
-            style={[styles.rowDesignation, { color: t.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}
+            style={[styles.rowDesignation, { color: theme.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}
           >
             {item.branch}
           </Text>
@@ -190,25 +184,25 @@ export default function OurTeamScreen() {
       <StatusBar
         translucent
         backgroundColor="transparent"
-        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
-      <LinearGradient colors={t.bgGradient} style={styles.container}>
+      <LinearGradient colors={theme.bgGradient} style={styles.container}>
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Icon name="arrow-back" size={24} color={t.textPrimary} />
+              <Icon name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: t.textPrimary }]}>OUR TEAM</Text>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>OUR TEAM</Text>
             <View style={{ width: 40 }} />
           </View>
 
-          <View style={[styles.tabContainer, { borderBottomColor: t.lineColor }]}>
+          <View style={[styles.tabContainer, { borderBottomColor: theme.lineColor }]}>
             {TABS.map((tab) => (
               <TouchableOpacity
                 key={tab}
                 style={[
                   styles.tab,
-                  activeTab === tab && { borderBottomWidth: 3, borderBottomColor: t.accent },
+                  activeTab === tab && { borderBottomWidth: 3, borderBottomColor: theme.accent },
                 ]}
                 onPress={() => setActiveTab(tab)}
               >
@@ -216,7 +210,7 @@ export default function OurTeamScreen() {
                   style={[
                     styles.tabText,
                     {
-                      color: activeTab === tab ? t.textPrimary : t.textSecondary,
+                      color: activeTab === tab ? theme.textPrimary : theme.textSecondary,
                       fontWeight: activeTab === tab ? '700' : '500',
                     },
                   ]}

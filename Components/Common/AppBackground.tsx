@@ -2,7 +2,7 @@ import React from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
-import Colors from "../../constants/colors";
+import { useTheme } from "../../theme/theme"; // ← Changed
 
 type Props = {
   children: React.ReactNode;
@@ -44,11 +44,12 @@ function GlowOrb({
 
 export default function AppBackground({ children }: Props) {
   const { width, height } = useWindowDimensions();
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
       <LinearGradient
-        colors={[Colors.gradientTop, Colors.gradientMid, Colors.gradientBottom]}
+        colors={[colors.gradientTop, colors.gradientMid, colors.gradientBottom]}
         start={{ x: 0.1, y: 0 }}
         end={{ x: 0.9, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -56,13 +57,13 @@ export default function AppBackground({ children }: Props) {
 
       <GlowOrb
         size={width * 1.1}
-        color={Colors.glowCyan}
+        color={colors.glowCyan}
         style={{ position: "absolute", top: -width * 0.5, right: -width * 0.5 }}
       />
 
       <GlowOrb
         size={width * 0.95}
-        color={Colors.glowBlue}
+        color={colors.glowBlue}
         style={{ position: "absolute", bottom: -width * 0.4, left: -width * 0.4 }}
       />
 
@@ -74,7 +75,6 @@ export default function AppBackground({ children }: Props) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Colors.background,
     overflow: "hidden",
   },
   content: {

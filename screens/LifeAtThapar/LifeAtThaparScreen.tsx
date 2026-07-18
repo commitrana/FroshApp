@@ -16,7 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { lightTheme } from "../../constants/lifeThemes";
+import { useLifeTheme } from "../../constants/lifeThemes";
+import { useAppTheme } from "../../context/ThemeContext";
 
 const { width } = Dimensions.get("window");
 const PAGE_WIDTH = width - 36;
@@ -60,7 +61,8 @@ const pages = [
 
 export default function LifeAtThaparScreen() {
   const navigation = useNavigation();
-  const theme = lightTheme;
+  const { isDarkMode } = useAppTheme(); // ← Get global dark mode state
+  const theme = useLifeTheme(); // ← Use the hook instead of hardcoded lightTheme
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -113,7 +115,11 @@ export default function LifeAtThaparScreen() {
 
   return (
     <>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      <StatusBar 
+        translucent 
+        backgroundColor="transparent" 
+        barStyle={isDarkMode ? "light-content" : "dark-content"} // ← Dynamic status bar
+      />
       <LinearGradient
         colors={theme.bgGradient as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}

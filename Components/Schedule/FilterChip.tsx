@@ -5,7 +5,7 @@ import {
   StyleSheet,
 } from "react-native";
 
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 
 type Props = {
   title: string;
@@ -18,11 +18,13 @@ export default function FilterChip({
   selected,
   onPress,
 }: Props) {
+  const { colors, isDarkMode } = useTheme(); // ← Added
+
   return (
     <TouchableOpacity
       style={[
         styles.chip,
-        selected && styles.selectedChip,
+        { backgroundColor: selected ? colors.primary : colors.card },
       ]}
       onPress={onPress}
       activeOpacity={0.8}
@@ -30,13 +32,10 @@ export default function FilterChip({
       <Text
         style={[
           styles.text,
-          selected && styles.selectedText,
+          { 
+            color: selected ? "white" : colors.textSecondary 
+          },
         ]}
-        // A previous fix here only bumped lineHeight, which isn't always
-        // enough — if the device has a larger system font-scale
-        // (accessibility setting), Android can still clip the bottom of
-        // descenders like the "p"/"g" in "Upcoming". Locking font scaling
-        // for this small fixed-size chip label is the more robust fix.
         allowFontScaling={false}
       >
         {title}
@@ -50,22 +49,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 12,
     borderRadius: 30,
-    backgroundColor: "#1F2937",
     marginRight: 12,
   },
-
-  selectedChip: {
-    backgroundColor: Theme.colors.primary,
-  },
-
   text: {
-    color: "#D1D5DB",
     fontWeight: "600",
     fontSize: 14,
     lineHeight: 22,
-  },
-
-  selectedText: {
-    color: "white",
   },
 });

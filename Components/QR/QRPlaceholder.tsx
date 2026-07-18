@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 
 type Props = {
   title: string;
@@ -17,23 +17,23 @@ export default function QRPlaceholder({
   title,
   description,
 }: Props) {
-  return (
-    <View style={styles.container}>
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Ionicons
         name="qr-code-outline"
         size={120}
-        color={Theme.colors.primary}
+        color={colors.primary}
       />
 
-      <Text style={styles.title}>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>
         {title}
       </Text>
 
-      <Text style={styles.description}>
+      <Text style={[styles.description, { color: colors.textSecondary }]}>
         {description}
       </Text>
-
     </View>
   );
 }
@@ -45,18 +45,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 30,
   },
-
   title: {
     marginTop: 25,
-    color: "white",
     fontSize: 26,
     fontWeight: "700",
     textAlign: "center",
   },
-
   description: {
     marginTop: 12,
-    color: "#9CA3AF",
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,

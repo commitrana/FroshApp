@@ -9,19 +9,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../../types/navigation";
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 import { EXPLORE_ITEMS } from "../../constants/explore";
 import ExploreCard from "../../Components/Explore/ExploreCard";
 
 export default function ExploreScreen() {
-  type NavigationProp =
-  NativeStackNavigationProp<RootStackParamList>;
-
-const navigation =
-  useNavigation<NavigationProp>();
+  type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+  const navigation = useNavigation<NavigationProp>();
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <FlatList
         data={EXPLORE_ITEMS}
         keyExtractor={(item) => item.id}
@@ -29,11 +27,11 @@ const navigation =
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            <Text style={styles.heading}>
+            <Text style={[styles.heading, { color: colors.textPrimary }]}>
               Explore
             </Text>
 
-            <Text style={styles.subHeading}>
+            <Text style={[styles.subHeading, { color: colors.textSecondary }]}>
               Discover everything you need as a fresher.
             </Text>
           </>
@@ -42,10 +40,6 @@ const navigation =
           <ExploreCard
             item={item}
             onPress={() => {
-              // item.screen is a dynamic string from EXPLORE_ITEMS, so TS can't
-              // statically verify whether the target route needs params (e.g.
-              // ClassDetails does). Bypassing the typed overload here is safe
-              // since none of the Explore items point to a params-required screen.
               (navigation as any).navigate(item.screen);
             }}
           />
@@ -58,23 +52,17 @@ const navigation =
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
-
   content: {
     padding: 20,
     paddingBottom: 40,
   },
-
   heading: {
     fontSize: 32,
     fontWeight: "700",
-    color: "white",
     marginBottom: 6,
   },
-
   subHeading: {
-    color: "#9CA3AF",
     fontSize: 15,
     marginBottom: 30,
   },

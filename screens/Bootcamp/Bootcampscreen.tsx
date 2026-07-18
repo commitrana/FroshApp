@@ -17,15 +17,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getBatchTimetableImage, getMyBatch, getMyTimetable, MyTimetableResponse } from '../../services/batches';
 import { getActiveSessionForStudent, ActiveSessionInfo } from '../../services/attendance';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
-import { darkTheme } from '../../constants/homeThemes';
-
-// Same visual language as the Home / Life at Thapar / Login screens carried
-// over from the ui_ux design (dark gradient background, glowing cards,
-// accent-coloured section headings) — only the content/logic below is real.
-const theme = darkTheme;
+import { useHomeTheme } from '../../constants/homeThemes';
+import { useAppTheme } from '../../context/ThemeContext';
 
 const BootcampScreen = () => {
   const navigation = useNavigation<any>();
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
+
   const [batch, setBatch] = useState<string | null>(null);
   const [timetableImage, setTimetableImage] = useState<string | null>(null);
   const [classSchedule, setClassSchedule] = useState<MyTimetableResponse | null>(null);
@@ -49,16 +48,10 @@ const BootcampScreen = () => {
 
       const student = JSON.parse(studentData);
 
-      // Ask the server for the CURRENT batch instead of trusting the copy
-      // cached at login time — if an admin has reassigned this student's
-      // batch since then, the cached value is stale. Fall back to it only
-      // if the fresh lookup fails (e.g. no network right now).
       const freshBatch = await getMyBatch();
       const batchCode = freshBatch ?? student.batch;
       setBatch(batchCode);
 
-      // Keep the cached copy in sync so anything else in the app reading
-      // studentData.batch also sees the up-to-date value.
       if (freshBatch && freshBatch !== student.batch) {
         student.batch = freshBatch;
         await AsyncStorage.setItem('studentData', JSON.stringify(student));
@@ -102,8 +95,6 @@ const BootcampScreen = () => {
     }
   }, []);
 
-  // Poll every 8s while this screen is focused, so the Live Class card
-  // appears/disappears automatically as a faculty starts/ends attendance.
   useAutoRefresh(fetchActiveSession, 8000);
 
   if (loading) {
@@ -141,7 +132,10 @@ const BootcampScreen = () => {
               <View
                 style={[
                   styles.liveCard,
-                  { backgroundColor: theme.liveCard.backgroundColor, shadowColor: theme.liveCard.shadowColor },
+                  { 
+                    backgroundColor: theme.liveCard?.backgroundColor || theme.cardBg, 
+                    shadowColor: theme.liveCard?.shadowColor || theme.shadowColor || theme.accent, // ← Added fallback
+                  },
                 ]}
               >
                 <LinearGradient colors={['#4DA2FF', '#2D7EFF']} style={styles.liveIcon}>
@@ -201,7 +195,7 @@ const BootcampScreen = () => {
           </View>
 
           {!batch ? (
-            <View style={[styles.emptyBox, { backgroundColor: theme.topCard.backgroundColor }]}>
+            <View style={[styles.emptyBox, { backgroundColor: theme.topCard?.backgroundColor || theme.cardBg }]}>
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
                 You haven't been assigned to a batch yet. Check back soon!
               </Text>
@@ -211,7 +205,10 @@ const BootcampScreen = () => {
               <View
                 style={[
                   styles.batchCard,
-                  { backgroundColor: theme.topCard.backgroundColor, shadowColor: theme.topCard.shadowColor },
+                  { 
+                    backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, 
+                    shadowColor: theme.topCard?.shadowColor || theme.shadowColor || theme.accent,
+                  },
                 ]}
               >
                 <Text style={[styles.batchLabel, { color: theme.textSecondary }]}>Your Batch</Text>
@@ -227,7 +224,7 @@ const BootcampScreen = () => {
                 <View
                   style={[
                     styles.emptyBox,
-                    { backgroundColor: theme.topCard.backgroundColor, marginBottom: 18 },
+                    { backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, marginBottom: 18 },
                   ]}
                 >
                   <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
@@ -238,12 +235,13 @@ const BootcampScreen = () => {
                 <View
                   style={[
                     styles.scheduleCard,
-                    { backgroundColor: theme.topCard.backgroundColor, shadowColor: theme.topCard.shadowColor },
+                    { 
+                      backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, 
+                      shadowColor: theme.topCard?.shadowColor || theme.shadowColor || theme.accent,
+                    },
                   ]}
                 >
                   {classSchedule.days.map((day) => {
-                    // Classes for this day, in chronological slot order —
-                    // classSchedule.timeSlots is already sorted by start time.
                     const dayClasses = classSchedule.timeSlots
                       .map((slot) => classSchedule.classes.find((c) => c.day === day && c.slot === slot))
                       .filter((c): c is NonNullable<typeof c> => !!c);
@@ -280,7 +278,10 @@ const BootcampScreen = () => {
               <View
                 style={[
                   styles.timetableCard,
-                  { backgroundColor: theme.topCard.backgroundColor, shadowColor: theme.topCard.shadowColor },
+                  { 
+                    backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, 
+                    shadowColor: theme.topCard?.shadowColor || theme.shadowColor || theme.accent,
+                  },
                 ]}
               >
                 <Text style={[styles.timetableLabel, { color: theme.textSecondary }]}>Timetable</Text>

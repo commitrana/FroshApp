@@ -6,7 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
 import { logout, getCurrentUser, refreshMemberStatus } from "../services/auth";
 import QRCode from "react-native-qrcode-svg";
-import Theme from "../theme/theme";
+import { useTheme } from "../theme/theme"; // ← Changed
 
 type MemberDashboardNavProp = NativeStackNavigationProp<RootStackParamList, "MemberDashboard">;
 
@@ -25,6 +25,7 @@ type Member = {
 
 export default function MemberDashboardScreen() {
   const navigation = useNavigation<MemberDashboardNavProp>();
+  const { colors, isDarkMode } = useTheme(); // ← Added
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,13 +34,11 @@ export default function MemberDashboardScreen() {
     loadMemberData();
   }, []);
 
-  // Poll the server for live status while the member is still pending,
-  // so the QR code disappears the moment admin scans + verifies/rejects.
   useEffect(() => {
     if (!member) return;
 
     const currentStatus = member.status || 'pending';
-    if (currentStatus !== 'pending') return; // stop polling once resolved
+    if (currentStatus !== 'pending') return;
 
     const interval = setInterval(async () => {
       const updated = await refreshMemberStatus();
@@ -47,15 +46,13 @@ export default function MemberDashboardScreen() {
         console.log('🔄 Poll status:', updated.status);
         setMember(updated);
       }
-    }, 4000); // check every 4 seconds
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [member?.status]);
 
   const loadMemberData = async () => {
     try {
-      // Try live server data first so status is always current;
-      // fall back to cached data if offline.
       const liveUser = await refreshMemberStatus();
       const user = liveUser || (await getCurrentUser());
       console.log('📱 Member:', user?.name, 'Status:', user?.status);
@@ -76,28 +73,30 @@ export default function MemberDashboardScreen() {
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: async () => {
-        await logout();
-        navigation.replace("Login");
-      }}
+      {
+        text: "Logout", style: "destructive", onPress: async () => {
+          await logout();
+          navigation.replace("Login");
+        }
+      }
     ]);
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Theme.colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
+      <SafeAreaView style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading...</Text>
       </SafeAreaView>
     );
   }
 
   if (!member) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.errorText}>No member data found</Text>
-        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-          <Text style={styles.logoutBtnText}>Logout</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.textPrimary }]}>No member data found</Text>
+        <TouchableOpacity style={[styles.logoutBtn, { borderColor: colors.danger }]} onPress={handleLogout}>
+          <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -107,89 +106,88 @@ export default function MemberDashboardScreen() {
   const isVerified = member.status === 'verified';
   const isRejected = member.status === 'rejected';
 
-  // ✅ QR Data - Simple and clean
   const qrData = JSON.stringify({
     type: 'member',
     id: member._id
   });
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>👤 Member Dashboard</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>👤 Member Dashboard</Text>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
             <Text style={styles.refreshText}>🔄</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-            <Text style={styles.logoutText}>Logout</Text>
+          <TouchableOpacity onPress={handleLogout} style={[styles.logoutBtn, { borderColor: colors.danger }]}>
+            <Text style={[styles.logoutText, { color: colors.danger }]}>Logout</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView style={styles.container}>
-        <View style={styles.card}>
-          <Text style={styles.welcomeText}>Welcome, {member.name}! </Text>
+      <ScrollView style={styles.scrollContainer}>
+        <View style={[styles.card, { backgroundColor: colors.card }]}>
+          <Text style={[styles.welcomeText, { color: colors.textPrimary }]}>Welcome, {member.name}! </Text>
 
-          {/* INFO */}
           <View style={styles.infoSection}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Email</Text>
-              <Text style={styles.infoValue}>{member.email}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Email</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{member.email}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Branch</Text>
-              <Text style={styles.infoValue}>{member.branch}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Branch</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{member.branch}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Roll No</Text>
-              <Text style={styles.infoValue}>{member.rollNo}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Roll No</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{member.rollNo}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Slot</Text>
-              <Text style={styles.infoValue}>Slot {member.slotNumber}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Slot</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>Slot {member.slotNumber}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Society</Text>
-              <Text style={styles.infoValue}>{member.societyName}</Text>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Society</Text>
+              <Text style={[styles.infoValue, { color: colors.textPrimary }]}>{member.societyName}</Text>
             </View>
           </View>
 
-          {/* STATUS */}
-          <View style={[styles.statusContainer, { 
-            backgroundColor: isVerified ? '#4CAF5020' : isRejected ? '#f4433620' : '#FF980020' 
-          }]}>
-            <Text style={[styles.statusText, { 
-              color: isVerified ? '#4CAF50' : isRejected ? '#f44336' : '#FF9800' 
-            }]}>
+          <View style={[
+            styles.statusContainer,
+            {
+              backgroundColor: isVerified ? 'rgba(76, 175, 80, 0.2)' : isRejected ? 'rgba(244, 67, 54, 0.2)' : 'rgba(255, 152, 0, 0.2)'
+            }
+          ]}>
+            <Text style={[
+              styles.statusText,
+              {
+                color: isVerified ? '#4CAF50' : isRejected ? '#f44336' : '#FF9800'
+              }
+            ]}>
               {isVerified ? '✅ Verified' : isRejected ? '❌ Rejected' : '⏳ Pending Verification'}
             </Text>
           </View>
 
-          {/* QR CODE - ONLY IF PENDING */}
           {isPending && (
-            <View style={styles.qrContainer}>
-              <Text style={styles.qrLabel}>Scan to verify</Text>
+            <View style={[styles.qrContainer, { backgroundColor: colors.card }]}>
+              <Text style={[styles.qrLabel, { color: colors.textPrimary }]}>Scan to verify</Text>
               <View style={styles.qrWhiteBox}>
                 <QRCode value={qrData} size={220} color="black" backgroundColor="white" />
               </View>
-              <Text style={styles.qrSubLabel}>Show this to admin</Text>
+              <Text style={[styles.qrSubLabel, { color: colors.textSecondary }]}>Show this to admin</Text>
             </View>
           )}
 
-          {/* VERIFIED MESSAGE */}
           {isVerified && (
-            <View style={styles.verifiedMessage}>
+            <View style={[styles.verifiedMessage, { backgroundColor: '#4CAF50' }]}>
               <Text style={styles.bigIcon}>✅</Text>
               <Text style={styles.bigText}>You are Verified!</Text>
               <Text style={styles.smallText}>Your membership is confirmed</Text>
             </View>
           )}
 
-          {/* REJECTED MESSAGE */}
           {isRejected && (
-            <View style={styles.rejectedMessage}>
+            <View style={[styles.rejectedMessage, { backgroundColor: '#f44336' }]}>
               <Text style={styles.bigIcon}>❌</Text>
               <Text style={styles.bigText}>Verification Rejected</Text>
               <Text style={styles.smallText}>Contact your society admin</Text>
@@ -202,12 +200,19 @@ export default function MemberDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Theme.colors.background },
-  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: Theme.colors.background },
-  loadingText: { color: "#fff", marginTop: 10, fontSize: 16 },
+  safeArea: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 10, fontSize: 16 },
+  scrollContainer: { flex: 1, padding: 20 },
   container: { flex: 1, padding: 20 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottomWidth: 1, borderBottomColor: "#333" },
-  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "bold" },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  headerTitle: { fontSize: 20, fontWeight: "bold" },
   headerRight: { flexDirection: "row", gap: 15, alignItems: "center" },
   refreshBtn: { padding: 8 },
   refreshText: { fontSize: 20 },
@@ -216,27 +221,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#e74c3c",
   },
-  logoutText: { fontSize: 13, color: "#e74c3c", fontWeight: "600" },
-  card: { backgroundColor: "#1a1a2e", padding: 20, borderRadius: 12, marginBottom: 20 },
-  welcomeText: { color: "#fff", fontSize: 24, fontWeight: "bold", marginBottom: 20 },
+  logoutText: { fontSize: 13, fontWeight: "600" },
+  card: { padding: 20, borderRadius: 12, marginBottom: 20 },
+  welcomeText: { fontSize: 24, fontWeight: "bold", marginBottom: 20 },
   infoSection: { gap: 12 },
-  infoRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#333" },
-  infoLabel: { color: "#aaa", fontSize: 14 },
-  infoValue: { color: "#fff", fontSize: 14, fontWeight: "500" },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  infoLabel: { fontSize: 14 },
+  infoValue: { fontSize: 14, fontWeight: "500" },
   statusContainer: { marginTop: 20, padding: 12, borderRadius: 8, alignItems: "center" },
   statusText: { fontSize: 18, fontWeight: "bold" },
-  qrContainer: { alignItems: "center", marginTop: 20, padding: 20, backgroundColor: "#1a1a2e", borderRadius: 12 },
+  qrContainer: { alignItems: "center", marginTop: 20, padding: 20, borderRadius: 12 },
   qrWhiteBox: { backgroundColor: "white", padding: 16, borderRadius: 12 },
-  qrLabel: { color: "white", fontSize: 16, fontWeight: "600", marginBottom: 15 },
-  qrSubLabel: { color: "rgba(255,255,255,0.6)", fontSize: 12, marginTop: 15 },
-  verifiedMessage: { marginTop: 20, padding: 20, backgroundColor: "#4CAF50", borderRadius: 12, alignItems: "center" },
-  rejectedMessage: { marginTop: 20, padding: 20, backgroundColor: "#f44336", borderRadius: 12, alignItems: "center" },
+  qrLabel: { fontSize: 16, fontWeight: "600", marginBottom: 15 },
+  qrSubLabel: { fontSize: 12, marginTop: 15 },
+  verifiedMessage: { marginTop: 20, padding: 20, borderRadius: 12, alignItems: "center" },
+  rejectedMessage: { marginTop: 20, padding: 20, borderRadius: 12, alignItems: "center" },
   bigIcon: { fontSize: 40, marginBottom: 10 },
   bigText: { color: "white", fontSize: 22, fontWeight: "bold" },
   smallText: { color: "white", fontSize: 14, marginTop: 5, textAlign: "center", opacity: 0.9 },
-  errorText: { color: "#ff6b6b", fontSize: 18, textAlign: "center", marginTop: 20 },
-  logoutBtnBottom: { backgroundColor: "#e74c3c", paddingVertical: 14, borderRadius: 10, alignItems: "center", marginTop: 10, marginBottom: 30 },
-  logoutBtnText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  errorText: { fontSize: 18, textAlign: "center", marginTop: 20 },
 });

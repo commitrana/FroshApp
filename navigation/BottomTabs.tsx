@@ -11,7 +11,7 @@ import QRScreen from "../screens/QR/QRScreen";
 import ProfileScreen from "../screens/Profile/ProfileScreen";
 
 import { BottomTabParamList } from "../types/navigation";
-import Colors from "../constants/colors";
+import { useTheme } from "../theme/theme"; // ← Changed
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
@@ -27,21 +27,15 @@ const BASE_TAB_HEIGHT = 60;
 const BASE_BOTTOM_PADDING = 10;
 
 export default function BottomTabs() {
-  // The bar is `position: 'absolute'` with a fixed height, which never
-  // accounted for the device's own bottom inset (gesture-nav pill or
-  // 3-button nav bar). On phones with a taller system nav bar — and on
-  // newer Android/Expo versions, which render edge-to-edge by default —
-  // that system bar was overlapping our custom tab bar instead of sitting
-  // below it. Adding the real inset on top of our base height/padding
-  // pushes the bar up above whatever the device reserves at the bottom.
   const insets = useSafeAreaInsets();
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textMuted,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: [
           styles.tabBar,
           {
@@ -52,7 +46,7 @@ export default function BottomTabs() {
         tabBarBackground: () => (
           <BlurView
             intensity={50}
-            tint="dark"
+            tint={isDarkMode ? "dark" : "light"} // ← Dynamic tint
             experimentalBlurMethod="dimezisBlurView"
             style={StyleSheet.absoluteFill}
           />

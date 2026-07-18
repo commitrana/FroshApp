@@ -10,13 +10,14 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 import QRPlaceholder from "../../Components/QR/QRPlaceholder";
 import { QR_INFO } from "../../constants/qr";
 import { Ticket, getMyTickets } from "../../services/tickets";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 export default function QRScreen() {
+  const { colors, isDarkMode } = useTheme(); // ← Added
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -32,8 +33,6 @@ export default function QRScreen() {
     }
   }, []);
 
-  // Auto-refresh every 15s while this screen is focused — so a ticket
-  // flips from "valid" to "used" soon after the admin scans it.
   useAutoRefresh(fetchTickets, 15000);
 
   const onRefresh = useCallback(async () => {
@@ -44,46 +43,46 @@ export default function QRScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} style={{ marginTop: 50 }} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} style={{ marginTop: 50 }} />
       </SafeAreaView>
     );
   }
 
   if (tickets.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <QRPlaceholder title={QR_INFO.title} description={QR_INFO.description} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.textSecondary} />
         }
       >
-        <Text style={styles.heading}>My Tickets</Text>
-        <Text style={styles.subHeading}>
+        <Text style={[styles.heading, { color: colors.textPrimary }]}>My Tickets</Text>
+        <Text style={[styles.subHeading, { color: colors.textSecondary }]}>
           Show this QR code at the venue — it can only be scanned once.
         </Text>
 
         {tickets.map((ticket) => {
           const isUsed = ticket.status === "used";
           return (
-            <View key={ticket._id} style={styles.card}>
-              <Text style={styles.eventTitle}>{ticket.event?.name}</Text>
+            <View key={ticket._id} style={[styles.card, { backgroundColor: colors.card }]}>
+              <Text style={[styles.eventTitle, { color: colors.textPrimary }]}>{ticket.event?.name}</Text>
               {ticket.event?.club ? (
-                <Text style={styles.eventClub}>{ticket.event.club}</Text>
+                <Text style={[styles.eventClub, { color: colors.secondary }]}>{ticket.event.club}</Text>
               ) : null}
-              <Text style={styles.eventInfo}>
+              <Text style={[styles.eventInfo, { color: colors.textSecondary }]}>
                 📍 {ticket.event?.venue}
               </Text>
-              <Text style={styles.eventInfo}>
+              <Text style={[styles.eventInfo, { color: colors.textSecondary }]}>
                 🕒 {ticket.event?.date} • {ticket.event?.time}
               </Text>
 
@@ -103,7 +102,7 @@ export default function QRScreen() {
                 </View>
               </View>
 
-              <Text style={isUsed ? styles.statusUsed : styles.statusValid}>
+              <Text style={isUsed ? styles.statusUsed : [styles.statusValid, { color: colors.success }]}>
                 {isUsed ? "✅ Ticket used — already checked in" : "🎟️ Valid — ready to scan"}
               </Text>
             </View>
@@ -117,7 +116,6 @@ export default function QRScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
   scroll: {
     paddingHorizontal: 20,
@@ -125,37 +123,31 @@ const styles = StyleSheet.create({
     paddingBottom: 110,
   },
   heading: {
-    color: "white",
     fontSize: 30,
     fontWeight: "700",
   },
   subHeading: {
-    color: "#9CA3AF",
     marginTop: 6,
     marginBottom: 24,
     fontSize: 15,
   },
   card: {
-    backgroundColor: "#1F2937",
     borderRadius: 16,
     padding: 18,
     marginBottom: 20,
     alignItems: "center",
   },
   eventTitle: {
-    color: "white",
     fontSize: 18,
     fontWeight: "700",
     alignSelf: "flex-start",
   },
   eventClub: {
-    color: "#A78BFA",
     marginTop: 5,
     fontWeight: "600",
     alignSelf: "flex-start",
   },
   eventInfo: {
-    color: "#D1D5DB",
     marginTop: 8,
     alignSelf: "flex-start",
   },
@@ -191,7 +183,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   statusValid: {
-    color: "#34D399",
     fontWeight: "600",
     fontSize: 13,
   },

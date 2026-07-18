@@ -1,7 +1,6 @@
-// Light/dark theme tokens for the Home screen, carried over from the UI/UX design
-// (screens/LightScreen.js and screens/DarkScreen.js in the ui_ux project).
+import { useAppTheme } from '../context/ThemeContext';
 
-export const lightTheme = {
+export const lightHomeTheme = {
   bgGradient: ["#FFFFFF", "#EDF6FF", "#D7EAFF"],
   textPrimary: "#0B1F4F",
   textSecondary: "#6F88B2",
@@ -32,7 +31,7 @@ export const lightTheme = {
   modalBg: "white",
 };
 
-export const darkTheme = {
+export const darkHomeTheme = {
   bgGradient: ["#02060D", "#081525", "#123A70"],
   textPrimary: "#FFFFFF",
   textSecondary: "#AFC7EA",
@@ -61,4 +60,10 @@ export const darkTheme = {
   accent: "#58AFFF",
   lineColor: "#3A6CA8",
   modalBg: "#111E32",
+};
+
+// Hook to use home theme with context
+export const useHomeTheme = () => {
+  const { isDarkMode } = useAppTheme();
+  return isDarkMode ? darkHomeTheme : lightHomeTheme;
 };

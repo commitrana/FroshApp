@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'; // added useRef, useEffect, Animated, Easing
+import React, { useState, useRef, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -19,40 +19,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Icon from '@expo/vector-icons/Ionicons';
 
+import { useTheme } from '../../theme/theme'; // ← Added
+
 const { width, height } = Dimensions.get('window');
-
-// Shape of the theme object this screen expects
-interface Theme {
-  // Tuple, not a plain string[] — LinearGradient's `colors` prop requires at
-  // least 2 colors typed as a fixed tuple, otherwise TS rejects the assignment.
-  bgGradient: [string, string, ...string[]];
-  textPrimary: string;
-  textSecondary: string;
-  cardBg: string;
-  accent: string;
-  shadowColor: string;
-  lineColor: string;
-  tabInactiveBg?: string;
-  tabActiveBg?: string;
-  tabActiveText?: string;
-  tabInactiveText?: string;
-  modalBg?: string;
-}
-
-interface SocietiesScreenProps {
-  theme?: Theme;
-}
-
-// Fallback dark theme
-const fallbackTheme: Theme = {
-  bgGradient: ['#020B18', '#061528', '#041220'],
-  textPrimary: '#FFFFFF',
-  textSecondary: '#D5DDF0',
-  cardBg: '#0A1A2E',
-  accent: '#2F80FF',
-  shadowColor: '#2F80FF',
-  lineColor: 'rgba(255,255,255,0.1)',
-};
 
 interface Society {
   id: number;
@@ -61,9 +30,7 @@ interface Society {
   description: string;
 }
 
-// Single shared logo asset — avoids repeating require() (and the risk of a
-// typo'd path) 12 times over. Correct path: this file lives in
-// screens/Societies/, so ../../ reaches the FroshApp root, then assets/uiux/.
+// Single shared logo asset
 const logo = require('../../assets/uiux/logo.png');
 
 // Society data
@@ -91,18 +58,30 @@ const categories: { key: Society['category']; label: string }[] = [
   { key: 'other', label: 'Other' },
 ];
 
-export default function SocietiesScreen({ theme: themeProp }: SocietiesScreenProps) {
+export default function SocietiesScreen() {
   const navigation = useNavigation();
-  const route = useRoute();
-
-  // route.params is typed as a generic object by useRoute() with no navigator
-  // param list attached, so we cast it to the shape this screen actually expects.
-  const routeParams = route.params as { theme?: Theme } | undefined;
-  const t: Theme = themeProp || routeParams?.theme || fallbackTheme;
-  const isDarkTheme = t.textPrimary?.toUpperCase() === '#FFFFFF';
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   const [activeCategory, setActiveCategory] = useState<Society['category']>('tech');
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
+
+  // Create theme object from global theme
+  const t = {
+    bgGradient: isDarkMode 
+      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
+      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    cardBg: colors.card,
+    accent: colors.primary,
+    shadowColor: colors.primary,
+    lineColor: colors.border,
+    tabInactiveBg: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+    tabActiveBg: colors.primary,
+    tabActiveText: '#FFFFFF',
+    tabInactiveText: colors.textSecondary,
+    modalBg: colors.card,
+  };
 
   // --- Fade‑in animation ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -126,7 +105,7 @@ export default function SocietiesScreen({ theme: themeProp }: SocietiesScreenPro
       <StatusBar
         translucent
         backgroundColor="transparent"
-        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
       <LinearGradient colors={t.bgGradient} style={styles.container}>
         <SafeAreaView style={{ flex: 1 }}>
@@ -145,9 +124,9 @@ export default function SocietiesScreen({ theme: themeProp }: SocietiesScreenPro
                 key={cat.key}
                 style={[
                   styles.tab,
-                  { backgroundColor: t.tabInactiveBg || t.lineColor },
+                  { backgroundColor: t.tabInactiveBg },
                   activeCategory === cat.key && {
-                    backgroundColor: t.tabActiveBg || t.accent,
+                    backgroundColor: t.tabActiveBg,
                   },
                 ]}
                 onPress={() => setActiveCategory(cat.key)}
@@ -156,10 +135,9 @@ export default function SocietiesScreen({ theme: themeProp }: SocietiesScreenPro
                   style={[
                     styles.tabText,
                     {
-                      color:
-                        activeCategory === cat.key
-                          ? t.tabActiveText || '#FFFFFF'
-                          : t.tabInactiveText || t.textSecondary,
+                      color: activeCategory === cat.key
+                        ? t.tabActiveText
+                        : t.tabInactiveText,
                     },
                   ]}
                 >
@@ -202,14 +180,14 @@ export default function SocietiesScreen({ theme: themeProp }: SocietiesScreenPro
           <BlurView
             intensity={80}
             style={styles.blurContainer}
-            tint={isDarkTheme ? 'dark' : 'light'}
+            tint={isDarkMode ? 'dark' : 'light'}
           >
             <TouchableWithoutFeedback onPress={() => {}}>
               <View
                 style={[
                   styles.popupCard,
                   {
-                    backgroundColor: t.modalBg || t.cardBg,
+                    backgroundColor: t.modalBg,
                     shadowColor: t.shadowColor,
                   },
                 ]}

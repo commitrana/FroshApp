@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../types/navigation';
-import Theme from '../../theme/theme';
+import { useTheme } from '../../theme/theme'; // ← Changed
 import {
   FeedbackQuestionItem,
   getFeedbackForm,
@@ -26,13 +26,13 @@ import {
 type RouteProps = RouteProp<RootStackParamList, 'GiveFeedback'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'GiveFeedback'>;
 
-// key = `${source}-${order}`, so admin and faculty questions never collide.
 const keyFor = (q: { source: string; order: number }) => `${q.source}-${q.order}`;
 
 const GiveFeedbackScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { sessionId } = route.params;
+  const { colors, isDarkMode } = useTheme(); // ← Added
 
   const [subject, setSubject] = useState('');
   const [questions, setQuestions] = useState<FeedbackQuestionItem[]>([]);
@@ -104,22 +104,22 @@ const GiveFeedbackScreen = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator color={colors.primary} size="large" style={styles.loader} />
       </SafeAreaView>
     );
   }
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Text style={styles.backBtnText}>←</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
+            <Text style={[styles.backBtnText, { color: colors.textPrimary }]}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Give Feedback</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Give Feedback</Text>
         </View>
-        <View style={styles.emptyState}>
+        <View style={[styles.emptyState, { backgroundColor: colors.card }]}>
           <Text style={styles.errorStateText}>⚠️ {loadError}</Text>
         </View>
       </SafeAreaView>
@@ -127,30 +127,30 @@ const GiveFeedbackScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, { backgroundColor: colors.card }]}>
+          <Text style={[styles.backBtnText, { color: colors.textPrimary }]}>←</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Give Feedback</Text>
-          <Text style={styles.headerSubtitle}>{subject}</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Give Feedback</Text>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>{subject}</Text>
         </View>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.hint}>All {questions.length} questions are mandatory. Comments are optional.</Text>
+          <Text style={[styles.hint, { color: colors.textSecondary }]}>All {questions.length} questions are mandatory. Comments are optional.</Text>
 
           {questions.map((q, i) => {
             const key = keyFor(q);
             const rating = ratings[key] || 0;
             return (
-              <View key={key} style={styles.questionCard}>
-                <Text style={styles.questionLabel}>
+              <View key={key} style={[styles.questionCard, { backgroundColor: colors.card }]}>
+                <Text style={[styles.questionLabel, { color: colors.primary }]}>
                   Question {i + 1} {q.source === 'admin' ? '· General' : '· This Class'}
                 </Text>
-                <Text style={styles.questionText}>{q.text}</Text>
+                <Text style={[styles.questionText, { color: colors.textPrimary }]}>{q.text}</Text>
 
                 <View style={styles.starsRow}>
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -161,9 +161,9 @@ const GiveFeedbackScreen = () => {
                 </View>
 
                 <TextInput
-                  style={styles.commentInput}
+                  style={[styles.commentInput, { color: colors.textPrimary, borderTopColor: colors.border }]}
                   placeholder="Add a comment (optional)"
-                  placeholderTextColor="#6B7280"
+                  placeholderTextColor={colors.textMuted}
                   value={comments[key] || ''}
                   onChangeText={(text) => setComment(q, text)}
                   multiline
@@ -173,7 +173,7 @@ const GiveFeedbackScreen = () => {
           })}
 
           <TouchableOpacity
-            style={[styles.submitButton, (!allRated || submitting) && styles.submitButtonDisabled]}
+            style={[styles.submitButton, { backgroundColor: colors.primary }, (!allRated || submitting) && styles.submitButtonDisabled]}
             onPress={handleSubmit}
             disabled={!allRated || submitting}
           >
@@ -186,7 +186,7 @@ const GiveFeedbackScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Theme.colors.background },
+  container: { flex: 1 },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
@@ -199,36 +199,32 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1F2937',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  backBtnText: { color: 'white', fontSize: 20 },
-  headerTitle: { color: 'white', fontSize: 18, fontWeight: '700' },
-  headerSubtitle: { color: '#9CA3AF', fontSize: 13, marginTop: 2 },
+  backBtnText: { fontSize: 20 },
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  headerSubtitle: { fontSize: 13, marginTop: 2 },
   scroll: { paddingHorizontal: 20, paddingBottom: 40 },
-  hint: { color: '#9CA3AF', fontSize: 13, marginBottom: 18 },
-  emptyState: { backgroundColor: '#1F2937', borderRadius: 12, padding: 30, alignItems: 'center', margin: 20 },
+  hint: { fontSize: 13, marginBottom: 18 },
+  emptyState: { borderRadius: 12, padding: 30, alignItems: 'center', margin: 20 },
   errorStateText: { color: '#EF4444', fontSize: 15, textAlign: 'center' },
-  questionCard: { backgroundColor: '#1F2937', borderRadius: 14, padding: 14, marginBottom: 14 },
-  questionLabel: { color: Theme.colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 6 },
-  questionText: { color: 'white', fontSize: 15, fontWeight: '600', marginBottom: 12 },
+  questionCard: { borderRadius: 14, padding: 14, marginBottom: 14 },
+  questionLabel: { fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  questionText: { fontSize: 15, fontWeight: '600', marginBottom: 12 },
   starsRow: { flexDirection: 'row', marginBottom: 10 },
   starBtn: { padding: 4 },
   star: { fontSize: 30, color: '#374151' },
   starFilled: { color: '#FBBF24' },
   commentInput: {
-    color: 'white',
     fontSize: 14,
     minHeight: 40,
     textAlignVertical: 'top',
     borderTopWidth: 1,
-    borderTopColor: '#374151',
     paddingTop: 10,
   },
   submitButton: {
-    backgroundColor: Theme.colors.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

@@ -10,10 +10,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 import { APP_INFO, SOCIAL_LINKS } from "../../constants/app";
 
 export default function ConnectScreen() {
+  const { colors, isDarkMode } = useTheme(); // ← Added
+
   const openLink = async (url: string) => {
     if (!url) {
       Alert.alert(
@@ -36,92 +38,84 @@ export default function ConnectScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
-        <Text style={styles.title}>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>
           Connect With Us
         </Text>
 
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Stay connected with Frosh through our official platforms.
         </Text>
 
         {SOCIAL_LINKS.map((item) => (
           <TouchableOpacity
             key={item.id}
-            style={styles.card}
+            style={[styles.card, { backgroundColor: colors.card }]}
             activeOpacity={0.8}
             onPress={() => openLink(item.url)}
           >
             <Ionicons
               name={item.icon}
               size={24}
-              color="white"
+              color={colors.textPrimary}
             />
 
-            <Text style={styles.cardText}>
+            <Text style={[styles.cardText, { color: colors.textPrimary }]}>
               {item.title}
             </Text>
 
             <Ionicons
               name="chevron-forward"
               size={20}
-              color="#9CA3AF"
+              color={colors.textMuted}
               style={styles.arrow}
             />
           </TouchableOpacity>
         ))}
 
-        {/* Email */}
-
         <TouchableOpacity
-          style={styles.card}
+          style={[styles.card, { backgroundColor: colors.card }]}
           activeOpacity={0.8}
-          onPress={() =>
-            openLink(`mailto:${APP_INFO.support.email}`)
-          }
+          onPress={() => openLink(`mailto:${APP_INFO.support.email}`)}
         >
           <Ionicons
             name="mail-outline"
             size={24}
-            color="white"
+            color={colors.textPrimary}
           />
 
-          <Text style={styles.cardText}>
+          <Text style={[styles.cardText, { color: colors.textPrimary }]}>
             Email Us
           </Text>
 
           <Ionicons
             name="chevron-forward"
             size={20}
-            color="#9CA3AF"
+            color={colors.textMuted}
             style={styles.arrow}
           />
         </TouchableOpacity>
 
-        {/* Phone */}
-
         <TouchableOpacity
-          style={styles.card}
+          style={[styles.card, { backgroundColor: colors.card }]}
           activeOpacity={0.8}
-          onPress={() =>
-            openLink(`tel:${APP_INFO.support.phone}`)
-          }
+          onPress={() => openLink(`tel:${APP_INFO.support.phone}`)}
         >
           <Ionicons
             name="call-outline"
             size={24}
-            color="white"
+            color={colors.textPrimary}
           />
 
-          <Text style={styles.cardText}>
+          <Text style={[styles.cardText, { color: colors.textPrimary }]}>
             Call Us
           </Text>
 
           <Ionicons
             name="chevron-forward"
             size={20}
-            color="#9CA3AF"
+            color={colors.textMuted}
             style={styles.arrow}
           />
         </TouchableOpacity>
@@ -133,43 +127,32 @@ export default function ConnectScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
-
   container: {
     flex: 1,
     padding: 20,
   },
-
   title: {
     fontSize: 30,
     fontWeight: "700",
-    color: "white",
     marginBottom: 8,
   },
-
   subtitle: {
-    color: "#9CA3AF",
     fontSize: 15,
     marginBottom: 30,
   },
-
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1F2937",
     borderRadius: 16,
     padding: 18,
     marginBottom: 15,
   },
-
   cardText: {
-    color: "white",
     fontSize: 17,
     marginLeft: 16,
     fontWeight: "600",
   },
-
   arrow: {
     marginLeft: "auto",
   },

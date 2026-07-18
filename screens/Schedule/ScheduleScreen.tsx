@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
-import Theme from "../../theme/theme";
+import { useTheme } from "../../theme/theme"; // ← Changed
 import { Event, EventStatus } from "../../constants/events";
 import { getEvents } from "../../services/events";
 import { getMyTickets, registerForEvent } from "../../services/tickets";
@@ -24,8 +24,8 @@ type FilterType = "all" | EventStatus;
 
 export default function ScheduleScreen() {
   const navigation = useNavigation<any>();
-  const [selectedFilter, setSelectedFilter] =
-    useState<FilterType>("all");
+  const { colors, isDarkMode } = useTheme(); // ← Added
+  const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [events, setEvents] = useState<Event[]>([]);
   const [ticketedEventIds, setTicketedEventIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,6 @@ export default function ScheduleScreen() {
     }
   }, []);
 
-  // Auto-refresh every 30s while this screen is focused
   useAutoRefresh(fetchEvents, 30000);
 
   const onRefresh = useCallback(async () => {
@@ -79,21 +78,14 @@ export default function ScheduleScreen() {
     if (selectedFilter === "all") {
       return events;
     }
-
-    return events.filter(
-      (event) => event.status === selectedFilter
-    );
+    return events.filter((event) => event.status === selectedFilter);
   }, [selectedFilter, events]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <View style={styles.container}>
-
-        <Text style={styles.heading}>
-          Schedule
-        </Text>
-
-        <Text style={styles.subHeading}>
+        <Text style={[styles.heading, { color: colors.textPrimary }]}>Schedule</Text>
+        <Text style={[styles.subHeading, { color: colors.textSecondary }]}>
           Stay updated with every Frosh event.
         </Text>
 
@@ -108,19 +100,16 @@ export default function ScheduleScreen() {
             selected={selectedFilter === "all"}
             onPress={() => setSelectedFilter("all")}
           />
-
           <FilterChip
             title="Live"
             selected={selectedFilter === "live"}
             onPress={() => setSelectedFilter("live")}
           />
-
           <FilterChip
             title="Upcoming"
             selected={selectedFilter === "upcoming"}
             onPress={() => setSelectedFilter("upcoming")}
           />
-
           <FilterChip
             title="Past"
             selected={selectedFilter === "past"}
@@ -129,10 +118,7 @@ export default function ScheduleScreen() {
         </ScrollView>
 
         {loading ? (
-          <ActivityIndicator
-            color={Theme.colors.primary ?? "#22D3EE"}
-            style={styles.loader}
-          />
+          <ActivityIndicator color={colors.primary} style={styles.loader} />
         ) : (
           <FlatList
             data={filteredEvents}
@@ -153,17 +139,16 @@ export default function ScheduleScreen() {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#9CA3AF"
+                tintColor={colors.textSecondary}
               />
             }
             ListEmptyComponent={
-              <Text style={styles.emptyText}>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 No events available.
               </Text>
             }
           />
         )}
-
       </View>
     </SafeAreaView>
   );
@@ -172,57 +157,37 @@ export default function ScheduleScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Theme.colors.background,
   },
-
   container: {
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-
   heading: {
-    color: "white",
     fontSize: 30,
     fontWeight: "700",
   },
-
   subHeading: {
-    color: "#9CA3AF",
     marginTop: 6,
     marginBottom: 24,
     fontSize: 15,
   },
-
-  // Without this, the ScrollView itself (not just its content) can stretch
-  // to fill whatever vertical space is left in the flex-column container —
-  // which is what caused the big empty gap around the chips even after
-  // they were centered.
   filterScroll: {
     flexGrow: 0,
     flexShrink: 0,
   },
-
   filterContainer: {
     paddingBottom: 20,
-    // A horizontal ScrollView's contentContainerStyle stretches children to
-    // fill its cross-axis (height) by default unless alignItems is set —
-    // that's what was making the filter chips balloon into tall capsules
-    // until layout settled. 'center' keeps every chip at its natural height.
     alignItems: "center",
   },
-
   list: {
     paddingBottom: 30,
   },
-
   loader: {
     marginTop: 50,
   },
-
   emptyText: {
     textAlign: "center",
-    color: "#9CA3AF",
     marginTop: 50,
     fontSize: 16,
   },
