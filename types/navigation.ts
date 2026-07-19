@@ -28,6 +28,10 @@ export type RootStackParamList = {
   Boys: undefined;
   Girls: undefined;
   LifeAtThapar: undefined;
+  EateryPoints: undefined;
+  SportsComplex: undefined;
+  StudyZones: undefined;
+  CulturalCentres: undefined;
   CampusMap: undefined;
   Bootcamp: undefined;
 

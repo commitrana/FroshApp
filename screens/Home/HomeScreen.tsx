@@ -31,19 +31,24 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import { useHomeTheme } from "../../constants/homeThemes";
 import { useAppTheme } from "../../context/ThemeContext";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
+// NOTE: BlurTargetView removed for now — it's a newer native view that isn't
+// reliably present in Expo Go and was crashing the app on mount. Falling back
+// to plain BlurView (stable, works in Expo Go). On Android without a
+// blurTarget this renders as a flat translucent tint rather than a true blur —
+// visually close, and safe. Once you move to a custom dev client / EAS build,
+// we can re-add BlurTargetView for a real blur on Android.
 import { BlurView } from "expo-blur";
-
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
-const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
+const DEFAULT_IMAGE = require("../../assets/uiux/concert.jpg");
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
-  const { isDarkMode, toggleDarkMode } = useAppTheme(); // ← Use global context
-  const theme = useHomeTheme(); // ← Use the hook
+  const { isDarkMode, toggleDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
   // ----- ui_ux Home shell state -----
   const [activeTab, setActiveTab] = useState("frosh");
@@ -168,12 +173,12 @@ export default function HomeScreen() {
     { id: "help", label: "Help", icon: "help-circle-outline" as const },
     { id: "about", label: "About", icon: "sparkles-outline" as const },
     { id: "logout", label: "Logout", icon: "log-out-outline" as const },
-    {id: "switch" , label: "Switch Mode" as const}
+    { id: "switch", label: "Switch Mode" as const },
   ];
 
   const handleMenuPress = (id: string) => {
     if (id === "switch") {
-      toggleDarkMode(); // ← Use global toggle instead of local state
+      toggleDarkMode();
       setModalVisible(false);
       return;
     }
@@ -183,8 +188,7 @@ export default function HomeScreen() {
     }
     setModalVisible(false);
     if (id === "account") navigation.navigate("Account");
-    else if (id === "schedule") navigation.navigate("Schedule");   
-
+    else if (id === "schedule") navigation.navigate("Schedule");
     else if (id === "help") navigation.navigate("Help");
     else if (id === "about") navigation.navigate("About");
     else if (id === "connect") navigation.navigate("Connect");
@@ -204,198 +208,238 @@ export default function HomeScreen() {
     outputRange: [screenHeight * 0.5, 0],
   });
 
+  // ---- Glass styling, same recipe as the teammate's .js version ----
+  const glassBorder = isDarkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.7)";
+  const glassSheen = isDarkMode
+    ? (["rgba(255,255,255,0.14)", "rgba(255,255,255,0)"] as const)
+    : (["rgba(255,255,255,0.55)", "rgba(255,255,255,0)"] as const);
+
   return (
     <>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <StatusBar
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+        backgroundColor="transparent"
+        translucent={Platform.OS === "android"}
+      />
 
       <LinearGradient
-        colors={theme.bgGradient as [string, string, ...string[]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.container}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 110 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
-          }
+          colors={theme.bgGradient as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.container}
         >
-          {/* HEADER */}
-          <View style={styles.header}>
-            <View>
-              <Text style={[styles.hello, { color: theme.textPrimary }]}>
-                Hi, {userName || "Guest"}
-              </Text>
-              <Text style={[styles.welcome, { color: theme.textSecondary }]}>Welcome back!</Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 110 }}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
+            }
+          >
+            {/* HEADER */}
+            <View style={styles.header}>
+              <View>
+                <Text style={[styles.hello, { color: theme.textPrimary }]}>
+                  Hi, {userName || "Guest"}
+                </Text>
+                <Text style={[styles.welcome, { color: theme.textSecondary }]}>Welcome back!</Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.profileCircle,
+                  { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor },
+                ]}
+                onPress={() => setModalVisible(true)}
+              >
+                <Feather name="user" size={24} color={theme.iconColor} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[
-                styles.profileCircle,
-                { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor },
-              ]}
-              onPress={() => setModalVisible(true)}
+
+            {/* GLASS TOP CARD */}
+            <BlurView
+              intensity={70}
+              tint={isDarkMode ? "dark" : "light"}
+              experimentalBlurMethod="dimezisBlurView"
+              style={[styles.topCard, { borderColor: glassBorder }]}
             >
-              <Feather name="user" size={24} color={theme.iconColor} />
-            </TouchableOpacity>
-          </View>
-
-          {/* TOP CARD */}
-          <View style={[styles.topCard, theme.topCard]}>
-            <View style={styles.tabsContainer}>
-              <TouchableOpacity
-                style={styles.tab}
-                onPress={() => navigation.navigate(userRole === "faculty" ? "FacultyDashboard" : "Bootcamp")}
->
-                <View style={styles.tabContent}>
-                  <Ionicons name="calendar-outline" size={24} color={theme.tabInactiveText} />
-                  <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>
-                    Bootcamp
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tab, isFrosh && { backgroundColor: theme.tabActiveBg }]}
-                onPress={() => setActiveTab("frosh")}
-              >
-                <View style={styles.tabContent}>
-                  <Image
-                    source={require("../../assets/uiux/star.png")}
-                    resizeMode="contain"
-                    style={{
-                      width:130,
-                      height:150
-                    }}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tab, isAbout && { backgroundColor: theme.tabActiveBg }]}
-                onPress={() => setActiveTab("about")}
-              >
-                <View style={styles.tabContent}>
-                  <Ionicons
-                    name="information-circle-outline"
-                    size={28}
-                    color={isAbout ? theme.tabActiveText : theme.tabInactiveText}
-                  />
-                  <Text
-                    style={[
-                      isAbout ? styles.tabActive : styles.tabInactive,
-                      { color: isAbout ? theme.tabActiveText : theme.tabInactiveText },
-                    ]}
-                  >
-                    About
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* CONTENT */}
-          {isFrosh ? (
-            <>
-              <View style={[styles.liveCard, theme.liveCard]}>
-                <View style={styles.liveHeadingContainer}>
-                  <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
-                  <Text style={[styles.liveHeading, { color: theme.accent }]}>• LIVE EVENT •</Text>
-                  <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
-                </View>
-
-                {liveEvent ? (
-                  <>
-                    <Image
-                      source={liveEvent.imageUrl ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` } : DEFAULT_IMAGE}
-                      style={styles.eventImage}
-                    />
-
-                    <View style={[styles.liveNow, { borderColor: theme.accent }]}>
-                      <Text style={[styles.liveNowText, { color: theme.accent }]}>LIVE NOW</Text>
-                    </View>
-
-                    <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
-                      {liveEvent.title}
+              <LinearGradient
+                colors={glassSheen}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.glassSheen}
+                pointerEvents="none"
+              />
+              <View style={styles.tabsContainer}>
+                <TouchableOpacity
+                  style={styles.tab}
+                  onPress={() =>
+                    navigation.navigate(userRole === "faculty" ? "FacultyDashboard" : "Bootcamp")
+                  }
+                >
+                  <View style={styles.tabContent}>
+                    <Ionicons name="calendar-outline" size={24} color={theme.tabInactiveText} />
+                    <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>
+                      Bootcamp
                     </Text>
+                  </View>
+                </TouchableOpacity>
 
-                    <View style={styles.infoRow}>
-                      <Ionicons name="location" size={18} color={theme.accent} />
-                      <Text style={[styles.location, { color: theme.accent }]}>
-                        {liveEvent.venue}
+                <TouchableOpacity
+                  style={[styles.tab, isFrosh && { backgroundColor: theme.tabActiveBg }]}
+                  onPress={() => setActiveTab("frosh")}
+                >
+                  <View style={styles.tabContent}>
+                    <Image
+                      source={require("../../assets/uiux/star.png")}
+                      resizeMode="contain"
+                      style={{ width: 130, height: 150 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.tab, isAbout && { backgroundColor: theme.tabActiveBg }]}
+                  onPress={() => setActiveTab("about")}
+                >
+                  <View style={styles.tabContent}>
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={28}
+                      color={isAbout ? theme.tabActiveText : theme.tabInactiveText}
+                    />
+                    <Text
+                      style={[
+                        isAbout ? styles.tabActive : styles.tabInactive,
+                        { color: isAbout ? theme.tabActiveText : theme.tabInactiveText },
+                      ]}
+                    >
+                      About
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </BlurView>
+
+            {/* CONTENT */}
+            {isFrosh ? (
+              <>
+                <BlurView
+                  intensity={70}
+                  tint={isDarkMode ? "dark" : "light"}
+                  experimentalBlurMethod="dimezisBlurView"
+                  style={[styles.liveCard, { borderColor: glassBorder }]}
+                >
+                  <LinearGradient
+                    colors={glassSheen}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 0, y: 1 }}
+                    style={styles.glassSheen}
+                    pointerEvents="none"
+                  />
+                  <View style={styles.liveHeadingContainer}>
+                    <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                    <Text style={[styles.liveHeading, { color: theme.accent }]}>• LIVE EVENT •</Text>
+                    <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                  </View>
+
+                  {liveEvent ? (
+                    <>
+                      <Image
+                        source={
+                          liveEvent.imageUrl
+                            ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` }
+                            : DEFAULT_IMAGE
+                        }
+                        style={styles.eventImage}
+                      />
+
+                      <View style={[styles.liveNow, { borderColor: theme.accent }]}>
+                        <Text style={[styles.liveNowText, { color: theme.accent }]}>LIVE NOW</Text>
+                      </View>
+
+                      <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
+                        {liveEvent.title}
                       </Text>
-                    </View>
 
-                    <View style={styles.infoRow}>
-                      <Feather name="calendar" size={16} color={theme.accent} />
-                      <Text style={[styles.infoText, { color: theme.textPrimary }]}>
-                        {liveEvent.date}
-                      </Text>
-                    </View>
-
-                    <View style={[styles.bottomRow, { marginTop: 0 }]}>
                       <View style={styles.infoRow}>
-                        <Feather name="clock" size={16} color={theme.accent} />
-                        <Text style={[styles.infoText, { color: theme.textPrimary }]}>
-                          {liveEvent.time}
+                        <Ionicons name="location" size={18} color={theme.accent} />
+                        <Text style={[styles.location, { color: theme.accent }]}>
+                          {liveEvent.venue}
                         </Text>
                       </View>
-                      {userRole !== "faculty" && (
-                        <TouchableOpacity
-                          style={[styles.arrowCircle, { borderColor: theme.accent }]}
-                          onPress={() =>
-                            handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
-                          }
-                          disabled={registeringId === liveEvent.id}
-                        >
-                          {registeringId === liveEvent.id ? (
-                            <ActivityIndicator size="small" color={theme.accent} />
-                          ) : (
-                            <Ionicons
-                              name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
-                              size={24}
-                              color={theme.accent}
-                            />
-                          )}
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </>
-                ) : (
-                  <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
-                    No live event right now. Check back soon!
-                  </Text>
+
+                      <View style={styles.infoRow}>
+                        <Feather name="calendar" size={16} color={theme.accent} />
+                        <Text style={[styles.infoText, { color: theme.textPrimary }]}>
+                          {liveEvent.date}
+                        </Text>
+                      </View>
+
+                      <View style={[styles.bottomRow, { marginTop: 0 }]}>
+                        <View style={styles.infoRow}>
+                          <Feather name="clock" size={16} color={theme.accent} />
+                          <Text style={[styles.infoText, { color: theme.textPrimary }]}>
+                            {liveEvent.time}
+                          </Text>
+                        </View>
+                        {userRole !== "faculty" && (
+                          <TouchableOpacity
+                            style={[styles.arrowCircle, { borderColor: theme.accent }]}
+                            onPress={() =>
+                              handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
+                            }
+                            disabled={registeringId === liveEvent.id}
+                          >
+                            {registeringId === liveEvent.id ? (
+                              <ActivityIndicator size="small" color={theme.accent} />
+                            ) : (
+                              <Ionicons
+                                name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
+                                size={24}
+                                color={theme.accent}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </>
+                  ) : (
+                    <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
+                      No live event right now. Check back soon!
+                    </Text>
+                  )}
+                </BlurView>
+
+                {upcomingEvents.length > 0 && (
+                  <View style={styles.upcomingSection}>
+                    <Text style={[styles.upcomingHeading, { color: theme.textPrimary }]}>
+                      Upcoming Events
+                    </Text>
+                    {upcomingEvents.map((event) => (
+                      <BlurView
+                        key={event.id}
+                        intensity={50}
+                        tint={isDarkMode ? "dark" : "light"}
+                        experimentalBlurMethod="dimezisBlurView"
+                        style={[styles.upcomingCard, { borderColor: glassBorder }]}
+                      >
+                        <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
+                          {event.title}
+                        </Text>
+                        <Text style={[styles.upcomingDate, { color: theme.textSecondary }]}>
+                          {event.date}
+                        </Text>
+                      </BlurView>
+                    ))}
+                  </View>
                 )}
-              </View>
+              </>
+            ) : (
+              <HomeAboutTab theme={theme} />
+            )}
+          </ScrollView>
+        </LinearGradient>
 
-              {upcomingEvents.length > 0 && (
-                <View style={styles.upcomingSection}>
-                  <Text style={[styles.upcomingHeading, { color: theme.textPrimary }]}>
-                    Upcoming Events
-                  </Text>
-                  {upcomingEvents.map((event) => (
-                    <View
-                      key={event.id}
-                      style={[styles.upcomingCard, { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor }]}
-                    >
-                      <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
-                        {event.title}
-                      </Text>
-                      <Text style={[styles.upcomingDate, { color: theme.textSecondary }]}>
-                        {event.date}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          ) : (
-            <HomeAboutTab theme={theme} />
-          )}
-        </ScrollView>
-      </LinearGradient>
-
-      {/* PROFILE MENU */}
+      {/* PROFILE MENU — plain tinted sheet, no BlurView, keeps things simple/safe */}
       <Modal
         animationType="none"
         transparent={true}
@@ -457,32 +501,90 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  topCard: { marginHorizontal: 22, marginTop: 18, borderRadius: 28, height: 80, overflow: "hidden" },
-  tabsContainer: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-around" },
-  tab: { flex: 1, height: 80, justifyContent: "center", alignItems: "center", backgroundColor: "transparent", borderRadius: 20 },
+  topCard: {
+    marginHorizontal: 22,
+    marginTop: 18,
+    borderRadius: 28,
+    height: 80,
+    overflow: "hidden",
+    borderWidth: 1,
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  glassSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "55%",
+    borderTopLeftRadius: 27,
+    borderTopRightRadius: 27,
+  },
+  tabsContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  tab: {
+    flex: 1,
+    height: 80,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "transparent",
+    borderRadius: 20,
+  },
   tabContent: { justifyContent: "center", alignItems: "center", gap: 2 },
-  tabLogoLarge: { width: 100, height: 100 },
   tabActive: { fontSize: 12, fontWeight: "700" },
   tabInactive: { fontSize: 12, fontWeight: "500" },
-  liveCard: { marginHorizontal: 22, marginTop: 24, borderRadius: 28, padding: 18 },
+  liveCard: {
+    marginHorizontal: 22,
+    marginTop: 24,
+    borderRadius: 28,
+    padding: 18,
+    overflow: "hidden",
+    borderWidth: 1,
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
   liveHeadingContainer: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
   line: { flex: 1, height: 2 },
   liveHeading: { marginHorizontal: 10, fontWeight: "700", fontSize: 16, letterSpacing: 2 },
   eventImage: { width: "100%", height: 200, borderRadius: 20 },
-  liveNow: { marginTop: 14, borderWidth: 2, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4, alignSelf: "flex-start" },
+  liveNow: {
+    marginTop: 14,
+    borderWidth: 2,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
+  },
   liveNowText: { fontSize: 14, fontWeight: "700" },
   eventTitle: { marginTop: 12, fontSize: 26, fontWeight: "800" },
   infoRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
   location: { marginLeft: 10, fontSize: 18, fontWeight: "700" },
   infoText: { marginLeft: 10, fontSize: 16 },
   bottomRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  arrowCircle: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, justifyContent: "center", alignItems: "center" },
+  arrowCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   upcomingSection: { marginHorizontal: 22, marginTop: 24 },
   upcomingHeading: { fontSize: 20, fontWeight: "800", marginBottom: 10 },
   upcomingCard: {
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 1,
+    overflow: "hidden",
     shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },

@@ -11,7 +11,7 @@ import HostelsScreen from "../screens/Hostels/HostelsScreen";
 import BoysScreen from "../screens/Hostels/BoysScreen";
 import GirlsScreen from "../screens/Hostels/GirlsScreen";
 import SocietiesScreen from "../screens/Societies/SocietiesScreen";
-import LifeAtThaparScreen from "../screens/LifeAtThapar/LifeAtThaparScreen";
+import LifeScreen from "../screens/LifeAtThapar/LifeScreen";
 import CampusMapScreen from "../screens/CampusMap/CampusMapScreen";
 import SocietyDashboardScreen from "../screens/SocietyAdmin/SocietyDashboardScreen";
 import MemberDashboardScreen from "../screens/Memberdashboard";
@@ -35,6 +35,10 @@ import QRScreen from "../screens/QR/QRScreen";
 import ExploreScreen from "../screens/Explore/ExploreScreen";
 import ProfileScreen from "../screens/Profile/ProfileScreen";
 import HomeScreen from "../screens/Home/HomeScreen";
+import EateryScreen from "../screens/LifeAtThapar/EateryScreen";
+import SportsScreen from "../screens/LifeAtThapar/SportsScreen";
+import StudyScreen from "../screens/LifeAtThapar/StudyScreen";
+import CulturalScreen from "../screens/LifeAtThapar/CulturalScreen";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -53,12 +57,26 @@ export default function AppNavigator() {
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainTabs" component={DrawerNavigator} />
-        <Stack.Screen name="OurTeam" component={OurTeamScreen} />
+        <Stack.Screen
+          name="OurTeam"
+          component={OurTeamScreen}
+          options={{
+            // OurTeamScreen animates itself (fadeAnim on mount, slideOutAnim
+            // on handleBack) — the global "fade" transition was fighting
+            // with it, cancelling out the visible motion. "none" here lets
+            // the screen's own Animated logic be the only thing that plays.
+            animation: "none",
+            // Also stop the iOS edge-swipe / Android back gesture from
+            // calling goBack() directly — that bypasses handleBack() and
+            // skips the custom slide-out entirely.
+            gestureEnabled: false,
+          }}
+        />
         <Stack.Screen name="Hostels" component={HostelsScreen} />
         <Stack.Screen name="Boys" component={BoysScreen} />
         <Stack.Screen name="Girls" component={GirlsScreen} />
         <Stack.Screen name="Societies" component={SocietiesScreen} />
-        <Stack.Screen name="LifeAtThapar" component={LifeAtThaparScreen} />
+        <Stack.Screen name="LifeAtThapar" component={LifeScreen} />
         <Stack.Screen name="CampusMap" component={CampusMapScreen} />
 
         {/* Shared screens reachable from any nested tree */}
@@ -87,6 +105,10 @@ export default function AppNavigator() {
         <Stack.Screen name="FeedbackQuestions" component={FeedbackQuestionsScreen} />
         <Stack.Screen name="FeedbackResponses" component={FeedbackResponsesScreen} />
         <Stack.Screen name="GiveFeedback" component={GiveFeedbackScreen} />
+        <Stack.Screen name="EateryPoints" component={EateryScreen} />
+        <Stack.Screen name="SportsComplex" component={SportsScreen} />
+        <Stack.Screen name="StudyZones" component={StudyScreen} />
+        <Stack.Screen name="CulturalCentres" component={CulturalScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -3,35 +3,23 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   ScrollView,
   StatusBar,
   Platform,
+  Image,
   Animated,
   Easing,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import Icon from "@expo/vector-icons/Ionicons";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import Feather from "@expo/vector-icons/Feather";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "../../theme/theme";
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
-const NOTCH_COUNT = 14;
-
-type FacilityLib = "feather" | "mci";
-
-type Facility = {
-  lib: FacilityLib;
-  name: string;
-  label: string;
-};
-
-type Wing = {
+type Eatery = {
   id: string;
   name: string;
   tag: string;
@@ -39,33 +27,61 @@ type Wing = {
   icon: string;
   accent: string;
   image: any;
-  route: string;
-  facilities: Facility[];
 };
 
-const FacilityIcon = ({
-  lib,
-  name,
-  size,
-  color,
-}: {
-  lib: FacilityLib;
-  name: string;
-  size: number;
-  color: string;
-}) => {
-  if (lib === "feather") return <Feather name={name as any} size={size} color={color} />;
-  return <MaterialCommunityIcons name={name as any} size={size} color={color} />;
-};
+const EATERIES: Eatery[] = [
+  {
+    id: "ahaar",
+    name: "Ahaar",
+    tag: "Classic Canteen",
+    description:
+      "The heart of campus dining. Thalis, tadka dals and quick Indo-Chinese fixes — Ahaar is where everyone ends up when hunger strikes between lectures.",
+    icon: "restaurant-outline",
+    accent: "#F5A742",
+    image: hostelImage,
+  },
+  {
+    id: "jaggi",
+    name: "Jaggi",
+    tag: "Go-To Food Hub",
+    description:
+      "A Thapar institution. Legendary parathas, chole bhature and chai strong enough to survive an 8 AM class. Half the campus has a Jaggi origin story.",
+    icon: "fast-food-outline",
+    accent: "#F0563C",
+    image: hostelImage,
+  },
+  {
+    id: "kravings",
+    name: "Kravings",
+    tag: "Multi-Cuisine Dining",
+    description:
+      "Sweet-tooth headquarters. Loaded shakes, waffles and desserts built for celebrating a good result — or surviving a bad one.",
+    icon: "ice-cream-outline",
+    accent: "#E85BA0",
+    image: hostelImage,
+  },
+  {
+    id: "nescafe",
+    name: "Nescafe",
+    tag: "Coffee & Chill",
+    description:
+      "The unofficial study lounge. Strong coffee, low lights and just enough buzz to fuel a 2 AM assignment sprint.",
+    icon: "cafe-outline",
+    accent: "#C9974B",
+    image: hostelImage,
+  },
+];
 
-export default function HostelsScreen() {
+const NOTCH_COUNT = 14;
+
+export default function EateryScreen() {
   const navigation = useNavigation<any>();
   const { colors, isDarkMode } = useTheme();
 
   const theme = {
     bgGradient: isDarkMode
-      ? (["#020B18", "#061528", "#041220"] as [string, string, string])
-      : (["#F5F9FF", "#E8F0FE", "#D6E4F5"] as [string, string, string]),
+      ? (["#0A0E27", "#1A1040", "#2D1B4E"] as [string, string, string])
+      : (["#F8FBFF", "#EEF6FF", "#DDEEFF"] as [string, string, string]),
     textPrimary: colors.textPrimary,
     textSecondary: colors.textSecondary,
     accent: colors.primary,
@@ -74,54 +90,13 @@ export default function HostelsScreen() {
 
   const bgColor = theme.bgGradient[0];
 
-  const HOSTELS: Wing[] = [
-    {
-      id: "boys",
-      name: "Boys Hostel",
-      tag: "Brotherhood Wing",
-      description:
-        "Built for comfort, made for brotherhood — late-night mess runs, early gym sessions and a room that always feels like home base.",
-      icon: "man-outline",
-      accent: theme.accent,
-      image: hostelImage,
-      route: "Boys",
-      facilities: [
-        { lib: "feather", name: "wifi", label: "Wi-Fi" },
-        { lib: "mci", name: "silverware-fork-knife", label: "Mess" },
-        { lib: "mci", name: "dumbbell", label: "Gym" },
-      ],
-    },
-    {
-      id: "girls",
-      name: "Girls Hostel",
-      tag: "Sisterhood Wing",
-      description:
-        "A space to thrive and a community to grow — cozy common rooms, warm mess evenings and friendships that outlast the degree.",
-      icon: "woman-outline",
-      accent: "#A86CFF",
-      image: hostelImage,
-      route: "Girls",
-      facilities: [
-        { lib: "feather", name: "wifi", label: "Wi-Fi" },
-        { lib: "mci", name: "silverware-fork-knife", label: "Mess" },
-        { lib: "mci", name: "sofa-outline", label: "Common Room" },
-      ],
-    },
-  ];
-
-  // --- Entrance + back-navigation animation ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const isNavigating = useRef(false);
 
-  const ITEM_COUNT = HOSTELS.length;
-  const cardFade = useRef(
-    Array.from({ length: ITEM_COUNT }, () => new Animated.Value(0))
-  ).current;
-  const cardSlide = useRef(
-    Array.from({ length: ITEM_COUNT }, () => new Animated.Value(18))
-  ).current;
-  const scaleAnims = useRef(HOSTELS.map(() => new Animated.Value(1))).current;
+  const cardFade = useRef(EATERIES.map(() => new Animated.Value(0))).current;
+  const cardSlide = useRef(EATERIES.map(() => new Animated.Value(18))).current;
+  const scaleAnims = useRef(EATERIES.map(() => new Animated.Value(1))).current;
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -133,7 +108,7 @@ export default function HostelsScreen() {
 
     Animated.stagger(
       100,
-      cardFade.map((_, i) =>
+      EATERIES.map((_, i) =>
         Animated.parallel([
           Animated.timing(cardFade[i], {
             toValue: 1,
@@ -206,29 +181,23 @@ export default function HostelsScreen() {
           },
         ]}
       >
-        <LinearGradient
-          colors={theme.bgGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
+        <LinearGradient colors={theme.bgGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Icon name="arrow-back" size={24} color={theme.textPrimary} />
+              <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
 
-            <Text style={[styles.eyebrow, { color: theme.accent }]}>✦  CAMPUS HOSTELS  ✦</Text>
+            <Text style={[styles.eyebrow, { color: theme.accent }]}>✦  CAMPUS EATS  ✦</Text>
             <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>
-              Hostel{"\n"}
-              <Text style={{ color: theme.accent }}>Wings</Text>
+              Eatery{"\n"}
+              <Text style={{ color: theme.accent }}>Points</Text>
             </Text>
             <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
-              Boys' and Girls' hostels on campus.
+              Four stops, four moods — grab a bite, anytime.
             </Text>
 
-            {/* ---- WING CARDS ---- */}
             <View style={styles.list}>
-              {HOSTELS.map((item, index) => (
+              {EATERIES.map((item, index) => (
                 <Animated.View
                   key={item.id}
                   style={{
@@ -240,45 +209,26 @@ export default function HostelsScreen() {
                     activeOpacity={0.92}
                     onPressIn={() => pressIn(index)}
                     onPressOut={() => pressOut(index)}
-                    onPress={() => navigation.navigate(item.route)}
-                    style={[
-                      styles.card,
-                      {
-                        borderColor: isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.1)",
-                        shadowColor: item.accent,
-                      },
-                    ]}
+                    style={[styles.card, { borderColor: `${item.accent}55`, shadowColor: item.accent }]}
                   >
-                    {/* Photo */}
                     <View style={styles.photoWrap}>
                       <Image source={item.image} style={styles.photo} />
-
-                      <LinearGradient
-                        colors={[`${item.accent}33`, "transparent"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0.8 }}
-                        style={StyleSheet.absoluteFill}
-                        pointerEvents="none"
-                      />
-
                       <LinearGradient
                         colors={["transparent", "rgba(3,8,18,0.85)"]}
                         style={styles.photoFade}
                         pointerEvents="none"
                       />
-
                       <View
                         style={[
                           styles.tagChip,
                           { borderColor: item.accent, backgroundColor: "rgba(6,14,26,0.55)" },
                         ]}
                       >
-                        <Icon name={item.icon as any} size={15} color={item.accent} />
+                        <Ionicons name={item.icon as any} size={15} color={item.accent} />
                         <Text style={[styles.tagChipText, { color: item.accent }]}>{item.tag}</Text>
                       </View>
                     </View>
 
-                    {/* Torn-ticket perforation seam */}
                     <View style={styles.seamRow} pointerEvents="none">
                       {Array.from({ length: NOTCH_COUNT }).map((_, n) => (
                         <View key={n} style={[styles.notch, { backgroundColor: bgColor }]} />
@@ -291,27 +241,14 @@ export default function HostelsScreen() {
                         styles.panel,
                         {
                           backgroundColor: theme.cardBg,
-                          borderTopColor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                          borderTopColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
                         },
                       ]}
                     >
                       <View style={styles.panelHeaderRow}>
                         <Text style={[styles.stallName, { color: item.accent }]}>{item.name}</Text>
                       </View>
-                      <Text style={[styles.description, { color: theme.textSecondary }]}>
-                        {item.description}
-                      </Text>
-
-                      <View style={[styles.facilityDivider, { backgroundColor: `${item.accent}40` }]} />
-
-                      <View style={styles.facilityRow}>
-                        {item.facilities.map((f) => (
-                          <View key={f.name} style={styles.facilityItem}>
-                            <FacilityIcon lib={f.lib} name={f.name} size={18} color={item.accent} />
-                            <Text style={[styles.facilityText, { color: theme.textPrimary }]}>{f.label}</Text>
-                          </View>
-                        ))}
-                      </View>
+                      <Text style={[styles.description, { color: theme.textSecondary }]}>{item.description}</Text>
                     </View>
                   </TouchableOpacity>
                 </Animated.View>
@@ -355,12 +292,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: "85%",
   },
-
   list: {
     marginTop: 28,
     gap: 26,
   },
-
   card: {
     borderRadius: 26,
     borderWidth: 1,
@@ -370,7 +305,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
-
   photoWrap: {
     height: 190,
     width: "100%",
@@ -405,7 +339,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.4,
   },
-
   seamRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -419,7 +352,6 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
   },
-
   panel: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -437,22 +369,5 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14,
     lineHeight: 21,
-  },
-  facilityDivider: {
-    height: 1,
-    marginTop: 16,
-    marginBottom: 14,
-  },
-  facilityRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  facilityItem: {
-    alignItems: "center",
-    gap: 4,
-  },
-  facilityText: {
-    fontSize: 11,
-    fontWeight: "600",
   },
 });

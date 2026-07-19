@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   SafeAreaView,
   View,
@@ -9,9 +9,16 @@ import {
   StatusBar,
   FlatList,
   Dimensions,
+  Animated,
+  Easing,
+  LayoutChangeEvent,
+  PanResponder,
+  GestureResponderEvent,
+  PanResponderGestureState,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView, BlurTargetView } from 'expo-blur';
 import Icon from '@expo/vector-icons/Ionicons';
 
 import { useTheme } from '../../theme/theme';
@@ -22,6 +29,9 @@ const H_PADDING = 12;
 const GRID_GAP = 8;
 const CARD_SIZE = Math.floor((width - H_PADDING * 2 - GRID_GAP) / 2);
 
+// Working asset (teammate's file pointed at '../assets/cos.avif', which
+// doesn't exist in this project and would crash Metro — kept our verified
+// working image here instead).
 const memberImg = require('../../assets/uiux/person.jpg');
 
 type FacultyMember = { id: number; name: string; designation: string };
@@ -76,11 +86,10 @@ export default function OurTeamScreen() {
   const { colors, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('faculty');
 
-  // Create theme object from global theme with proper gradient types
   const theme = {
-    bgGradient: isDarkMode 
-      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
-      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    bgGradient: isDarkMode
+      ? (['#020B18', '#061528', '#041220'] as [string, string, string])
+      : (['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string]),
     textPrimary: colors.textPrimary,
     textSecondary: colors.textSecondary,
     cardBg: colors.card,
@@ -88,48 +97,318 @@ export default function OurTeamScreen() {
     lineColor: colors.border,
   };
 
-  const renderFacultyItem = ({ item }: { item: FacultyMember }) => (
-    <View style={styles.gridItem}>
-      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-        <Image source={memberImg} style={styles.cardImage} />
-      </View>
-      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
-      <Text style={[styles.cardDesignation, { color: theme.textSecondary }]}>{item.designation}</Text>
-    </View>
-  );
+  // --- Glass pill slider animation ---
+  const [containerWidth, setContainerWidth] = useState(0);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const renderMentorItem = ({ item }: { item: MentorMember }) => (
-    <View style={styles.gridItem}>
-      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-        <Image source={memberImg} style={styles.cardImage} />
-      </View>
-      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
-    </View>
-  );
+  // Required on Android SDK 55+ (incl. SDK 56): BlurView needs an explicit
+  // BlurTargetView ref to know what background it's blurring. On SDK 54
+  // this wasn't needed (blur just read the nearest parent), which is why
+  // the teammate's SDK 54 project works without it.
+  const blurTargetRef = useRef<View | null>(null);
 
-  const renderBranchItem = ({ item, index }: { item: BranchMember; index: number }) => {
-    const isLeft = index % 2 === 0;
-    return (
-      <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
+  // --- Screen fade + slide-out animations ---
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideOutAnim = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+
+  // --- Full-screen swipe-to-change-page effect ---
+  const contentDragX = useRef(new Animated.Value(-width * TABS.indexOf('faculty'))).current;
+  const contentDragStartIndex = useRef(0);
+  const contentDragStartValue = useRef(-width * TABS.indexOf('faculty'));
+  const isContentDragging = useRef(false);
+
+  const dragStartValue = useRef(0);
+  const dragStartIndex = useRef(0);
+  const isDragging = useRef(false);
+  const containerWidthRef = useRef(0);
+  const activeTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    containerWidthRef.current = containerWidth;
+  }, [containerWidth]);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  const animateToTab = (tabId: TabKey, duration = 300) => {
+    if (containerWidth === 0) return;
+    const tabWidth = containerWidth / TABS.length;
+    const targetOffset = TABS.indexOf(tabId) * tabWidth;
+
+    slideAnim.stopAnimation();
+
+    Animated.timing(slideAnim, {
+      toValue: targetOffset,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  useEffect(() => {
+    if (containerWidth === 0 || isDragging.current) return;
+    animateToTab(activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, containerWidth]);
+
+  useEffect(() => {
+    if (isContentDragging.current) return;
+    const idx = TABS.indexOf(activeTab);
+    Animated.timing(contentDragX, {
+      toValue: -idx * width,
+      duration: 250,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Tab bar swipe gesture (drag the pill itself) ---
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        return (
+          Math.abs(gestureState.dx) > 6 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+        );
+      },
+      onPanResponderGrant: () => {
+        isDragging.current = true;
+        dragStartIndex.current = TABS.indexOf(activeTabRef.current);
+        slideAnim.stopAnimation((value: number) => {
+          dragStartValue.current = value;
+        });
+      },
+      onPanResponderMove: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        const w = containerWidthRef.current;
+        if (w === 0) return;
+        const tabWidth = w / TABS.length;
+        const maxOffset = tabWidth * (TABS.length - 1);
+        const newOffset = Math.max(
+          0,
+          Math.min(maxOffset, dragStartValue.current + gestureState.dx)
+        );
+        slideAnim.setValue(newOffset);
+      },
+      onPanResponderRelease: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        const w = containerWidthRef.current;
+        if (w === 0) {
+          isDragging.current = false;
+          return;
+        }
+        const tabWidth = w / TABS.length;
+        const startIndex = dragStartIndex.current;
+        const dx = gestureState.dx;
+        const vx = gestureState.vx;
+
+        const distanceThreshold = tabWidth * 0.18;
+        const velocityThreshold = 0.25;
+
+        let targetIndex = startIndex;
+        if (dx > distanceThreshold || vx > velocityThreshold) {
+          targetIndex = Math.min(TABS.length - 1, startIndex + 1);
+        } else if (dx < -distanceThreshold || vx < -velocityThreshold) {
+          targetIndex = Math.max(0, startIndex - 1);
+        }
+
+        const newTab = TABS[targetIndex];
+        isDragging.current = false;
+        setActiveTab(newTab);
+        animateToTab(newTab, 180);
+      },
+      onPanResponderTerminate: () => {
+        isDragging.current = false;
+        animateToTab(activeTabRef.current, 200);
+      },
+    })
+  ).current;
+
+  // --- Content swipe gesture (swipe the page itself) ---
+  const contentPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponderCapture: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        return (
+          Math.abs(gestureState.dx) > 10 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+        );
+      },
+      onPanResponderGrant: () => {
+        isContentDragging.current = true;
+        contentDragStartIndex.current = TABS.indexOf(activeTabRef.current);
+        contentDragX.stopAnimation((value: number) => {
+          contentDragStartValue.current = value;
+        });
+        slideAnim.stopAnimation((value: number) => {
+          dragStartValue.current = value;
+        });
+      },
+      onPanResponderMove: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        const startIndex = contentDragStartIndex.current;
+        let dx = gestureState.dx;
+
+        if (startIndex === 0 && dx > 0) dx *= 0.35;
+        if (startIndex === TABS.length - 1 && dx < 0) dx *= 0.35;
+
+        contentDragX.setValue(contentDragStartValue.current + dx);
+
+        const cw = containerWidthRef.current;
+        if (cw > 0) {
+          const tabWidth = cw / TABS.length;
+          const totalWidth = width * TABS.length;
+          const currentOffset = contentDragStartValue.current + dx;
+          const progress = -currentOffset / totalWidth;
+          const pillPosition = progress * (cw - tabWidth);
+          const clampedPill = Math.max(0, Math.min(cw - tabWidth, pillPosition));
+
+          slideAnim.setValue(clampedPill);
+        }
+      },
+      onPanResponderRelease: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+        const startIndex = contentDragStartIndex.current;
+        const dx = gestureState.dx;
+        const vx = gestureState.vx;
+
+        const distanceThreshold = width * 0.22;
+        const velocityThreshold = 0.3;
+
+        let targetIndex = startIndex;
+        if ((dx < -distanceThreshold || vx < -velocityThreshold) && startIndex < TABS.length - 1) {
+          targetIndex = startIndex + 1;
+        } else if ((dx > distanceThreshold || vx > velocityThreshold) && startIndex > 0) {
+          targetIndex = startIndex - 1;
+        }
+
+        const targetPillOffset = targetIndex * (containerWidthRef.current / TABS.length);
+
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: targetPillOffset,
+            duration: 250,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(contentDragX, {
+            toValue: -targetIndex * width,
+            duration: 250,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          isContentDragging.current = false;
+          if (targetIndex !== startIndex) {
+            setActiveTab(TABS[targetIndex]);
+          }
+        });
+      },
+      onPanResponderTerminate: () => {
+        const startIndex = contentDragStartIndex.current;
+        isContentDragging.current = false;
+        const startPillOffset = startIndex * (containerWidthRef.current / TABS.length);
+
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: startPillOffset,
+            duration: 200,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(contentDragX, {
+            toValue: -startIndex * width,
+            duration: 200,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start();
+      },
+    })
+  ).current;
+
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    Animated.timing(slideOutAnim, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      navigation.goBack();
+    });
+  };
+
+  const glassBg = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.35)';
+  const glassBorder = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.7)';
+  const glassSheen = isDarkMode
+    ? (['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)'] as [string, string])
+    : (['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'] as [string, string]);
+
+  const renderFacultyItem = useCallback(
+    ({ item }: { item: FacultyMember }) => (
+      <View style={styles.gridItem}>
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
           <Image source={memberImg} style={styles.cardImage} />
         </View>
-        <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
-          <Text style={[styles.rowName, { color: theme.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
-            {item.name}
-          </Text>
-          <Text
-            style={[styles.rowDesignation, { color: theme.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}
-          >
-            {item.branch}
-          </Text>
-        </View>
+        <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
+        <Text style={[styles.cardDesignation, { color: theme.textSecondary }]}>{item.designation}</Text>
       </View>
-    );
-  };
+    ),
+    [theme]
+  );
 
-  const renderContent = () => {
-    switch (activeTab) {
+  const renderMentorItem = useCallback(
+    ({ item }: { item: MentorMember }) => (
+      <View style={styles.gridItem}>
+        <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
+          <Image source={memberImg} style={styles.cardImage} />
+        </View>
+        <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
+      </View>
+    ),
+    [theme]
+  );
+
+  const renderBranchItem = useCallback(
+    ({ item, index }: { item: BranchMember; index: number }) => {
+      const isLeft = index % 2 === 0;
+      return (
+        <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
+          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
+            <Image source={memberImg} style={styles.cardImage} />
+          </View>
+          <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
+            <Text style={[styles.rowName, { color: theme.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
+              {item.name}
+            </Text>
+            <Text
+              style={[styles.rowDesignation, { color: theme.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}
+            >
+              {item.branch}
+            </Text>
+          </View>
+        </View>
+      );
+    },
+    [theme]
+  );
+
+  const renderContentForTab = (tabId: TabKey) => {
+    switch (tabId) {
       case 'faculty':
         return (
           <FlatList
@@ -140,6 +419,10 @@ export default function OurTeamScreen() {
             columnWrapperStyle={styles.gridRow}
             contentContainerStyle={styles.listContainer}
             renderItem={renderFacultyItem}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
+            removeClippedSubviews
           />
         );
       case 'osc':
@@ -150,6 +433,10 @@ export default function OurTeamScreen() {
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={renderBranchItem}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
+            removeClippedSubviews
           />
         );
       case 'core':
@@ -160,6 +447,10 @@ export default function OurTeamScreen() {
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={renderBranchItem}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={5}
+            removeClippedSubviews
           />
         );
       case 'mentor':
@@ -172,6 +463,10 @@ export default function OurTeamScreen() {
             columnWrapperStyle={styles.gridRow}
             contentContainerStyle={styles.listContainer}
             renderItem={renderMentorItem}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews
           />
         );
       default:
@@ -179,52 +474,139 @@ export default function OurTeamScreen() {
     }
   };
 
+  const tabPanes = useMemo(
+    () =>
+      TABS.map((tabId) => (
+        <View key={tabId} style={{ width }}>
+          {renderContentForTab(tabId)}
+        </View>
+      )),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme]
+  );
+
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.bgGradient[0] }}>
       <StatusBar
         translucent
         backgroundColor="transparent"
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
-      <LinearGradient colors={theme.bgGradient} style={styles.container}>
-        <SafeAreaView style={{ flex: 1 }}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Icon name="arrow-back" size={24} color={theme.textPrimary} />
-            </TouchableOpacity>
-            <Text style={[styles.title, { color: theme.textPrimary }]}>OUR TEAM</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          <View style={[styles.tabContainer, { borderBottomColor: theme.lineColor }]}>
-            {TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={[
-                  styles.tab,
-                  activeTab === tab && { borderBottomWidth: 3, borderBottomColor: theme.accent },
-                ]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text
-                  style={[
-                    styles.tabText,
-                    {
-                      color: activeTab === tab ? theme.textPrimary : theme.textSecondary,
-                      fontWeight: activeTab === tab ? '700' : '500',
-                    },
-                  ]}
-                >
-                  {tab.toUpperCase()}
-                </Text>
+      <Animated.View
+        style={[
+          {
+            flex: 1,
+            backgroundColor: theme.bgGradient[0],
+            opacity: fadeAnim,
+          },
+          {
+            transform: [
+              {
+                translateY: slideOutAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 300],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <LinearGradient colors={theme.bgGradient} style={styles.container}>
+          <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+                <Icon name="arrow-back" size={24} color={theme.textPrimary} />
               </TouchableOpacity>
-            ))}
-          </View>
+              <Text style={[styles.title, { color: theme.textPrimary }]}>OUR TEAM</Text>
+              <View style={{ width: 40 }} />
+            </View>
 
-          <View style={{ flex: 1 }}>{renderContent()}</View>
-        </SafeAreaView>
-      </LinearGradient>
-    </>
+            <BlurView
+              intensity={80}
+              tint={isDarkMode ? 'dark' : 'light'}
+              blurMethod="dimezisBlurView"
+              blurTarget={blurTargetRef}
+              style={[
+                styles.glassCard,
+                {
+                  backgroundColor: glassBg,
+                  borderColor: glassBorder,
+                  shadowColor: '#000',
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={glassSheen}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.glassSheen}
+                pointerEvents="none"
+              />
+              <View
+                style={styles.tabsContainer}
+                {...panResponder.panHandlers}
+                onLayout={(e: LayoutChangeEvent) => {
+                  const { width: w } = e.nativeEvent.layout;
+                  setContainerWidth(w);
+                  if (w > 0) {
+                    const initialOffset = TABS.indexOf(activeTab) * (w / TABS.length);
+                    slideAnim.setValue(initialOffset);
+                  }
+                }}
+              >
+                {containerWidth > 0 && (
+                  <Animated.View
+                    style={[
+                      styles.slider,
+                      {
+                        width: containerWidth / TABS.length,
+                        transform: [{ translateX: slideAnim }],
+                        backgroundColor: theme.accent,
+                      },
+                    ]}
+                  />
+                )}
+
+                {TABS.map((tab) => {
+                  const isActive = activeTab === tab;
+                  return (
+                    <TouchableOpacity key={tab} style={styles.tab} onPress={() => setActiveTab(tab)}>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.tabText,
+                          {
+                            color: isActive ? '#FFFFFF' : theme.textSecondary,
+                            fontWeight: isActive ? '700' : '500',
+                          },
+                        ]}
+                      >
+                        {tab.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </BlurView>
+
+            <View style={{ flex: 1, overflow: 'hidden' }} {...contentPanResponder.panHandlers}>
+              <Animated.View
+                style={{
+                  flex: 1,
+                  flexDirection: 'row',
+                  width: width * TABS.length,
+                  transform: [{ translateX: contentDragX }],
+                }}
+              >
+                {tabPanes}
+              </Animated.View>
+            </View>
+          </SafeAreaView>
+          </BlurTargetView>
+        </LinearGradient>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -244,20 +626,51 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1,
   },
-  tabContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
+  glassCard: {
     marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 4,
+    borderRadius: 24,
+    height: 52,
+    overflow: 'hidden',
+    borderWidth: 1,
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  glassSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+    borderTopLeftRadius: 23,
+    borderTopRightRadius: 23,
+  },
+  tabsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    position: 'relative',
   },
   tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    flex: 1,
+    height: 52,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tabText: {
-    fontSize: 14,
+    fontSize: 13,
     letterSpacing: 0.5,
+  },
+  slider: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 20,
   },
   listContainer: {
     paddingHorizontal: H_PADDING,

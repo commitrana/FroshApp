@@ -13,28 +13,37 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "@expo/vector-icons/Ionicons";
 
-import { useTheme } from "../../theme/theme"; // ← Added
+import { useTheme } from "../../theme/theme";
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
-const rooms = [
-  { id: 1, name: "Vasudha Hall", image: hostelImage },
-  { id: 2, name: "Ira Hall", image: hostelImage },
-  { id: 3, name: "Ananta Hall", image: hostelImage },
-  { id: 4, name: "Vahni Hall", image: hostelImage },
-  { id: 5, name: "Avni Hall", image: hostelImage },
-  { id: 6, name: "Dhriti Hall", image: hostelImage },
+type Room = {
+  id: number;
+  name: string;
+  nickname: string;
+  seating: string;
+  capacity: string;
+  image: any;
+};
+
+// ---------- ROOM DATA (nickname / seating / capacity added) ----------
+const rooms: Room[] = [
+  { id: 1, name: "Vasudha Hall", nickname: "Hostel G/E", seating: "Three seater(AC)/Four seater(AC)", capacity: "360 capacity", image: hostelImage },
+  { id: 2, name: "Ira Hall", nickname: "Hostel I", seating: "One seater (Non AC)/Three seater(AC)", capacity: "320 capacity", image: hostelImage },
+  { id: 3, name: "Ananta Hall", nickname: "Hostel N", seating: "One seater(AC)/Two seater(AC)", capacity: "500 capacity", image: hostelImage },
+  { id: 4, name: "Dhriti Hall", nickname: "Hostel PG-I", seating: "Two seater(AC)", capacity: "928 capacity", image: hostelImage },
+  { id: 5, name: "Avni Hall", nickname: "Hostel PG-II", seating: "Two seater(AC)", capacity: "400 capacity", image: hostelImage },
+  { id: 6, name: "Vahni Hall", nickname: "", seating: "Two seater(AC)", capacity: "400 capacity", image: hostelImage },
 ];
 
 export default function GirlsScreen() {
   const navigation = useNavigation();
-  const { colors, isDarkMode } = useTheme(); // ← Added
+  const { colors, isDarkMode } = useTheme();
 
-  // Create theme object from global theme
   const theme = {
-    bgGradient: isDarkMode 
-      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
-      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
+    bgGradient: isDarkMode
+      ? (["#020B18", "#061528", "#041220"] as [string, string, string])
+      : (["#F5F9FF", "#E8F0FE", "#D6E4F5"] as [string, string, string]),
     textPrimary: colors.textPrimary,
     textSecondary: colors.textSecondary,
     accent: colors.primary,
@@ -43,10 +52,10 @@ export default function GirlsScreen() {
 
   return (
     <>
-      <StatusBar 
-        translucent 
-        backgroundColor="transparent" 
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
       />
       <LinearGradient colors={theme.bgGradient} style={styles.container}>
         <SafeAreaView style={{ flex: 1 }}>
@@ -58,15 +67,26 @@ export default function GirlsScreen() {
             <View style={{ width: 40 }} />
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <View style={styles.grid}>
-              {rooms.map((room) => (
-                <View key={room.id} style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.accent }]}>
-                  <Image source={room.image} style={styles.cardImage} />
-                  <Text style={[styles.cardName, { color: theme.textPrimary }]}>{room.name}</Text>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            {rooms.map((room) => (
+              <View
+                key={room.id}
+                style={[
+                  styles.hallCard,
+                  { borderColor: "#8F5BFF", backgroundColor: theme.cardBg, shadowColor: "#8F5BFF" },
+                ]}
+              >
+                <Image source={room.image} style={styles.hallImage} />
+                <View style={styles.cardContent}>
+                  <Text style={[styles.hallTitle, { color: theme.textPrimary }]}>{room.name}</Text>
+                  {room.nickname !== "" && (
+                    <Text style={[styles.hallSubtitle, { color: theme.textSecondary }]}>{room.nickname}</Text>
+                  )}
+                  <Text style={[styles.hallSubtitle, { color: theme.textSecondary }]}>{room.seating}</Text>
+                  <Text style={[styles.hallSubtitle, { color: theme.textSecondary }]}>{room.capacity}</Text>
                 </View>
-              ))}
-            </View>
+              </View>
+            ))}
           </ScrollView>
         </SafeAreaView>
       </LinearGradient>
@@ -86,9 +106,23 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   title: { fontSize: 20, fontWeight: "700", letterSpacing: 2 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 16 },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-  card: { width: "48%", marginBottom: 18, borderRadius: 16, overflow: "hidden", borderWidth: 1, paddingBottom: 8 },
-  cardImage: { width: "100%", height: 160, resizeMode: "cover" },
-  cardName: { fontSize: 16, fontWeight: "600", textAlign: "center", marginTop: 8, paddingHorizontal: 4 },
+  scrollContent: { paddingBottom: 30, paddingTop: 8 },
+  hallCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  hallImage: { width: 90, height: 100, borderRadius: 12, resizeMode: "cover" },
+  cardContent: { flex: 1, marginLeft: 12, justifyContent: "center" },
+  hallTitle: { fontSize: 16, fontWeight: "700" },
+  hallSubtitle: { fontSize: 13, marginTop: 1 },
 });

@@ -13,23 +13,47 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { getBatchTimetableImage, getMyBatch, getMyTimetable, MyTimetableResponse } from '../../services/batches';
 import { getActiveSessionForStudent, ActiveSessionInfo } from '../../services/attendance';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { useHomeTheme } from '../../constants/homeThemes';
 import { useAppTheme } from '../../context/ThemeContext';
 
+// Converts a "#RRGGBB" hex color + 0-1 alpha into an "rgba(...)" string,
+// for use inside a CSS boxShadow value. Plain shadowColor+elevation can't
+// render a colored shadow on Android, so every glow on this screen goes
+// through this instead.
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 const BootcampScreen = () => {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+
+  // Glass panel colors - matched to teammate's UI (same values used on HomeScreen)
+  const glassBg = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.35)';
+  const glassBorder = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.7)';
+  const glassSheen: [string, string] = isDarkMode
+    ? ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']
+    : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'];
+
+  const cardShadow = (shadowColor: string, shadowOpacity: number, shadowRadius: number, offsetY: number) =>
+    ({ boxShadow: `0px ${offsetY}px ${shadowRadius}px 0px ${hexToRgba(shadowColor, shadowOpacity)}` } as any);
+
 
   const [batch, setBatch] = useState<string | null>(null);
   const [timetableImage, setTimetableImage] = useState<string | null>(null);
   const [classSchedule, setClassSchedule] = useState<MyTimetableResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
 
   const [activeSession, setActiveSession] = useState<ActiveSessionInfo>(null);
   const [alreadyMarked, setAlreadyMarked] = useState(false);
@@ -47,6 +71,8 @@ const BootcampScreen = () => {
       }
 
       const student = JSON.parse(studentData);
+      setUserName(student.name ?? null);
+
 
       const freshBatch = await getMyBatch();
       const batchCode = freshBatch ?? student.batch;
@@ -117,7 +143,66 @@ const BootcampScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
           }
         >
-          <Text style={[styles.heading, { color: theme.textPrimary }]}>My Timetable</Text>
+          {/* HEADER - kept visible here too, matching teammate's design where
+              Bootcamp is just an internal tab switch, not a separate screen */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.hello, { color: theme.textPrimary }]}>
+                Hi, {userName || 'Guest'}
+              </Text>
+              <Text style={[styles.welcome, { color: theme.textSecondary }]}>Welcome back!</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.profileCircle, { backgroundColor: theme.cardBg }]}
+              onPress={() => navigation.navigate('Account')}
+            >
+              <Ionicons name="person-outline" size={24} color={theme.iconColor ?? theme.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          <View
+            style={[
+              styles.topCard,
+              {
+                backgroundColor: theme.topCard?.backgroundColor ?? glassBg,
+                borderColor: glassBorder,
+                overflow: 'hidden',
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={glassSheen}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.glassSheen}
+              pointerEvents="none"
+            />
+            <View style={styles.tabsContainer}>
+              <View style={[styles.tab, { backgroundColor: theme.tabActiveBg }]}>
+                <View style={styles.tabContent}>
+                  <Ionicons name="calendar-outline" size={24} color={theme.tabActiveText} />
+                  <Text style={[styles.tabActive, { color: theme.tabActiveText }]}>Bootcamp</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('Main')}>
+                <View style={styles.tabContent}>
+                  <Image
+                    source={require('../../assets/uiux/star.png')}
+                    resizeMode="contain"
+                    style={styles.tabLogoLarge}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('About')}>
+                <View style={styles.tabContent}>
+                  <Ionicons name="document-text-outline" size={28} color={theme.tabInactiveText} />
+                  <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>About</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {activeSession && (
             <View style={styles.liveSection}>
@@ -132,16 +217,31 @@ const BootcampScreen = () => {
               <View
                 style={[
                   styles.liveCard,
-                  { 
-                    backgroundColor: theme.liveCard?.backgroundColor || theme.cardBg, 
-                    shadowColor: theme.liveCard?.shadowColor || theme.shadowColor || theme.accent, // ← Added fallback
+                  cardShadow(
+                    theme.liveCard?.shadowColor ?? theme.shadowColor,
+                    theme.liveCard?.shadowOpacity ?? 0.3,
+                    theme.liveCard?.shadowRadius ?? 24,
+                    theme.liveCard?.shadowOffset?.height ?? 10
+                  ),
+                  {
+                    backgroundColor: theme.liveCard?.backgroundColor ?? glassBg,
+                    borderColor: glassBorder,
+                    borderWidth: 1,
+                    overflow: 'hidden',
                   },
                 ]}
               >
+                <LinearGradient
+                  colors={glassSheen}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.glassSheen}
+                  pointerEvents="none"
+                />
                 <LinearGradient colors={['#4DA2FF', '#2D7EFF']} style={styles.liveIcon}>
                   <MaterialCommunityIcons
                     name={cardType === 'feedback' ? 'clipboard-text-outline' : 'broadcast'}
-                    size={30}
+                    size={34}
                     color="#fff"
                   />
                 </LinearGradient>
@@ -156,10 +256,20 @@ const BootcampScreen = () => {
                     </Text>
                   ) : null}
                   {activeSession.venue ? (
-                    <Text style={[styles.liveMeta, { color: theme.textSecondary }]}>
-                      📍 {activeSession.venue}
-                    </Text>
+                    <View style={styles.locationRow}>
+                      <Ionicons name="location-sharp" size={16} color={theme.textSecondary} />
+                      <Text style={[styles.location, { color: theme.textSecondary }]}>
+                        {activeSession.venue}
+                      </Text>
+                    </View>
                   ) : null}
+                </View>
+
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveBadgeText}>
+                    {cardType === 'feedback' ? 'OPEN' : 'LIVE'}
+                  </Text>
                 </View>
               </View>
 
@@ -190,7 +300,7 @@ const BootcampScreen = () => {
           )}
 
           <View style={styles.timeTableHeader}>
-            <MaterialCommunityIcons name="calendar-month-outline" size={26} color={theme.accent} />
+            <MaterialCommunityIcons name="calendar-month-outline" size={28} color={theme.accent} />
             <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Your Batch</Text>
           </View>
 
@@ -205,12 +315,27 @@ const BootcampScreen = () => {
               <View
                 style={[
                   styles.batchCard,
-                  { 
-                    backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, 
-                    shadowColor: theme.topCard?.shadowColor || theme.shadowColor || theme.accent,
+                  cardShadow(
+                    theme.topCard?.shadowColor ?? theme.shadowColor,
+                    theme.topCard?.shadowOpacity ?? 0.2,
+                    theme.topCard?.shadowRadius ?? 22,
+                    theme.topCard?.shadowOffset?.height ?? 10
+                  ),
+                  {
+                    backgroundColor: theme.topCard?.backgroundColor ?? glassBg,
+                    borderColor: glassBorder,
+                    borderWidth: 1,
+                    overflow: 'hidden',
                   },
                 ]}
               >
+                <LinearGradient
+                  colors={glassSheen}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.glassSheen}
+                  pointerEvents="none"
+                />
                 <Text style={[styles.batchLabel, { color: theme.textSecondary }]}>Your Batch</Text>
                 <Text style={[styles.batchName, { color: theme.accent }]}>{batch}</Text>
               </View>
@@ -235,12 +360,27 @@ const BootcampScreen = () => {
                 <View
                   style={[
                     styles.scheduleCard,
-                    { 
-                      backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, 
-                      shadowColor: theme.topCard?.shadowColor || theme.shadowColor || theme.accent,
+                    cardShadow(
+                      theme.topCard?.shadowColor ?? theme.shadowColor,
+                      theme.topCard?.shadowOpacity ?? 0.2,
+                      theme.topCard?.shadowRadius ?? 22,
+                      theme.topCard?.shadowOffset?.height ?? 10
+                    ),
+                    {
+                      backgroundColor: theme.topCard?.backgroundColor ?? glassBg,
+                      borderColor: glassBorder,
+                      borderWidth: 1,
+                      overflow: 'hidden',
                     },
                   ]}
                 >
+                  <LinearGradient
+                    colors={glassSheen}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={styles.glassSheen}
+                    pointerEvents="none"
+                  />
                   {classSchedule.days.map((day) => {
                     const dayClasses = classSchedule.timeSlots
                       .map((slot) => classSchedule.classes.find((c) => c.day === day && c.slot === slot))
@@ -278,12 +418,27 @@ const BootcampScreen = () => {
               <View
                 style={[
                   styles.timetableCard,
-                  { 
-                    backgroundColor: theme.topCard?.backgroundColor || theme.cardBg, 
-                    shadowColor: theme.topCard?.shadowColor || theme.shadowColor || theme.accent,
+                  cardShadow(
+                    theme.topCard?.shadowColor ?? theme.shadowColor,
+                    theme.topCard?.shadowOpacity ?? 0.2,
+                    theme.topCard?.shadowRadius ?? 22,
+                    theme.topCard?.shadowOffset?.height ?? 10
+                  ),
+                  {
+                    backgroundColor: theme.topCard?.backgroundColor ?? glassBg,
+                    borderColor: glassBorder,
+                    borderWidth: 1,
+                    overflow: 'hidden',
                   },
                 ]}
               >
+                <LinearGradient
+                  colors={glassSheen}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.glassSheen}
+                  pointerEvents="none"
+                />
                 <Text style={[styles.timetableLabel, { color: theme.textSecondary }]}>Timetable</Text>
                 {timetableImage ? (
                   <Image
@@ -317,6 +472,51 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 110 },
   heading: { fontSize: 28, fontWeight: '800', marginBottom: 20 },
 
+  // HEADER + TAB BAR (kept persistent here to match teammate's design)
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  hello: { fontSize: 28, fontWeight: '800' },
+  welcome: { marginTop: 2, fontSize: 16, fontWeight: '500' },
+  profileCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topCard: {
+    borderRadius: 28,
+    height: 80,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  tabsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  tab: {
+    flex: 1,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 20,
+  },
+  tabContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+  },
+  tabLogoLarge: { width: 120, height: 120 },
+  tabActive: { fontSize: 12, fontWeight: '700' },
+  tabInactive: { fontSize: 12, fontWeight: '500' },
+
   liveSection: { marginBottom: 24 },
   liveHeadingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
   headingLine: { flex: 1, height: 2 },
@@ -327,12 +527,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 24,
     padding: 16,
-    shadowOpacity: 0.3,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
     marginBottom: 14,
   },
+  glassSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '55%',
+    borderTopLeftRadius: 23,
+    borderTopRightRadius: 23,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFE5E5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF3B30', marginRight: 6 },
+  liveBadgeText: { color: '#FF3B30', fontWeight: '700', fontSize: 13 },
   liveIcon: {
     width: 56,
     height: 56,
@@ -344,6 +559,8 @@ const styles = StyleSheet.create({
   classInfo: { flex: 1 },
   classTitle: { fontSize: 18, fontWeight: '700' },
   liveMeta: { fontSize: 13, marginTop: 2 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  location: { fontSize: 14, marginLeft: 4 },
 
   markAttendanceBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   markAttendanceBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
@@ -358,10 +575,6 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     marginBottom: 18,
-    shadowOpacity: 0.2,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
   },
   batchLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   batchName: { fontSize: 32, fontWeight: '800', marginTop: 6 },
@@ -370,10 +583,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 18,
     marginBottom: 18,
-    shadowOpacity: 0.2,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
   },
   scheduleDayBlock: { marginBottom: 16 },
   scheduleDayLabel: {
@@ -397,10 +606,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 18,
     alignItems: 'center',
-    shadowOpacity: 0.2,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
   },
   timetableLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, alignSelf: 'flex-start' },
   timetableImage: { width: '100%', height: 300, borderRadius: 14 },
