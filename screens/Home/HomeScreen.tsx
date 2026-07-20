@@ -235,10 +235,13 @@ useFocusEffect(
   useAutoRefresh(fetchEvents, 30000);
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchEvents();
-    setRefreshing(false);
-  }, [fetchEvents]);
+  setRefreshing(true);
+  await Promise.allSettled([
+    fetchEvents(),
+    userRole === "faculty" ? fetchFacultyProfile() : Promise.resolve(),
+  ]);
+  setRefreshing(false);
+}, [fetchEvents, fetchFacultyProfile, userRole]);
 
   const handleRegisterPress = useCallback(
     async (eventId: string, hasTicket: boolean) => {

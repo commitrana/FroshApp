@@ -12,9 +12,12 @@ const API_URL = API_BASE_URL;
 export const getMyBatch = async (): Promise<string | null> => {
   try {
     const token = await AsyncStorage.getItem('studentToken');
-    const response = await fetch(`${API_URL}/bootcamp/my-batch`, {
+    // Add a request nonce as a second line of defence for devices/proxies
+    // that cache GET requests despite the server's no-store response.
+    const response = await fetch(`${API_URL}/bootcamp/my-batch?_=${Date.now()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (!response.ok) throw new Error(`Unable to fetch batch (${response.status})`);
     const data = await response.json();
     return data?.batch ?? null;
   } catch (error) {
@@ -73,9 +76,12 @@ export type MyTimetableResponse = {
 export const getMyTimetable = async (): Promise<MyTimetableResponse | null> => {
   try {
     const token = await AsyncStorage.getItem('studentToken');
-    const response = await fetch(`${API_URL}/bootcamp/my-timetable`, {
+    // The timetable is admin-managed live data, so every refresh must reach
+    // the server instead of reusing a previously cached schedule.
+    const response = await fetch(`${API_URL}/bootcamp/my-timetable?_=${Date.now()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (!response.ok) throw new Error(`Unable to fetch timetable (${response.status})`);
     return await response.json();
   } catch (error) {
     console.error('Error fetching my timetable:', error);

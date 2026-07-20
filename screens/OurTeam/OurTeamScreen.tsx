@@ -15,6 +15,7 @@ import {
   PanResponder,
   GestureResponderEvent,
   PanResponderGestureState,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,53 +30,27 @@ const H_PADDING = 12;
 const GRID_GAP = 8;
 const CARD_SIZE = Math.floor((width - H_PADDING * 2 - GRID_GAP) / 2);
 
-// Working asset (teammate's file pointed at '../assets/cos.avif', which
-// doesn't exist in this project and would crash Metro — kept our verified
-// working image here instead).
+// Fallback while a member's photo is loading, or if imageUrl is ever missing.
 const memberImg = require('../../assets/uiux/person.jpg');
 
-type FacultyMember = { id: number; name: string; designation: string };
-type BranchMember = { id: number; name: string; branch: string };
-type MentorMember = { id: number; name: string };
+// Same backend host used elsewhere in the app (see services/api.js on the
+// admin dashboard side). If the app already has a shared API base constant
+// (e.g. from a services/api.ts/js file), import and use that here instead
+// of duplicating the URL — this inline version is a drop-in fallback.
+const API_BASE = 'https://frosh-app-backend.onrender.com/api';
 
-// ---------- DATA ----------
-const facultyData: FacultyMember[] = [
-  { id: 1, name: 'Dr. MD Singh', designation: 'President' },
-  { id: 2, name: 'Dr. Hemdutt Joshi', designation: 'Vice President' },
-  { id: 3, name: 'Dr. Vishal Gupta', designation: 'Vice President' },
-  { id: 4, name: 'Dr. Avinash Chandra', designation: 'Vice President' },
-  { id: 5, name: 'Dr. Devendar Kumar', designation: 'Vice President' },
-  { id: 6, name: 'Dr. Tarunpreet Bhatia', designation: 'Vice President' },
-];
+type FacultyMember = { id: string; name: string; designation: string; imageUrl: string };
+type BranchMember = { id: string; name: string; branch: string; imageUrl: string };
+type MentorMember = { id: string; name: string; imageUrl: string };
 
-const oscData: BranchMember[] = [
-  { id: 1, name: 'Nandini', branch: 'ENC' },
-  { id: 2, name: 'Snehil Jhanwar', branch: 'COPC' },
-  { id: 3, name: 'Vanshaj Kaushik', branch: 'ENC' },
-];
+type TeamData = {
+  faculty: FacultyMember[];
+  osc: BranchMember[];
+  core: BranchMember[];
+  mentor: MentorMember[];
+};
 
-const coreData: BranchMember[] = [
-  { id: 1, name: 'Aarush Sahu', branch: 'MEC' },
-  { id: 2, name: 'Agamjot Kaur', branch: 'EEC' },
-  { id: 3, name: 'Akshat Walia', branch: 'ENC' },
-  { id: 4, name: 'Arpit Kumar', branch: 'ENC' },
-  { id: 5, name: 'Dhruv Gupta', branch: 'AIML' },
-  { id: 6, name: 'Gyanvi Narayan', branch: 'ECE' },
-  { id: 7, name: 'Jatin Garg', branch: 'COE' },
-  { id: 8, name: 'Karanbir Singh', branch: 'MEC' },
-  { id: 9, name: 'Keshav Gupta', branch: 'ECE' },
-  { id: 10, name: 'Lakshya Kaushik', branch: 'ECE' },
-  { id: 11, name: 'Prabal Gupta', branch: 'EEC' },
-  { id: 12, name: 'Ritagya Chitkara', branch: 'ELE' },
-  { id: 13, name: 'Sabhya Mahajan', branch: 'ECE' },
-  { id: 14, name: 'Utkarshini Mishra', branch: 'CCA' },
-  { id: 15, name: 'Vignesh Jain', branch: 'COE' },
-];
-
-const mentorData: MentorMember[] = Array.from({ length: 94 }, (_, i) => ({
-  id: i + 1,
-  name: `Mentor ${i + 1}`,
-}));
+const EMPTY_TEAM_DATA: TeamData = { faculty: [], osc: [], core: [], mentor: [] };
 
 type TabKey = 'faculty' | 'osc' | 'core' | 'mentor';
 const TABS: TabKey[] = ['faculty', 'osc', 'core', 'mentor'];
@@ -85,6 +60,43 @@ export default function OurTeamScreen() {
   const navigation = useNavigation();
   const { colors, isDarkMode } = useTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('faculty');
+
+  // --- Team data fetched from the backend (replaces hardcoded arrays) ---
+  const [teamData, setTeamData] = useState<TeamData>(EMPTY_TEAM_DATA);
+  const [teamLoading, setTeamLoading] = useState(true);
+  const [teamError, setTeamError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTeam = async () => {
+      try {
+        setTeamLoading(true);
+        setTeamError(null);
+        const response = await fetch(`${API_BASE}/team`);
+        if (!response.ok) throw new Error('Failed to load team data');
+        const data = await response.json();
+        if (isMounted) {
+          setTeamData({
+            faculty: data.faculty || [],
+            osc: data.osc || [],
+            core: data.core || [],
+            mentor: data.mentor || [],
+          });
+        }
+      } catch (err) {
+        if (isMounted) setTeamError('Could not load team. Pull to retry later.');
+        console.error('❌ Error fetching team data:', err);
+      } finally {
+        if (isMounted) setTeamLoading(false);
+      }
+    };
+
+    fetchTeam();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const theme = {
     bgGradient: isDarkMode
@@ -362,7 +374,7 @@ export default function OurTeamScreen() {
     ({ item }: { item: FacultyMember }) => (
       <View style={styles.gridItem}>
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-          <Image source={memberImg} style={styles.cardImage} />
+          <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
         </View>
         <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
         <Text style={[styles.cardDesignation, { color: theme.textSecondary }]}>{item.designation}</Text>
@@ -375,7 +387,7 @@ export default function OurTeamScreen() {
     ({ item }: { item: MentorMember }) => (
       <View style={styles.gridItem}>
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-          <Image source={memberImg} style={styles.cardImage} />
+          <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
         </View>
         <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
       </View>
@@ -389,7 +401,7 @@ export default function OurTeamScreen() {
       return (
         <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
           <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-            <Image source={memberImg} style={styles.cardImage} />
+            <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
           </View>
           <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
             <Text style={[styles.rowName, { color: theme.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
@@ -407,13 +419,25 @@ export default function OurTeamScreen() {
     [theme]
   );
 
+  const renderLoadingOrEmpty = (message: string) => (
+    <View style={styles.centerFill}>
+      {teamLoading ? (
+        <ActivityIndicator size="large" color={theme.accent} />
+      ) : (
+        <Text style={{ color: theme.textSecondary, fontSize: 14 }}>{teamError || message}</Text>
+      )}
+    </View>
+  );
+
   const renderContentForTab = (tabId: TabKey) => {
     switch (tabId) {
       case 'faculty':
-        return (
+        return teamData.faculty.length === 0 ? (
+          renderLoadingOrEmpty('No faculty members added yet.')
+        ) : (
           <FlatList
             key="faculty-cols-2"
-            data={facultyData}
+            data={teamData.faculty}
             keyExtractor={(item) => item.id.toString()}
             numColumns={2}
             columnWrapperStyle={styles.gridRow}
@@ -426,10 +450,12 @@ export default function OurTeamScreen() {
           />
         );
       case 'osc':
-        return (
+        return teamData.osc.length === 0 ? (
+          renderLoadingOrEmpty('No OSC members added yet.')
+        ) : (
           <FlatList
             key="osc-cols-1"
-            data={oscData}
+            data={teamData.osc}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={renderBranchItem}
@@ -440,10 +466,12 @@ export default function OurTeamScreen() {
           />
         );
       case 'core':
-        return (
+        return teamData.core.length === 0 ? (
+          renderLoadingOrEmpty('No core members added yet.')
+        ) : (
           <FlatList
             key="core-cols-1"
-            data={coreData}
+            data={teamData.core}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={styles.listContainer}
             renderItem={renderBranchItem}
@@ -454,10 +482,12 @@ export default function OurTeamScreen() {
           />
         );
       case 'mentor':
-        return (
+        return teamData.mentor.length === 0 ? (
+          renderLoadingOrEmpty('No mentors added yet.')
+        ) : (
           <FlatList
             key="mentor-cols-2"
-            data={mentorData}
+            data={teamData.mentor}
             keyExtractor={(item) => item.id.toString()}
             numColumns={2}
             columnWrapperStyle={styles.gridRow}
@@ -482,7 +512,7 @@ export default function OurTeamScreen() {
         </View>
       )),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [theme]
+    [theme, teamData, teamLoading, teamError]
   );
 
   return (
@@ -675,6 +705,12 @@ const styles = StyleSheet.create({
   listContainer: {
     paddingHorizontal: H_PADDING,
     paddingBottom: 30,
+  },
+  centerFill: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
   },
   gridRow: {
     justifyContent: 'space-between',
