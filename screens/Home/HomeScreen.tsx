@@ -18,7 +18,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -31,19 +31,47 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import { useHomeTheme } from "../../constants/homeThemes";
 import { useAppTheme } from "../../context/ThemeContext";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
-// NOTE: BlurTargetView removed for now — it's a newer native view that isn't
-// reliably present in Expo Go and was crashing the app on mount. Falling back
-// to plain BlurView (stable, works in Expo Go). On Android without a
-// blurTarget this renders as a flat translucent tint rather than a true blur —
-// visually close, and safe. Once you move to a custom dev client / EAS build,
-// we can re-add BlurTargetView for a real blur on Android.
-import { BlurView } from "expo-blur";
+import Loader from "../../Components/Loader";
+import ImageWithLoader from "../../Components/ImageWithLoader";
+import { useRoute } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
+
+const FACULTY_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+interface FacultyLectureSlot {
+  subject: string;
+  venue?: string;
+  batches?: string[];
+}
+
+interface FacultyProfileData {
+  _id: string;
+  name: string;
+  timetable: {
+    timeSlots?: string[];
+    days?: string[];
+    schedule: { [day: string]: { [slot: string]: FacultyLectureSlot } } | any[];
+  };
+}
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
-const DEFAULT_IMAGE = require("../../assets/uiux/concert.jpg");
+const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
+
+// Converts a "#RRGGBB" hex color + 0-1 alpha into an "rgba(...)" string,
+// for use inside a CSS boxShadow value.
+function hexToRgba(hex: string, alpha: number): string {
+  const clean = hex.replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 type HomeNavProp = NativeStackNavigationProp<RootStackParamList>;
+
+// Type for menu icons
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
@@ -53,10 +81,80 @@ export default function HomeScreen() {
   // ----- ui_ux Home shell state -----
   const [activeTab, setActiveTab] = useState("frosh");
   const [modalVisible, setModalVisible] = useState(false);
+  const route = useRoute<any>();
+
+useFocusEffect(
+  React.useCallback(() => {
+    if (route.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+      navigation.setParams({ initialTab: undefined });
+    }
+  }, [route.params?.initialTab])
+);
+  
+  // Sliding indicator for top tabs
+  const [containerWidth, setContainerWidth] = useState(0);
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   const isFrosh = activeTab === "frosh";
   const isAbout = activeTab === "about";
+  const isBootcamp = activeTab === "bootcamp";
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ----- Faculty weekly schedule (inline Bootcamp tab content, faculty only) -----
+  const [facultyProfile, setFacultyProfile] = useState<FacultyProfileData | null>(null);
+  const [facultyLoading, setFacultyLoading] = useState(true);
+
+  const fetchFacultyProfile = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem("facultyToken");
+      if (!token) {
+        setFacultyLoading(false);
+        return;
+      }
+      const response = await fetch("https://frosh-app-backend.onrender.com/api/faculty/profile", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setFacultyProfile(data.faculty);
+      } else {
+        console.log("Failed to fetch faculty profile:", data.error);
+      }
+    } catch (error) {
+      console.log("Error fetching faculty profile:", error);
+    } finally {
+      setFacultyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (userRole === "faculty") {
+      fetchFacultyProfile();
+    }
+  }, [userRole, fetchFacultyProfile]);
+  
+
+  const facultyScheduleMap: { [day: string]: { [slot: string]: FacultyLectureSlot } } = (() => {
+    const sched = facultyProfile?.timetable?.schedule;
+    if (!sched || Array.isArray(sched)) return {};
+    return sched;
+  })();
+  const facultyTimeSlots: string[] =
+    facultyProfile?.timetable?.timeSlots && facultyProfile.timetable.timeSlots.length
+      ? facultyProfile.timetable.timeSlots
+      : [];
+
+  const handleFacultySlotPress = (day: string, slot: string, lecture: FacultyLectureSlot) => {
+    navigation.navigate("ClassDetails", {
+      day,
+      slot,
+      subject: lecture.subject,
+      venue: lecture.venue,
+      batches: lecture.batches || [],
+    });
+  };
 
   // ----- Real backend data -----
   const [liveEvent, setLiveEvent] = useState<Event | null>(null);
@@ -65,7 +163,22 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
-  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Tab index mapping for slider animation
+  const tabIndex = { bootcamp: 0, frosh: 1, about: 2 };
+
+  // Animate slider when activeTab or containerWidth changes
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    const tabWidth = containerWidth / 3;
+    const targetOffset = tabIndex[activeTab as keyof typeof tabIndex] * tabWidth;
+    Animated.timing(slideAnim, {
+      toValue: targetOffset,
+      duration: 300,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [activeTab, containerWidth]);
 
   useEffect(() => {
     const getUserName = async () => {
@@ -85,7 +198,6 @@ export default function HomeScreen() {
     };
     getUserName();
   }, []);
-
   const fetchEvents = useCallback(async () => {
     try {
       const role = await AsyncStorage.getItem("userRole");
@@ -116,6 +228,8 @@ export default function HomeScreen() {
     } catch (err) {
       console.log("Failed to fetch events:", err);
     }
+    finally {
+    setLoading(false); }
   }, []);
 
   useAutoRefresh(fetchEvents, 30000);
@@ -147,7 +261,7 @@ export default function HomeScreen() {
     [navigation]
   );
 
-  const handleLogout = () => {
+ const handleLogout = () => {
     setModalVisible(false);
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -167,13 +281,13 @@ export default function HomeScreen() {
     ]);
   };
 
-  const menuOptions = [
-    { id: "account", label: "Account", icon: "people-outline" as const },
-    { id: "schedule", label: "Schedule", icon: "home-outline" as const },
-    { id: "help", label: "Help", icon: "help-circle-outline" as const },
-    { id: "about", label: "About", icon: "sparkles-outline" as const },
+  const menuOptions: Array<{ id: string; label: string; icon: IconName }> = [
+    { id: "account", label: "Account", icon: "person-outline" },
+    { id: "schedule", label: "Schedule", icon: "calendar-outline" },
+    { id: "connect", label: "Connect with us", icon: "chatbubble-outline" },
     { id: "logout", label: "Logout", icon: "log-out-outline" as const },
-    { id: "switch", label: "Switch Mode" as const },
+
+    { id: "switch", label: "Switch Mode", icon: isDarkMode ? "sunny-outline" : "moon-outline" },
   ];
 
   const handleMenuPress = (id: string) => {
@@ -190,32 +304,24 @@ export default function HomeScreen() {
     if (id === "account") navigation.navigate("Account");
     else if (id === "schedule") navigation.navigate("Schedule");
     else if (id === "help") navigation.navigate("Help");
-    else if (id === "about") navigation.navigate("About");
     else if (id === "connect") navigation.navigate("Connect");
   };
 
-  useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: modalVisible ? 1 : 0,
-      useNativeDriver: true,
-      tension: 65,
-      friction: 11,
-    }).start();
-  }, [modalVisible]);
+  // Glass effect styles - matched to teammate's UI values
+  const glassBg = isDarkMode
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.35)';
+  const glassBorder = isDarkMode
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(255, 255, 255, 0.7)';
+  const glassSheen: [string, string] = isDarkMode
+    ? ['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)']
+    : ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'];
 
-  const translateY = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [screenHeight * 0.5, 0],
-  });
-
-  // ---- Glass styling, same recipe as the teammate's .js version ----
-  const glassBorder = isDarkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.7)";
-  const glassSheen = isDarkMode
-    ? (["rgba(255,255,255,0.14)", "rgba(255,255,255,0)"] as const)
-    : (["rgba(255,255,255,0.55)", "rgba(255,255,255,0)"] as const);
+    if (loading) return <Loader color={theme.accent} />;
 
   return (
-    <>
+    <View style={[styles.rootShell, { backgroundColor: (theme.bgGradient as string[])[0] }]}>
       <StatusBar
         barStyle={isDarkMode ? "light-content" : "dark-content"}
         backgroundColor="transparent"
@@ -223,223 +329,363 @@ export default function HomeScreen() {
       />
 
       <LinearGradient
-          colors={theme.bgGradient as [string, string, ...string[]]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.container}
+        colors={theme.bgGradient as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 110 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
+          }
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 110 }}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
-            }
+          {/* HEADER */}
+          <View style={styles.header}>
+            <View>
+              <Text style={[styles.hello, { color: theme.textPrimary }]}>
+                Hi, {userName || "Guest"}
+              </Text>
+              <Text style={[styles.welcome, { color: theme.textSecondary }]}>Welcome back!</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.profileCircle, { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor }]}
+              onPress={() => setModalVisible(true)}
+            >
+              <Feather name="user" size={24} color={theme.iconColor} />
+            </TouchableOpacity>
+          </View>
+
+          {/* GLASS TOP CARD with sliding indicator */}
+          <View
+            style={[
+              styles.topCard,
+              {
+                backgroundColor: glassBg,
+                borderColor: glassBorder,
+              },
+            ]}
           >
-            {/* HEADER */}
-            <View style={styles.header}>
-              <View>
-                <Text style={[styles.hello, { color: theme.textPrimary }]}>
-                  Hi, {userName || "Guest"}
-                </Text>
-                <Text style={[styles.welcome, { color: theme.textSecondary }]}>Welcome back!</Text>
-              </View>
+            <LinearGradient
+              colors={glassSheen}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={styles.glassSheen}
+              pointerEvents="none"
+            />
+            <View
+              style={styles.tabsContainer}
+              onLayout={(e) => {
+                const { width } = e.nativeEvent.layout;
+                setContainerWidth(width);
+                if (width > 0) {
+                  const initialOffset = tabIndex[activeTab as keyof typeof tabIndex] * (width / 3);
+                  slideAnim.setValue(initialOffset);
+                }
+              }}
+            >
+              {/* Sliding indicator */}
+              {containerWidth > 0 && (
+                <Animated.View
+                  style={[
+                    styles.slider,
+                    {
+                      width: containerWidth / 3,
+                      transform: [{ translateX: slideAnim }],
+                      backgroundColor: theme.tabActiveBg,
+                    },
+                  ]}
+                />
+              )}
+
               <TouchableOpacity
-                style={[
-                  styles.profileCircle,
-                  { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor },
-                ]}
-                onPress={() => setModalVisible(true)}
+                style={styles.tab}
+                onPress={() => {
+                  if (userRole === "faculty") {
+                    setActiveTab("bootcamp");
+                  } else {
+                    navigation.navigate("Bootcamp");
+                  }
+                }}
               >
-                <Feather name="user" size={24} color={theme.iconColor} />
+                <View style={styles.tabContent}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={24}
+                    color={isBootcamp ? theme.tabActiveText : theme.tabInactiveText}
+                  />
+                  <Text
+                    style={[
+                      isBootcamp ? styles.tabActive : styles.tabInactive,
+                      { color: isBootcamp ? theme.tabActiveText : theme.tabInactiveText },
+                    ]}
+                  >
+                    Bootcamp
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.tab}
+                onPress={() => setActiveTab("frosh")}
+              >
+                <View style={styles.tabContent}>
+                  <Image
+                    source={require("../../assets/uiux/star.png")}
+                    resizeMode="contain"
+                    style={styles.tabLogoLarge}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.tab}
+                onPress={() => setActiveTab("about")}
+              >
+                <View style={styles.tabContent}>
+                  <Ionicons
+                    name="document-text-outline"
+                    size={28}
+                    color={isAbout ? theme.tabActiveText : theme.tabInactiveText}
+                  />
+                  <Text
+                    style={[
+                      isAbout ? styles.tabActive : styles.tabInactive,
+                      { color: isAbout ? theme.tabActiveText : theme.tabInactiveText },
+                    ]}
+                  >
+                    About
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
+          </View>
 
-            {/* GLASS TOP CARD */}
-            <BlurView
-              intensity={70}
-              tint={isDarkMode ? "dark" : "light"}
-              experimentalBlurMethod="dimezisBlurView"
-              style={[styles.topCard, { borderColor: glassBorder }]}
-            >
-              <LinearGradient
-                colors={glassSheen}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.glassSheen}
-                pointerEvents="none"
-              />
-              <View style={styles.tabsContainer}>
-                <TouchableOpacity
-                  style={styles.tab}
-                  onPress={() =>
-                    navigation.navigate(userRole === "faculty" ? "FacultyDashboard" : "Bootcamp")
-                  }
-                >
-                  <View style={styles.tabContent}>
-                    <Ionicons name="calendar-outline" size={24} color={theme.tabInactiveText} />
-                    <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>
-                      Bootcamp
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.tab, isFrosh && { backgroundColor: theme.tabActiveBg }]}
-                  onPress={() => setActiveTab("frosh")}
-                >
-                  <View style={styles.tabContent}>
-                    <Image
-                      source={require("../../assets/uiux/star.png")}
-                      resizeMode="contain"
-                      style={{ width: 130, height: 150 }}
-                    />
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.tab, isAbout && { backgroundColor: theme.tabActiveBg }]}
-                  onPress={() => setActiveTab("about")}
-                >
-                  <View style={styles.tabContent}>
-                    <Ionicons
-                      name="information-circle-outline"
-                      size={28}
-                      color={isAbout ? theme.tabActiveText : theme.tabInactiveText}
-                    />
-                    <Text
-                      style={[
-                        isAbout ? styles.tabActive : styles.tabInactive,
-                        { color: isAbout ? theme.tabActiveText : theme.tabInactiveText },
-                      ]}
-                    >
-                      About
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+          {/* CONTENT */}
+          {isBootcamp ? (
+            <View style={styles.bootcampSection}>
+              <View style={styles.timeTableHeader}>
+                <MaterialCommunityIcons name="calendar-month-outline" size={22} color={theme.accent} />
+                <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Weekly Schedule</Text>
               </View>
-            </BlurView>
 
-            {/* CONTENT */}
-            {isFrosh ? (
-              <>
-                <BlurView
-                  intensity={70}
-                  tint={isDarkMode ? "dark" : "light"}
-                  experimentalBlurMethod="dimezisBlurView"
-                  style={[styles.liveCard, { borderColor: glassBorder }]}
-                >
-                  <LinearGradient
-                    colors={glassSheen}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 0, y: 1 }}
-                    style={styles.glassSheen}
-                    pointerEvents="none"
-                  />
-                  <View style={styles.liveHeadingContainer}>
-                    <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
-                    <Text style={[styles.liveHeading, { color: theme.accent }]}>• LIVE EVENT •</Text>
-                    <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
-                  </View>
-
-                  {liveEvent ? (
-                    <>
-                      <Image
-                        source={
-                          liveEvent.imageUrl
-                            ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` }
-                            : DEFAULT_IMAGE
-                        }
-                        style={styles.eventImage}
-                      />
-
-                      <View style={[styles.liveNow, { borderColor: theme.accent }]}>
-                        <Text style={[styles.liveNowText, { color: theme.accent }]}>LIVE NOW</Text>
-                      </View>
-
-                      <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
-                        {liveEvent.title}
-                      </Text>
-
-                      <View style={styles.infoRow}>
-                        <Ionicons name="location" size={18} color={theme.accent} />
-                        <Text style={[styles.location, { color: theme.accent }]}>
-                          {liveEvent.venue}
+              {facultyLoading ? (
+                <ActivityIndicator color={theme.accent} size="large" style={{ marginTop: 20 }} />
+              ) : facultyTimeSlots.length === 0 ? (
+                <View style={[styles.emptyBox, { backgroundColor: theme.cardBg }]}>
+                  <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                    No schedule assigned yet
+                  </Text>
+                  <Text style={[styles.emptyText, { color: theme.textSecondary, marginTop: 4 }]}>
+                    Please contact admin
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.gridWrapper}>
+                  <View style={styles.dayColumn}>
+                    <View style={styles.cornerSpacer} />
+                    {FACULTY_DAYS.map((day) => (
+                      <View key={day} style={[styles.dayLabelCell, { borderBottomColor: theme.lineColor }]}>
+                        <Text style={[styles.dayLabelText, { color: theme.textSecondary }]}>
+                          {day.slice(0, 3)}
                         </Text>
                       </View>
-
-                      <View style={styles.infoRow}>
-                        <Feather name="calendar" size={16} color={theme.accent} />
-                        <Text style={[styles.infoText, { color: theme.textPrimary }]}>
-                          {liveEvent.date}
-                        </Text>
-                      </View>
-
-                      <View style={[styles.bottomRow, { marginTop: 0 }]}>
-                        <View style={styles.infoRow}>
-                          <Feather name="clock" size={16} color={theme.accent} />
-                          <Text style={[styles.infoText, { color: theme.textPrimary }]}>
-                            {liveEvent.time}
-                          </Text>
-                        </View>
-                        {userRole !== "faculty" && (
-                          <TouchableOpacity
-                            style={[styles.arrowCircle, { borderColor: theme.accent }]}
-                            onPress={() =>
-                              handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
-                            }
-                            disabled={registeringId === liveEvent.id}
-                          >
-                            {registeringId === liveEvent.id ? (
-                              <ActivityIndicator size="small" color={theme.accent} />
-                            ) : (
-                              <Ionicons
-                                name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
-                                size={24}
-                                color={theme.accent}
-                              />
-                            )}
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
-                      No live event right now. Check back soon!
-                    </Text>
-                  )}
-                </BlurView>
-
-                {upcomingEvents.length > 0 && (
-                  <View style={styles.upcomingSection}>
-                    <Text style={[styles.upcomingHeading, { color: theme.textPrimary }]}>
-                      Upcoming Events
-                    </Text>
-                    {upcomingEvents.map((event) => (
-                      <BlurView
-                        key={event.id}
-                        intensity={50}
-                        tint={isDarkMode ? "dark" : "light"}
-                        experimentalBlurMethod="dimezisBlurView"
-                        style={[styles.upcomingCard, { borderColor: glassBorder }]}
-                      >
-                        <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
-                          {event.title}
-                        </Text>
-                        <Text style={[styles.upcomingDate, { color: theme.textSecondary }]}>
-                          {event.date}
-                        </Text>
-                      </BlurView>
                     ))}
                   </View>
-                )}
-              </>
-            ) : (
-              <HomeAboutTab theme={theme} />
-            )}
-          </ScrollView>
-        </LinearGradient>
 
-      {/* PROFILE MENU — plain tinted sheet, no BlurView, keeps things simple/safe */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View>
+                      <View style={styles.gridHeaderRow}>
+                        {facultyTimeSlots.map((slot) => (
+                          <View key={slot} style={[styles.slotHeaderCell, { backgroundColor: theme.cardBg }]}>
+                            <Text style={[styles.slotHeaderText, { color: theme.accent }]}>{slot}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {FACULTY_DAYS.map((day) => (
+                        <View key={day} style={[styles.gridRow, { borderBottomColor: theme.lineColor }]}>
+                          {facultyTimeSlots.map((slot) => {
+                            const lecture = facultyScheduleMap[day]?.[slot];
+                            return (
+                              <TouchableOpacity
+                                key={slot}
+                                style={[
+                                  styles.gridCell,
+                                  lecture && { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor },
+                                ]}
+                                disabled={!lecture}
+                                onPress={() => lecture && handleFacultySlotPress(day, slot, lecture)}
+                              >
+                                {lecture ? (
+                                  <>
+                                    <Text style={[styles.cellSubject, { color: theme.textPrimary }]} numberOfLines={2}>
+                                      {lecture.subject}
+                                    </Text>
+                                    {lecture.venue ? (
+                                      <Text style={[styles.cellVenue, { color: theme.textSecondary }]} numberOfLines={1}>
+                                        {lecture.venue}
+                                      </Text>
+                                    ) : null}
+                                    {lecture.batches && lecture.batches.length > 0 ? (
+                                      <Text style={[styles.cellBatches, { color: theme.accent }]} numberOfLines={1}>
+                                        {lecture.batches.join(", ")}
+                                      </Text>
+                                    ) : null}
+                                  </>
+                                ) : (
+                                  <Text style={[styles.cellEmptyDash, { color: theme.lineColor }]}>—</Text>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
+
+              <Text style={[styles.note, { color: theme.textSecondary }]}>
+                Tap a class to start or view attendance.
+              </Text>
+            </View>
+          ) : isFrosh ? (
+            <>
+              <View
+                style={[
+                  styles.liveCardShadowWrapper,
+                  {
+                    boxShadow: `0px ${theme.liveCard?.shadowOffset?.height ?? 8}px ${theme.liveCard?.shadowRadius ?? 18}px 0px ${hexToRgba(
+                      theme.liveCard?.shadowColor ?? theme.shadowColor,
+                      theme.liveCard?.shadowOpacity ?? 0.15
+                    )}`,
+                  } as any,
+                ]}
+              >
+              <View
+                style={[
+                  styles.liveCard,
+                  {
+                    backgroundColor: theme.liveCard?.backgroundColor ?? glassBg,
+                    borderColor: glassBorder,
+                  },
+                ]}
+              >
+                <LinearGradient
+                  colors={glassSheen}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={[styles.glassSheen, styles.liveCardSheen]}
+                  pointerEvents="none"
+                />
+                <View style={styles.liveHeadingContainer}>
+                  <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                  <Text style={[styles.liveHeading, { color: theme.accent }]}>• LIVE EVENT •</Text>
+                  <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                </View>
+
+                {liveEvent ? (
+                  <>
+                    <ImageWithLoader 
+                      source={liveEvent.imageUrl ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` } : DEFAULT_IMAGE}
+                      style={styles.eventImage}
+                    />
+
+                    <View style={[styles.liveNow, { borderColor: theme.accent }]}>
+                      <Text style={[styles.liveNowText, { color: theme.accent }]}>LIVE NOW</Text>
+                    </View>
+
+                    <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
+                      {liveEvent.title}
+                    </Text>
+
+                    <View style={styles.infoRow}>
+                      <Ionicons name="location" size={18} color={theme.accent} />
+                      <Text style={[styles.location, { color: theme.accent }]}>
+                        {liveEvent.venue}
+                      </Text>
+                    </View>
+
+                    <View style={styles.infoRow}>
+                      <Feather name="calendar" size={16} color={theme.accent} />
+                      <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                        {liveEvent.date}
+                      </Text>
+                    </View>
+
+                    <View style={[styles.bottomRow, { marginTop: 0 }]}>
+                      <View style={styles.infoRow}>
+                        <Feather name="clock" size={16} color={theme.accent} />
+                        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                          {liveEvent.time}
+                        </Text>
+                      </View>
+                      {userRole !== "faculty" && (
+                        <TouchableOpacity
+                          style={[styles.arrowCircle, { borderColor: theme.accent }]}
+                          onPress={() =>
+                            handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
+                          }
+                          disabled={registeringId === liveEvent.id}
+                        >
+                          {registeringId === liveEvent.id ? (
+                            <ActivityIndicator size="small" color={theme.accent} />
+                          ) : (
+                            <Ionicons
+                              name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
+                              size={24}
+                              color={theme.accent}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </>
+                ) : (
+                  <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
+                    No live event right now. Check back soon!
+                  </Text>
+                )}
+              </View>
+              </View>
+
+              {upcomingEvents.length > 0 && (
+                <View style={styles.upcomingSection}>
+                  <Text style={[styles.upcomingHeading, { color: theme.textPrimary }]}>
+                    Upcoming Events
+                  </Text>
+                  {upcomingEvents.map((event) => (
+                    <View
+                      key={event.id}
+                      style={[
+                        styles.upcomingCard,
+                        {
+                          backgroundColor: theme.liveCard?.backgroundColor ?? glassBg,
+                          borderColor: glassBorder,
+                          shadowColor: theme.shadowColor,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
+                        {event.title}
+                      </Text>
+                      <Text style={[styles.upcomingDate, { color: theme.textSecondary }]}>
+                        {event.date}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          ) : (
+            <HomeAboutTab theme={theme} />
+          )}
+        </ScrollView>
+      </LinearGradient>
+
+      {/* PROFILE MENU */}
       <Modal
         animationType="none"
         transparent={true}
@@ -447,16 +693,10 @@ export default function HomeScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlay} />
+          <View style={styles.modalOverlayTransparent} />
         </TouchableWithoutFeedback>
 
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            { transform: [{ translateY }] },
-            { backgroundColor: theme.modalBg },
-          ]}
-        >
+        <View style={[styles.modalContainer, { backgroundColor: theme.modalBg }]}>
           <View style={[styles.modalHandle, { backgroundColor: theme.lineColor }]} />
 
           {menuOptions.map((item) => (
@@ -473,13 +713,14 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
             <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       </Modal>
-    </>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  rootShell: { flex: 1 },
   container: { flex: 1 },
   header: {
     marginTop: 55,
@@ -508,10 +749,6 @@ const styles = StyleSheet.create({
     height: 80,
     overflow: "hidden",
     borderWidth: 1,
-    shadowOpacity: 0.15,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
   },
   glassSheen: {
     position: "absolute",
@@ -522,11 +759,19 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 27,
     borderTopRightRadius: 27,
   },
+  // Shorter than the default 55% so the gradient's cutoff edge lands
+  // inside the event image (hidden by the opaque photo) instead of
+  // landing on the plain card background below it, which was creating
+  // a visible two-tone seam regardless of the photo's own colour.
+  liveCardSheen: {
+    height: 110,
+  },
   tabsContainer: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
+    position: "relative",
   },
   tab: {
     flex: 1,
@@ -536,25 +781,49 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderRadius: 20,
   },
-  tabContent: { justifyContent: "center", alignItems: "center", gap: 2 },
+  tabContent: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 2,
+  },
+  tabLogoLarge: { width: 120, height: 120 },
   tabActive: { fontSize: 12, fontWeight: "700" },
   tabInactive: { fontSize: 12, fontWeight: "500" },
-  liveCard: {
+  slider: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderRadius: 20,
+  },
+  liveCardShadowWrapper: {
     marginHorizontal: 22,
     marginTop: 24,
+    borderRadius: 28,
+  },
+  liveCard: {
     borderRadius: 28,
     padding: 18,
     overflow: "hidden",
     borderWidth: 1,
-    shadowOpacity: 0.15,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
   },
-  liveHeadingContainer: { flexDirection: "row", alignItems: "center", marginBottom: 14 },
+  liveHeadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
   line: { flex: 1, height: 2 },
-  liveHeading: { marginHorizontal: 10, fontWeight: "700", fontSize: 16, letterSpacing: 2 },
-  eventImage: { width: "100%", height: 200, borderRadius: 20 },
+  liveHeading: {
+    marginHorizontal: 10,
+    fontWeight: "700",
+    fontSize: 16,
+    letterSpacing: 2,
+  },
+  eventImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 20,
+  },
   liveNow: {
     marginTop: 14,
     borderWidth: 2,
@@ -564,11 +833,30 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   liveNowText: { fontSize: 14, fontWeight: "700" },
-  eventTitle: { marginTop: 12, fontSize: 26, fontWeight: "800" },
-  infoRow: { flexDirection: "row", alignItems: "center", marginTop: 10 },
-  location: { marginLeft: 10, fontSize: 18, fontWeight: "700" },
-  infoText: { marginLeft: 10, fontSize: 16 },
-  bottomRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  eventTitle: {
+    marginTop: 12,
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+  },
+  location: {
+    marginLeft: 10,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  infoText: {
+    marginLeft: 10,
+    fontSize: 16,
+  },
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   arrowCircle: {
     width: 48,
     height: 48,
@@ -583,16 +871,41 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    overflow: "hidden",
     shadowOpacity: 0.14,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
+    borderWidth: 1,
+    overflow: "hidden",
   },
   upcomingTitle: { fontSize: 16, fontWeight: "700" },
   upcomingDate: { fontSize: 13, marginTop: 4 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.3)" },
+
+  // BOOTCAMP TAB (faculty) - weekly schedule grid
+  bootcampSection: { marginHorizontal: 22, marginTop: 24 },
+  timeTableHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 },
+  timeTableTitle: { fontSize: 20, fontWeight: "800" },
+  emptyBox: { borderRadius: 16, padding: 24, alignItems: "center" },
+  emptyText: { fontSize: 15, textAlign: "center" },
+  gridWrapper: { flexDirection: "row" },
+  dayColumn: { width: 52 },
+  cornerSpacer: { height: 40 },
+  dayLabelCell: { height: 64, justifyContent: "center", alignItems: "flex-start", borderBottomWidth: 1 },
+  dayLabelText: { fontSize: 12, fontWeight: "700" },
+  gridHeaderRow: { flexDirection: "row", height: 40 },
+  slotHeaderCell: { width: 110, justifyContent: "center", alignItems: "center", marginLeft: 4, borderRadius: 6 },
+  slotHeaderText: { fontSize: 11, fontWeight: "700" },
+  gridRow: { flexDirection: "row", height: 64, borderBottomWidth: 1 },
+  gridCell: { width: 110, marginLeft: 4, marginVertical: 4, borderRadius: 10, justifyContent: "center", alignItems: "center", paddingHorizontal: 6 },
+  cellSubject: { fontSize: 12, fontWeight: "700", textAlign: "center" },
+  cellVenue: { fontSize: 10, marginTop: 2, textAlign: "center" },
+  cellBatches: { fontSize: 9, marginTop: 2, textAlign: "center", fontWeight: "700" },
+  cellEmptyDash: { fontSize: 14 },
+  note: { fontSize: 12, marginTop: 10, textAlign: "center" },
+  modalOverlayTransparent: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
   modalContainer: {
     position: "absolute",
     bottom: 0,
@@ -609,8 +922,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     elevation: 10,
   },
-  modalHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
-  menuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 14, borderBottomWidth: 1 },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
   menuText: { fontSize: 18, fontWeight: "500", marginLeft: 16 },
   closeButton: { marginTop: 8, paddingVertical: 14, alignItems: "center" },
   closeButtonText: { fontSize: 18, fontWeight: "600" },

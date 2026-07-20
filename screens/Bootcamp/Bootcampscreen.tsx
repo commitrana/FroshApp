@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,6 +21,7 @@ import { getActiveSessionForStudent, ActiveSessionInfo } from '../../services/at
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import { useHomeTheme } from '../../constants/homeThemes';
 import { useAppTheme } from '../../context/ThemeContext';
+import ImageWithLoader from "../../Components/ImageWithLoader";
 
 // Converts a "#RRGGBB" hex color + 0-1 alpha into an "rgba(...)" string,
 // for use inside a CSS boxShadow value. Plain shadowColor+elevation can't
@@ -59,6 +62,25 @@ const BootcampScreen = () => {
   const [alreadyMarked, setAlreadyMarked] = useState(false);
   const [myStatus, setMyStatus] = useState<string | null>(null);
   const [cardType, setCardType] = useState<'attendance' | 'feedback'>('attendance');
+
+  // Sliding tab indicator — same animation as Home's tab bar (Animated.timing +
+  // Easing.inOut), but here it just slides in to the "Bootcamp" position on
+  // mount, since this screen only ever shows Bootcamp as active (the other
+  // two tabs navigate away instead of switching state locally).
+  const [containerWidth, setContainerWidth] = useState(0);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (containerWidth === 0) return;
+    const tabWidth = containerWidth / 3;
+    slideAnim.setValue(-tabWidth);
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 300,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [containerWidth]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -123,15 +145,6 @@ const BootcampScreen = () => {
 
   useAutoRefresh(fetchActiveSession, 8000);
 
-  if (loading) {
-    return (
-      <LinearGradient colors={theme.bgGradient as [string, string, ...string[]]} style={styles.container}>
-        <SafeAreaView style={styles.container}>
-          <ActivityIndicator color={theme.accent} size="large" style={styles.loader} />
-        </SafeAreaView>
-      </LinearGradient>
-    );
-  }
 
   return (
     <LinearGradient colors={theme.bgGradient as [string, string, ...string[]]} style={styles.container}>
@@ -177,8 +190,24 @@ const BootcampScreen = () => {
               style={styles.glassSheen}
               pointerEvents="none"
             />
-            <View style={styles.tabsContainer}>
-              <View style={[styles.tab, { backgroundColor: theme.tabActiveBg }]}>
+            <View
+              style={styles.tabsContainer}
+              onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            >
+              {containerWidth > 0 && (
+                <Animated.View
+                  style={[
+                    styles.slider,
+                    {
+                      width: containerWidth / 3,
+                      transform: [{ translateX: slideAnim }],
+                      backgroundColor: theme.tabActiveBg,
+                    },
+                  ]}
+                />
+              )}
+
+              <View style={styles.tab}>
                 <View style={styles.tabContent}>
                   <Ionicons name="calendar-outline" size={24} color={theme.tabActiveText} />
                   <Text style={[styles.tabActive, { color: theme.tabActiveText }]}>Bootcamp</Text>
@@ -195,7 +224,7 @@ const BootcampScreen = () => {
                 </View>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('About')}>
+              <TouchableOpacity style={styles.tab} onPress={() => navigation.navigate('Main', { initialTab: 'about' })}>
                 <View style={styles.tabContent}>
                   <Ionicons name="document-text-outline" size={28} color={theme.tabInactiveText} />
                   <Text style={[styles.tabInactive, { color: theme.tabInactiveText }]}>About</Text>
@@ -203,7 +232,10 @@ const BootcampScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
-
+              {loading ? (
+            <ActivityIndicator color={theme.accent} size="large" style={{ marginTop: 60 }} />
+          ) : (
+            <>
           {activeSession && (
             <View style={styles.liveSection}>
               <View style={styles.liveHeadingRow}>
@@ -441,7 +473,7 @@ const BootcampScreen = () => {
                 />
                 <Text style={[styles.timetableLabel, { color: theme.textSecondary }]}>Timetable</Text>
                 {timetableImage ? (
-                  <Image
+                  <ImageWithLoader 
                     source={{ uri: timetableImage }}
                     style={styles.timetableImage}
                     resizeMode="contain"
@@ -459,6 +491,8 @@ const BootcampScreen = () => {
                 )}
               </View>
             </>
+          )}
+          </>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -499,6 +533,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
+    position: 'relative',
   },
   tab: {
     flex: 1,
@@ -506,6 +541,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
+    borderRadius: 20,
+  },
+  slider: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
     borderRadius: 20,
   },
   tabContent: {

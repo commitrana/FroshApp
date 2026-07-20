@@ -61,14 +61,9 @@ export default function AppNavigator() {
           name="OurTeam"
           component={OurTeamScreen}
           options={{
-            // OurTeamScreen animates itself (fadeAnim on mount, slideOutAnim
-            // on handleBack) — the global "fade" transition was fighting
-            // with it, cancelling out the visible motion. "none" here lets
-            // the screen's own Animated logic be the only thing that plays.
+            
             animation: "none",
-            // Also stop the iOS edge-swipe / Android back gesture from
-            // calling goBack() directly — that bypasses handleBack() and
-            // skips the custom slide-out entirely.
+            
             gestureEnabled: false,
           }}
         />
