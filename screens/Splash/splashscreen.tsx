@@ -53,7 +53,7 @@ const SplashScreen = () => {
         navigation.replace("MemberDashboard");
         break;
       case "faculty":
-        navigation.replace("FacultyDashboard");
+        navigation.replace("FacultyTabs");
         break;
       default:
         navigation.replace("Login");

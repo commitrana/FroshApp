@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, BackHandler, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -119,6 +119,7 @@ const AttendanceSessionScreen = () => {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: FacultyTheme.pageBg }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: FacultyTheme.textPrimary }]}>{subject}</Text>
         <Text style={[styles.headerSubtitle, { color: FacultyTheme.textSecondary }]}>
@@ -231,12 +232,14 @@ const AttendanceSessionScreen = () => {
           </TouchableOpacity>
         </>
       )}
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20, paddingTop: 15 },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 30 },
   loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { alignItems: 'center', marginBottom: 16 },
   headerTitle: { fontSize: 24, fontWeight: '700' },
