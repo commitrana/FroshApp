@@ -414,9 +414,16 @@ const BootcampScreen = () => {
                     pointerEvents="none"
                   />
                   {classSchedule.days.map((day) => {
-                    const dayClasses = classSchedule.timeSlots
-                      .map((slot) => classSchedule.classes.find((c) => c.day === day && c.slot === slot))
-                      .filter((c): c is NonNullable<typeof c> => !!c);
+                    // More than one faculty can teach this batch in the same
+                    // time slot. The old `.find()` kept only the first one
+                    // (for example, Rana Sir) and hid every other class.
+                    const dayClasses = classSchedule.classes
+                      .filter((c) => c.day === day)
+                      .sort(
+                        (a, b) =>
+                          classSchedule.timeSlots.indexOf(a.slot) -
+                          classSchedule.timeSlots.indexOf(b.slot)
+                      );
 
                     if (dayClasses.length === 0) return null;
 
@@ -424,7 +431,10 @@ const BootcampScreen = () => {
                       <View key={day} style={styles.scheduleDayBlock}>
                         <Text style={[styles.scheduleDayLabel, { color: theme.accent }]}>{day}</Text>
                         {dayClasses.map((cls) => (
-                          <View key={`${cls.day}-${cls.slot}`} style={styles.scheduleRow}>
+                          <View
+                            key={`${cls.day}-${cls.slot}-${cls.faculty}-${cls.subject}`}
+                            style={styles.scheduleRow}
+                          >
                             <View style={styles.scheduleTimeCol}>
                               <Text style={[styles.scheduleTime, { color: theme.textSecondary }]}>
                                 {cls.slot}
