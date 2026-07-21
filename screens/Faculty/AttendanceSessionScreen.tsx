@@ -102,7 +102,9 @@ const AttendanceSessionScreen = () => {
   };
 
   const handleBackToDashboard = () => {
-    navigation.navigate('FacultyDashboard');
+    // FacultyTabs is the real faculty home (HomeScreen w/ Bootcamp tab) —
+    // FacultyDashboard/FacultyBootcampScreen is retired.
+    navigation.reset({ index: 0, routes: [{ name: 'FacultyTabs' }] });
   };
 
   if (loading || !session) {

@@ -468,9 +468,18 @@ useFocusEffect(
           {/* CONTENT */}
           {isBootcamp ? (
             <View style={styles.bootcampSection}>
-              <View style={styles.timeTableHeader}>
-                <MaterialCommunityIcons name="calendar-month-outline" size={22} color={theme.accent} />
-                <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Weekly Schedule</Text>
+              <View style={[styles.timeTableHeader, { justifyContent: "space-between" }]}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialCommunityIcons name="calendar-month-outline" size={22} color={theme.accent} />
+                  <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Weekly Schedule</Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.historyButton, { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor }]}
+                  onPress={() => navigation.navigate('ClassHistory')}
+                >
+                  <MaterialCommunityIcons name="history" size={18} color={theme.accent} />
+                  <Text style={[styles.historyButtonText, { color: theme.accent }]}>Class History</Text>
+                </TouchableOpacity>
               </View>
 
               {facultyLoading ? (
@@ -887,6 +896,18 @@ const styles = StyleSheet.create({
   // BOOTCAMP TAB (faculty) - weekly schedule grid
   bootcampSection: { marginHorizontal: 22, marginTop: 24 },
   timeTableHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12, gap: 8 },
+  historyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  historyButtonText: { fontSize: 12, fontWeight: "700", marginLeft: 6 },
   timeTableTitle: { fontSize: 20, fontWeight: "800" },
   emptyBox: { borderRadius: 16, padding: 24, alignItems: "center" },
   emptyText: { fontSize: 15, textAlign: "center" },

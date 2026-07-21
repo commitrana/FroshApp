@@ -16,7 +16,6 @@ import CampusMapScreen from "../screens/CampusMap/CampusMapScreen";
 import SocietyDashboardScreen from "../screens/SocietyAdmin/SocietyDashboardScreen";
 import MemberDashboardScreen from "../screens/Memberdashboard";
 import SplashScreen from "../screens/Splash/splashscreen";
-import FacultyBootcampScreen from "../screens/Faculty/FacultyBootcampScreen";
 import ClassDetails from "../screens/Faculty/ClassDetails";
 import AttendanceSessionScreen from "../screens/Faculty/AttendanceSessionScreen";
 import FlaggedReviewScreen from "../screens/Faculty/FlaggedReviewScreen";
@@ -86,12 +85,11 @@ export default function AppNavigator() {
         <Stack.Screen name="Explore" component={ExploreScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
 
-        {/* Faculty entry point — now renders Home directly, no tab bar */}
+        {/* Faculty entry point — HomeScreen itself branches on userRole and
+            renders the faculty Weekly Schedule (with Class History button)
+            under its own "Bootcamp" tab. FacultyDashboard / FacultyBootcampScreen
+            / FacultyBottomTabs are retired — do not re-add them. */}
         <Stack.Screen name="FacultyTabs" component={HomeScreen} />
-
-        {/* Kept for AttendanceSessionScreen's internal
-            navigation.navigate('FacultyDashboard') call. */}
-        <Stack.Screen name="FacultyDashboard" component={FacultyBootcampScreen} />
 
         <Stack.Screen name="ClassDetails" component={ClassDetails} />
         <Stack.Screen name="AttendanceSession" component={AttendanceSessionScreen} />
