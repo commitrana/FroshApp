@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Frosh",
-    "slug": "Frosh",
+    "slug": "FroshApp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
