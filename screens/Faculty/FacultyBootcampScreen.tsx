@@ -129,6 +129,10 @@ const FacultyBootcampScreen = () => {
     );
   };
 
+  const handleViewHistory = () => {
+    navigation.navigate('ClassHistory');
+  };
+
   const handleSlotPress = (day: string, slot: string, lecture: LectureSlot) => {
     navigation.navigate('ClassDetails', {
       day,
@@ -173,8 +177,12 @@ const FacultyBootcampScreen = () => {
         }
       >
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, styles.headerRow]}>
           <Text style={styles.headerTitle}>Bootcamp</Text>
+          <TouchableOpacity style={styles.historyButton} onPress={handleViewHistory}>
+            <MaterialCommunityIcons name="history" size={18} color={FacultyTheme.accent} />
+            <Text style={styles.historyButtonText}>Class History</Text>
+          </TouchableOpacity>
         </View>
 
 
@@ -293,10 +301,34 @@ const createStyles = (FacultyTheme: ReturnType<typeof useFacultyTheme>) =>
       marginTop: 15,
       marginBottom: 16,
     },
+    headerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
     headerTitle: {
       color: FacultyTheme.textPrimary,
       fontSize: 28,
       fontWeight: '700',
+    },
+    historyButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: FacultyTheme.cardBg,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      shadowColor: FacultyTheme.shadowColor,
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 2,
+    },
+    historyButtonText: {
+      color: FacultyTheme.accent,
+      fontSize: 12,
+      fontWeight: '700',
+      marginLeft: 6,
     },
     profileCard: {
       backgroundColor: FacultyTheme.cardBg,
@@ -379,10 +411,6 @@ const createStyles = (FacultyTheme: ReturnType<typeof useFacultyTheme>) =>
       color: FacultyTheme.textSecondary,
       fontSize: 12,
       fontWeight: '700',
-    },
-    headerRow: {
-      flexDirection: 'row',
-      height: 40,
     },
     slotHeaderCell: {
       width: 110,

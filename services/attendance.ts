@@ -148,6 +148,27 @@ export const markStudentManually = async (sessionId: string, studentId: string):
   await API.post(`/attendance/session/${sessionId}/mark-manual`, { studentId }, config);
 };
 
+// ---------- FACULTY: Class History ----------
+// A faculty member's own ended classes, with attendance kept for reference —
+// powers the "Class History" screen (distinct from AttendanceRoster, which
+// is the live/editable manage-attendance view).
+export type HistorySession = {
+  _id: string;
+  subject: string;
+  venue: string;
+  day: string;
+  slot: string;
+  batches: string[];
+  startedAt: string;
+  endedAt: string | null;
+};
+
+export const getFacultyHistorySessions = async (): Promise<HistorySession[]> => {
+  const config = await facultyAuthHeader();
+  const res = await API.get(`/attendance/faculty/history/sessions`, config);
+  return res.data.sessions || [];
+};
+
 // ---------- STUDENT ----------
 
 export type ActiveSessionInfo = {
