@@ -341,7 +341,7 @@ const BootcampScreen = () => {
               onPress={() => navigation.navigate('StudentClassHistory')}
             >
               <MaterialCommunityIcons name="history" size={16} color={theme.accent} />
-              <Text style={[styles.historyBtnText, { color: theme.accent }]}>History</Text>
+              <Text style={[styles.historyBtnText, { color: theme.accent }]}>Class History</Text>
             </TouchableOpacity>
           </View>
 
