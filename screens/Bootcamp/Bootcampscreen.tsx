@@ -331,9 +331,18 @@ const BootcampScreen = () => {
             </View>
           )}
 
-          <View style={styles.timeTableHeader}>
-            <MaterialCommunityIcons name="calendar-month-outline" size={28} color={theme.accent} />
-            <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Your Batch</Text>
+          <View style={styles.batchHeaderRow}>
+            <View style={styles.timeTableHeader}>
+              <MaterialCommunityIcons name="calendar-month-outline" size={28} color={theme.accent} />
+              <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Your Batch</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.historyBtn, { backgroundColor: theme.cardBg }]}
+              onPress={() => navigation.navigate('StudentClassHistory')}
+            >
+              <MaterialCommunityIcons name="history" size={16} color={theme.accent} />
+              <Text style={[styles.historyBtnText, { color: theme.accent }]}>History</Text>
+            </TouchableOpacity>
           </View>
 
           {!batch ? (
@@ -621,6 +630,16 @@ const styles = StyleSheet.create({
 
   timeTableHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
   timeTableTitle: { fontSize: 20, fontWeight: '800' },
+  batchHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  historyBtnText: { fontSize: 13, fontWeight: '700' },
 
   batchCard: {
     borderRadius: 24,

@@ -23,6 +23,7 @@ import PresentListScreen from "../screens/Faculty/PresentListScreen";
 import AttendanceRosterScreen from "../screens/Faculty/AttendanceRosterScreen";
 import ClassHistoryScreen from "../screens/Faculty/ClassHistoryScreen";
 import ClassHistoryRosterScreen from "../screens/Faculty/ClassHistoryRosterScreen";
+import StudentClassHistoryScreen from "../screens/Bootcamp/StudentClassHistoryScreen";
 import ScanAttendanceScreen from "../screens/Attendance/ScanAttendanceScreen";
 import FeedbackQuestionsScreen from "../screens/Faculty/FeedbackQuestionsScreen";
 import FeedbackResponsesScreen from "../screens/Faculty/FeedbackResponsesScreen";
@@ -98,6 +99,7 @@ export default function AppNavigator() {
         <Stack.Screen name="AttendanceRoster" component={AttendanceRosterScreen} />
         <Stack.Screen name="ClassHistory" component={ClassHistoryScreen} />
         <Stack.Screen name="ClassHistoryRoster" component={ClassHistoryRosterScreen} />
+        <Stack.Screen name="StudentClassHistory" component={StudentClassHistoryScreen} />
         <Stack.Screen name="ScanAttendance" component={ScanAttendanceScreen} />
         <Stack.Screen name="FeedbackQuestions" component={FeedbackQuestionsScreen} />
         <Stack.Screen name="FeedbackResponses" component={FeedbackResponsesScreen} />

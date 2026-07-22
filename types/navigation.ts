@@ -77,6 +77,7 @@ export type RootStackParamList = {
     sessionId: string;
     subject?: string;
   };
+  StudentClassHistory: undefined;
   ScanAttendance: undefined;
   FeedbackQuestions: {
     sessionId: string;

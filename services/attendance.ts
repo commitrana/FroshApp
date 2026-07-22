@@ -200,6 +200,28 @@ export const getActiveSessionForStudent = async (): Promise<ActiveSessionRespons
   return res.data;
 };
 
+// ---------- STUDENT: Class History ----------
+// A student's own ended classes with their attendance status — powers the
+// student-facing "Class History" screen (their view of the same data
+// faculty see in HistorySession, but scoped to their own present/absent).
+export type StudentHistorySession = {
+  _id: string;
+  subject: string;
+  venue: string;
+  day: string;
+  slot: string;
+  startedAt: string;
+  endedAt: string | null;
+  faculty: { name: string; department: string } | null;
+  status: "present" | "absent";
+};
+
+export const getStudentHistorySessions = async (): Promise<StudentHistorySession[]> => {
+  const config = await studentAuthHeader();
+  const res = await API.get(`/attendance/student/history`, config);
+  return res.data.sessions || [];
+};
+
 export type MarkAttendanceResult = {
   message: string;
   status: "present" | "flagged" | "rejected";
