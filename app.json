@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "FroshApp",
+    "name": "Frosh",
     "slug": "FroshApp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -54,7 +54,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "c2c7041e-77b8-4aea-92e7-3415265f33af"
+        "projectId": "dab70f1f-7251-490f-bbaf-86c2f983297c"
       }
     }
   }
