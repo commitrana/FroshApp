@@ -5,7 +5,6 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoginScreen from "../screens/Login/LoginScreen";
 import { RootStackParamList } from "../types/navigation";
-import DrawerNavigator from "./DrawerNavigator";
 import OurTeamScreen from "../screens/OurTeam/OurTeamScreen";
 import HostelsScreen from "../screens/Hostels/HostelsScreen";
 import BoysScreen from "../screens/Hostels/BoysScreen";
@@ -58,7 +57,6 @@ export default function AppNavigator() {
         <Stack.Screen name="MemberDashboard" component={MemberDashboardScreen} />
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="MainTabs" component={DrawerNavigator} />
         <Stack.Screen
           name="OurTeam"
           component={OurTeamScreen}
