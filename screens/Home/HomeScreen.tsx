@@ -86,6 +86,50 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const route = useRoute<any>();
 
+  // Slide-from-bottom animation for the profile menu card
+  const menuTranslateY = useRef(new Animated.Value(screenHeight)).current;
+  const menuOverlayOpacity = useRef(new Animated.Value(0)).current;
+
+  const closeMenu = () => {
+    Animated.parallel([
+      Animated.timing(menuTranslateY, {
+        toValue: screenHeight,
+        duration: 250,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(menuOverlayOpacity, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setModalVisible(false);
+    });
+  };
+
+  useEffect(() => {
+    if (modalVisible) {
+      menuTranslateY.setValue(screenHeight);
+      menuOverlayOpacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(menuTranslateY, {
+          toValue: 0,
+          duration: 320,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(menuOverlayOpacity, {
+          toValue: 1,
+          duration: 280,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [modalVisible]);
+
 useFocusEffect(
   React.useCallback(() => {
     if (route.params?.initialTab) {
@@ -385,7 +429,7 @@ useFocusEffect(
   );
 
  const handleLogout = () => {
-    setModalVisible(false);
+    closeMenu();
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -416,14 +460,14 @@ useFocusEffect(
   const handleMenuPress = (id: string) => {
     if (id === "switch") {
       toggleDarkMode();
-      setModalVisible(false);
+      closeMenu();
       return;
     }
     if (id === "logout") {
       handleLogout();
       return;
     }
-    setModalVisible(false);
+    closeMenu();
     if (id === "account") navigation.navigate("Account");
     else if (id === "schedule") navigation.navigate("Schedule");
     else if (id === "help") navigation.navigate("Help");
@@ -831,13 +875,23 @@ useFocusEffect(
         animationType="none"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={closeMenu}
       >
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
-          <View style={styles.modalOverlayTransparent} />
+        <TouchableWithoutFeedback onPress={closeMenu}>
+          <Animated.View
+            style={[styles.modalOverlayTransparent, { opacity: menuOverlayOpacity }]}
+          />
         </TouchableWithoutFeedback>
 
-        <View style={[styles.modalContainer, { backgroundColor: theme.modalBg }]}>
+        <Animated.View
+          style={[
+            styles.modalContainer,
+            {
+              backgroundColor: theme.modalBg,
+              transform: [{ translateY: menuTranslateY }],
+            },
+          ]}
+        >
           <View style={[styles.modalHandle, { backgroundColor: theme.lineColor }]} />
 
           {menuOptions.map((item) => (
@@ -851,10 +905,10 @@ useFocusEffect(
             </TouchableOpacity>
           ))}
 
-          <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+          <TouchableOpacity style={styles.closeButton} onPress={closeMenu}>
             <Text style={[styles.closeButtonText, { color: theme.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </Modal>
     </View>
   );
