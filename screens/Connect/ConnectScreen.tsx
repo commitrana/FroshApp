@@ -1,159 +1,381 @@
-import React from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
+  SafeAreaView,
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Alert,
+  ScrollView,
+  StatusBar,
+  Modal,
+  TouchableWithoutFeedback,
   Linking,
+  Dimensions,
+  Animated,
+  Easing,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView, BlurTargetView } from "expo-blur";
+import Icon from "@expo/vector-icons/Ionicons";
+import { Feather } from "@expo/vector-icons";
 
-import { useTheme } from "../../theme/theme"; // ← Changed
-import { APP_INFO, SOCIAL_LINKS } from "../../constants/app";
+// Shared app theming (same pattern as HomeScreen / OurTeamScreen / AccountScreen)
+import { useAppTheme } from "../../context/ThemeContext";
+import { useHomeTheme } from "../../constants/homeThemes";
+
+const { width } = Dimensions.get("window");
+
+type IconSet = "Ionicons" | "Feather";
+
+type HelpLink = {
+  id: string;
+  label: string;
+  icon: string;
+  iconSet: IconSet;
+  url: string | null;
+};
+
+const helpLinks: HelpLink[] = [
+  { id: "website", label: "Website", icon: "globe-outline", iconSet: "Ionicons", url: "https://tr.ee/ufjIxJszUK" },
+  { id: "instagram", label: "Instagram", icon: "logo-instagram", iconSet: "Ionicons", url: "https://tr.ee/h1y6A_eYSg" },
+  { id: "youtube", label: "YouTube", icon: "logo-youtube", iconSet: "Ionicons", url: "https://youtube.com/@froshtiet?si=NUlQHxHSWGTSjJ73" },
+  { id: "facebook", label: "Facebook", icon: "logo-facebook", iconSet: "Ionicons", url: "https://tr.ee/1G-pzEBp1E" },
+  { id: "github", label: "GitHub", icon: "github", iconSet: "Feather", url: "https://tr.ee/OczIWYVBps" },
+  { id: "phone", label: "Phone", icon: "phone-call", iconSet: "Feather", url: null },
+];
+
+type Contact = { name: string; number: string };
+
+const contacts: Contact[] = [
+  { name: "Vanshaj Kaushik", number: "8439818347" },
+  { name: "Snehil Jhanwar", number: "9057241613" },
+  { name: "Nandini", number: "7009036797" },
+];
 
 export default function ConnectScreen() {
-  const { colors, isDarkMode } = useTheme(); // ← Added
+  const navigation = useNavigation();
 
-  const openLink = async (url: string) => {
-    if (!url) {
-      Alert.alert(
-        "Coming Soon",
-        "This link will be added soon."
-      );
-      return;
-    }
+  // Real app theme (matches every other screen — light/dark colors live in one place)
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
-    const supported = await Linking.canOpenURL(url);
+  const [modalVisible, setModalVisible] = useState(false);
 
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      Alert.alert(
-        "Error",
-        "Unable to open this link."
-      );
+  // --- Animations ---
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+  const blurTargetRef = useRef<View | null>(null);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    Animated.timing(slideAnim, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      navigation.goBack();
+    });
+  };
+
+  const handlePress = (item: HelpLink) => {
+    if (item.id === "phone") {
+      setModalVisible(true);
+    } else if (item.url) {
+      Linking.openURL(item.url).catch(() => {});
     }
   };
 
+  const renderIcon = (item: HelpLink) => {
+    const color = theme.textPrimary;
+    const size = 48;
+    if (item.iconSet === "Feather") {
+      return <Feather name={item.icon as any} size={size} color={color} />;
+    }
+    return <Icon name={item.icon as any} size={size} color={color} />;
+  };
+
+  // Glass styling — same recipe used across the app (HomeScreen / OurTeamScreen)
+  const glassBg = isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.35)";
+  const glassBorder = isDarkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.7)";
+  const glassSheen = isDarkMode
+    ? (["rgba(255,255,255,0.14)", "rgba(255,255,255,0)"] as [string, string])
+    : (["rgba(255,255,255,0.55)", "rgba(255,255,255,0)"] as [string, string]);
+
+  const bgColor = theme.bgGradient[0];
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Connect With Us
-        </Text>
-
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Stay connected with Frosh through our official platforms.
-        </Text>
-
-        {SOCIAL_LINKS.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={[styles.card, { backgroundColor: colors.card }]}
-            activeOpacity={0.8}
-            onPress={() => openLink(item.url)}
-          >
-            <Ionicons
-              name={item.icon}
-              size={24}
-              color={colors.textPrimary}
-            />
-
-            <Text style={[styles.cardText, { color: colors.textPrimary }]}>
-              {item.title}
-            </Text>
-
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={colors.textMuted}
-              style={styles.arrow}
-            />
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.card }]}
-          activeOpacity={0.8}
-          onPress={() => openLink(`mailto:${APP_INFO.support.email}`)}
+    <View style={{ flex: 1, backgroundColor: bgColor }}>
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
+      <Animated.View
+        style={[
+          {
+            flex: 1,
+            backgroundColor: bgColor,
+            opacity: fadeAnim,
+          },
+          {
+            transform: [
+              {
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, 300],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={theme.bgGradient as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.container}
         >
-          <Ionicons
-            name="mail-outline"
-            size={24}
-            color={colors.textPrimary}
-          />
+          <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
+            <SafeAreaView style={{ flex: 1 }}>
+              {/* Header */}
+              <View style={styles.header}>
+                <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
+                  <Icon name="arrow-back" size={24} color={theme.textPrimary} />
+                </TouchableOpacity>
+                <Text style={[styles.title, { color: theme.textPrimary }]}>Connect with us</Text>
+                <View style={{ width: 40 }} />
+              </View>
 
-          <Text style={[styles.cardText, { color: colors.textPrimary }]}>
-            Email Us
-          </Text>
+              {/* Subtitle */}
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+                Connect with us through any of these channels
+              </Text>
 
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors.textMuted}
-            style={styles.arrow}
-          />
-        </TouchableOpacity>
+              <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.grid}>
+                  {helpLinks.map((item) => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.card, { borderColor: glassBorder }]}
+                      onPress={() => handlePress(item)}
+                      activeOpacity={0.7}
+                    >
+                      <BlurView
+                        intensity={80}
+                        tint={isDarkMode ? "dark" : "light"}
+                        blurMethod="dimezisBlurView"
+                        blurTarget={blurTargetRef}
+                        style={[StyleSheet.absoluteFill, { backgroundColor: glassBg, borderRadius: 24 }]}
+                      >
+                        <LinearGradient
+                          colors={glassSheen}
+                          start={{ x: 0.5, y: 0 }}
+                          end={{ x: 0.5, y: 1 }}
+                          style={styles.glassSheen}
+                          pointerEvents="none"
+                        />
+                      </BlurView>
+                      <View style={[styles.iconCircle, { borderColor: theme.accent }]}>
+                        {renderIcon(item)}
+                      </View>
+                      <Text style={[styles.label, { color: theme.textPrimary }]}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </SafeAreaView>
+          </BlurTargetView>
+        </LinearGradient>
+      </Animated.View>
 
-        <TouchableOpacity
-          style={[styles.card, { backgroundColor: colors.card }]}
-          activeOpacity={0.8}
-          onPress={() => openLink(`tel:${APP_INFO.support.phone}`)}
-        >
-          <Ionicons
-            name="call-outline"
-            size={24}
-            color={colors.textPrimary}
-          />
-
-          <Text style={[styles.cardText, { color: colors.textPrimary }]}>
-            Call Us
-          </Text>
-
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors.textMuted}
-            style={styles.arrow}
-          />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      {/* Phone Modal */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <BlurView
+                intensity={120}
+                tint={isDarkMode ? "dark" : "light"}
+                blurMethod="dimezisBlurView"
+                style={[
+                  styles.modalCard,
+                  { backgroundColor: glassBg, borderColor: glassBorder, borderWidth: 1, shadowColor: theme.shadowColor },
+                ]}
+              >
+                <LinearGradient
+                  colors={glassSheen}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.glassSheen}
+                  pointerEvents="none"
+                />
+                <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Contact Support</Text>
+                <View style={[styles.divider, { backgroundColor: theme.lineColor }]} />
+                {contacts.map((contact, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.contactRow,
+                      index < contacts.length - 1 && {
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.lineColor,
+                      },
+                    ]}
+                    onPress={() => Linking.openURL(`tel:${contact.number}`)}
+                  >
+                    <Feather name="phone" size={20} color={theme.accent} />
+                    <View style={styles.contactTextContainer}>
+                      <Text style={[styles.contactName, { color: theme.textPrimary }]}>{contact.name}</Text>
+                      <Text style={[styles.contactNumber, { color: theme.textSecondary }]}>{contact.number}</Text>
+                    </View>
+                    <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={[styles.closeButton, { backgroundColor: theme.accent }]} onPress={() => setModalVisible(false)}>
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </TouchableOpacity>
+              </BlurView>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
+  container: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginTop: 50,
+    paddingVertical: 8,
   },
-  container: {
-    flex: 1,
-    padding: 20,
-  },
+  backBtn: { padding: 4 },
   title: {
-    fontSize: 30,
+    fontSize: 20,
     fontWeight: "700",
-    marginBottom: 8,
+    letterSpacing: 1,
   },
   subtitle: {
     fontSize: 15,
-    marginBottom: 30,
+    textAlign: "center",
+    marginTop: 0,
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    justifyContent: "center",
+  },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   card: {
+    width: "46%",
+    height: 180,
+    borderRadius: 24,
+    marginBottom: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  iconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCard: {
+    width: width * 0.88,
+    borderRadius: 28,
+    padding: 24,
+    overflow: "hidden",
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  glassSheen: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: "45%",
+    borderTopLeftRadius: 23,
+    borderTopRightRadius: 23,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  divider: {
+    height: 1,
+    marginBottom: 16,
+  },
+  contactRow: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 15,
+    paddingVertical: 14,
   },
-  cardText: {
-    fontSize: 17,
-    marginLeft: 16,
+  contactTextContainer: {
+    flex: 1,
+    marginLeft: 14,
+  },
+  contactName: {
+    fontSize: 16,
     fontWeight: "600",
   },
-  arrow: {
-    marginLeft: "auto",
+  contactNumber: {
+    fontSize: 14,
+    marginTop: 2,
+  },
+  closeButton: {
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 24,
+    alignItems: "center",
+  },
+  closeButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

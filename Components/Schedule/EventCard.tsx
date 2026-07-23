@@ -8,12 +8,13 @@ import {
 } from "react-native";
 
 import { Event } from "../../constants/events";
+import { useHomeTheme } from "../../constants/homeThemes";
 
 type Props = {
   event: Event;
   hasTicket?: boolean;
   registering?: boolean;
-  hideRegister?: boolean;   // ← new
+  hideRegister?: boolean;
   onRegisterPress?: () => void;
 };
 
@@ -21,30 +22,55 @@ export default function EventCard({
   event,
   hasTicket = false,
   registering = false,
-  hideRegister = false,     // ← new
+  hideRegister = false,
   onRegisterPress,
 }: Props) {
+  const theme = useHomeTheme();
+
   const showButton =
     !hideRegister && (event.status === "live" || hasTicket) && !!onRegisterPress;
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{event.title}</Text>
-      <Text style={styles.society}>{event.society}</Text>
-      <Text style={styles.info}>📍 {event.venue}</Text>
-      <Text style={styles.info}>🕒 {event.date} • {event.time}</Text>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: theme.cardBg, borderColor: theme.lineColor },
+      ]}
+    >
+      <Text style={[styles.title, { color: theme.textPrimary }]}>{event.title}</Text>
+      <Text style={[styles.society, { color: theme.accent }]}>{event.society}</Text>
+      <Text style={[styles.info, { color: theme.textSecondary }]}>📍 {event.venue}</Text>
+      <Text style={[styles.info, { color: theme.textSecondary }]}>
+        🕒 {event.date} • {event.time}
+      </Text>
 
       {showButton && (
         <TouchableOpacity
-          style={[styles.button, hasTicket && styles.buttonSecondary]}
+          style={[
+            styles.button,
+            { backgroundColor: theme.accent },
+            hasTicket && [
+              styles.buttonSecondary,
+              { borderColor: theme.accent },
+            ],
+          ]}
           activeOpacity={0.85}
           onPress={onRegisterPress}
           disabled={registering}
         >
           {registering ? (
-            <ActivityIndicator color={hasTicket ? "#22D3EE" : "#04222B"} size="small" />
+            <ActivityIndicator
+              color={hasTicket ? theme.accent : theme.buttonTextOn}
+              size="small"
+            />
           ) : (
-            <Text style={[styles.buttonText, hasTicket && styles.buttonTextSecondary]}>
+            <Text
+              style={[
+                styles.buttonText,
+                { color: theme.buttonTextOn },
+                hasTicket && { color: theme.accent },
+              ]}
+            >
               {hasTicket ? "View Ticket" : "Register"}
             </Text>
           )}
@@ -55,12 +81,11 @@ export default function EventCard({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: "#1F2937", borderRadius: 16, padding: 18, marginBottom: 16 },
-  title: { color: "white", fontSize: 18, fontWeight: "700" },
-  society: { color: "#A78BFA", marginTop: 5, fontWeight: "600" },
-  info: { color: "#D1D5DB", marginTop: 8 },
-  button: { backgroundColor: "#22D3EE", paddingVertical: 12, borderRadius: 12, alignItems: "center", marginTop: 14 },
-  buttonSecondary: { backgroundColor: "transparent", borderWidth: 1.5, borderColor: "#22D3EE" },
-  buttonText: { color: "#04222B", fontWeight: "700", fontSize: 14 },
-  buttonTextSecondary: { color: "#22D3EE" },
+  card: { borderRadius: 16, padding: 18, marginBottom: 16, borderWidth: 1 },
+  title: { fontSize: 18, fontWeight: "700" },
+  society: { marginTop: 5, fontWeight: "600" },
+  info: { marginTop: 8 },
+  button: { paddingVertical: 12, borderRadius: 12, alignItems: "center", marginTop: 14 },
+  buttonSecondary: { backgroundColor: "transparent", borderWidth: 1.5 },
+  buttonText: { fontWeight: "700", fontSize: 14 },
 });

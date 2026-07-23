@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -16,7 +18,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { RootStackParamList } from "../../types/navigation";
 import { getMyProfile, StudentProfile } from "../../services/student";
 
-import Theme from "../../theme/theme"
+import { useAppTheme } from "../../context/ThemeContext";
+import { useHomeTheme } from "../../constants/homeThemes";
 import ProfileHeader from "../../Components/Account/ProfileHeader";
 import InfoCard from "../../Components/Account/InfoCard";
 
@@ -47,7 +50,9 @@ const getMyFacultyProfile = async (): Promise<FacultyProfile> => {
 };
 
 export default function AccountScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RootNavProp>();
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
   const [role, setRole] = useState<string | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
@@ -89,57 +94,74 @@ export default function AccountScreen() {
   }, [fetchProfile]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9CA3AF" />
-        }
-      >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={26} color="white" />
-          </TouchableOpacity>
-          <Text style={styles.heading}>My Account</Text>
-          <View style={{ width: 26 }} />
-        </View>
-
-        {loading ? (
-          <ActivityIndicator color={Theme.colors.primary} size="large" style={styles.loader} />
-        ) : loadError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {loadError}</Text>
+    <LinearGradient
+      colors={theme.bgGradient as [string, string, ...string[]]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradient}
+    >
+      <StatusBar
+        translucent
+        backgroundColor="transparent"
+        barStyle={isDarkMode ? "light-content" : "dark-content"}
+      />
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.textSecondary}
+            />
+          }
+        >
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
+            </TouchableOpacity>
+            <Text style={[styles.heading, { color: theme.textPrimary }]}>My Account</Text>
+            <View style={{ width: 26 }} />
           </View>
-        ) : role === "faculty" && facultyProfile ? (
-          <>
-            <ProfileHeader name={facultyProfile.name} email={facultyProfile.email} />
-            <InfoCard label="Department" value={facultyProfile.department} />
-            <InfoCard label="Phone Number" value={facultyProfile.phoneNo} />
-            <InfoCard label="Teacher No." value={facultyProfile.teacherNo} />
-          </>
-        ) : studentProfile ? (
-          <>
-            <ProfileHeader name={studentProfile.name} email={studentProfile.email} />
-            <InfoCard label="Roll Number" value={studentProfile.rollNo} />
-            <InfoCard label="Branch" value={studentProfile.branch} />
-            <InfoCard label="Phone Number" value={studentProfile.phoneNo} />
-            <InfoCard label="Date of Birth" value={formatDob(studentProfile.dob)} />
-            <InfoCard label="Slot" value={`Slot ${studentProfile.slotNumber}`} />
-            <InfoCard label="Bootcamp Batch" value={studentProfile.batch || "Not assigned yet"} />
-            <InfoCard label="Father's Name" value={studentProfile.fatherName} />
-            <InfoCard label="Mother's Name" value={studentProfile.motherName} />
-          </>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+
+          {loading ? (
+            <ActivityIndicator color={theme.accent} size="large" style={styles.loader} />
+          ) : loadError ? (
+            <View style={styles.errorBox}>
+              <Text style={[styles.errorText, { color: theme.danger }]}>⚠️ {loadError}</Text>
+            </View>
+          ) : role === "faculty" && facultyProfile ? (
+            <>
+              <ProfileHeader name={facultyProfile.name} email={facultyProfile.email} />
+              <InfoCard label="Department" value={facultyProfile.department} />
+              <InfoCard label="Phone Number" value={facultyProfile.phoneNo} />
+              <InfoCard label="Teacher No." value={facultyProfile.teacherNo} />
+            </>
+          ) : studentProfile ? (
+            <>
+              <ProfileHeader name={studentProfile.name} email={studentProfile.email} />
+              <InfoCard label="Roll Number" value={studentProfile.rollNo} />
+              <InfoCard label="Branch" value={studentProfile.branch} />
+              <InfoCard label="Phone Number" value={studentProfile.phoneNo} />
+              <InfoCard label="Date of Birth" value={formatDob(studentProfile.dob)} />
+              <InfoCard label="Slot" value={`Slot ${studentProfile.slotNumber}`} />
+              <InfoCard label="Bootcamp Batch" value={studentProfile.batch || "Not assigned yet"} />
+              <InfoCard label="Father's Name" value={studentProfile.fatherName} />
+              <InfoCard label="Mother's Name" value={studentProfile.motherName} />
+            </>
+          ) : null}
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Theme.colors.background },
+  gradient: { flex: 1 },
+  safeArea: { flex: 1 },
   container: { padding: 20, paddingBottom: 40 },
-  heading: { color: "white", fontSize: 26, fontWeight: "700" },
+  heading: { fontSize: 26, fontWeight: "700" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -148,5 +170,5 @@ const styles = StyleSheet.create({
   },
   loader: { marginTop: 60 },
   errorBox: { marginTop: 60, alignItems: "center", paddingHorizontal: 20 },
-  errorText: { color: "#EF4444", fontSize: 15, textAlign: "center" },
+  errorText: { fontSize: 15, textAlign: "center" },
 });

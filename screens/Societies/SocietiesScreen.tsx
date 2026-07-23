@@ -19,7 +19,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Icon from '@expo/vector-icons/Ionicons';
 
-import { useTheme } from '../../theme/theme'; // ← Added
+import { useAppTheme } from '../../context/ThemeContext';
+import { useHomeTheme } from '../../constants/homeThemes';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,10 +31,8 @@ interface Society {
   description: string;
 }
 
-// Single shared logo asset
 const logo = require('../../assets/uiux/logo.png');
 
-// Society data
 const societies: Society[] = [
   // Tech
   { id: 1, name: 'ACM', category: 'tech', description: 'Association for Computing Machinery – the premier tech society.' },
@@ -60,30 +59,12 @@ const categories: { key: Society['category']; label: string }[] = [
 
 export default function SocietiesScreen() {
   const navigation = useNavigation();
-  const { colors, isDarkMode } = useTheme(); // ← Added
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
   const [activeCategory, setActiveCategory] = useState<Society['category']>('tech');
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
 
-  // Create theme object from global theme
-  const t = {
-    bgGradient: isDarkMode 
-      ? ['#020B18', '#061528', '#041220'] as [string, string, string]
-      : ['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string],
-    textPrimary: colors.textPrimary,
-    textSecondary: colors.textSecondary,
-    cardBg: colors.card,
-    accent: colors.primary,
-    shadowColor: colors.primary,
-    lineColor: colors.border,
-    tabInactiveBg: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-    tabActiveBg: colors.primary,
-    tabActiveText: '#FFFFFF',
-    tabInactiveText: colors.textSecondary,
-    modalBg: colors.card,
-  };
-
-  // --- Fade‑in animation ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -107,26 +88,34 @@ export default function SocietiesScreen() {
         backgroundColor="transparent"
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
-      <LinearGradient colors={t.bgGradient} style={styles.container}>
+      <LinearGradient
+        colors={theme.bgGradient as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-              <Icon name="arrow-back" size={24} color={t.textPrimary} />
+              <Icon name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: t.textPrimary }]}>SOCIETIES</Text>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>SOCIETIES</Text>
             <View style={{ width: 40 }} />
           </View>
 
-          {/* Category Tabs – centered */}
           <View style={styles.tabContainer}>
             {categories.map((cat) => (
               <TouchableOpacity
                 key={cat.key}
                 style={[
                   styles.tab,
-                  { backgroundColor: t.tabInactiveBg },
+                  {
+                    backgroundColor: isDarkMode
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'rgba(0,0,0,0.06)',
+                  },
                   activeCategory === cat.key && {
-                    backgroundColor: t.tabActiveBg,
+                    backgroundColor: theme.accent,
                   },
                 ]}
                 onPress={() => setActiveCategory(cat.key)}
@@ -136,8 +125,8 @@ export default function SocietiesScreen() {
                     styles.tabText,
                     {
                       color: activeCategory === cat.key
-                        ? t.tabActiveText
-                        : t.tabInactiveText,
+                        ? '#FFFFFF'
+                        : theme.textSecondary,
                     },
                   ]}
                 >
@@ -147,7 +136,6 @@ export default function SocietiesScreen() {
             ))}
           </View>
 
-          {/* Grid of societies */}
           <ScrollView contentContainerStyle={styles.scrollContent}>
             <View style={styles.grid}>
               {filtered.map((society) => (
@@ -156,15 +144,15 @@ export default function SocietiesScreen() {
                   style={[
                     styles.card,
                     {
-                      backgroundColor: t.cardBg,
-                      borderColor: t.lineColor,
+                      backgroundColor: theme.cardBg,
+                      borderColor: theme.lineColor,
                     },
                   ]}
                   onPress={() => openPopup(society)}
                   activeOpacity={0.8}
                 >
                   <Image source={logo} style={styles.cardImage} />
-                  <Text style={[styles.cardName, { color: t.textPrimary }]}>
+                  <Text style={[styles.cardName, { color: theme.textPrimary }]}>
                     {society.name}
                   </Text>
                 </TouchableOpacity>
@@ -174,7 +162,6 @@ export default function SocietiesScreen() {
         </SafeAreaView>
       </LinearGradient>
 
-      {/* Modal Popup with Blur */}
       <Modal visible={selectedSociety !== null} transparent animationType="fade">
         <TouchableWithoutFeedback onPress={closePopup}>
           <BlurView
@@ -187,22 +174,22 @@ export default function SocietiesScreen() {
                 style={[
                   styles.popupCard,
                   {
-                    backgroundColor: t.modalBg,
-                    shadowColor: t.shadowColor,
+                    backgroundColor: theme.cardBg,
+                    shadowColor: theme.shadowColor,
                   },
                 ]}
               >
                 <View style={styles.popupHeader}>
                   <Image source={logo} style={styles.popupLogo} />
-                  <Text style={[styles.popupName, { color: t.textPrimary }]}>
+                  <Text style={[styles.popupName, { color: theme.textPrimary }]}>
                     {selectedSociety?.name}
                   </Text>
                 </View>
-                <Text style={[styles.popupDescription, { color: t.textSecondary }]}>
+                <Text style={[styles.popupDescription, { color: theme.textSecondary }]}>
                   {selectedSociety?.description}
                 </Text>
                 <TouchableOpacity
-                  style={[styles.closeButton, { backgroundColor: t.accent }]}
+                  style={[styles.closeButton, { backgroundColor: theme.accent }]}
                   onPress={closePopup}
                 >
                   <Text style={styles.closeText}>Close</Text>

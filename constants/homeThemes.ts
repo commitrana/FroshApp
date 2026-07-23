@@ -29,6 +29,9 @@ export const lightHomeTheme = {
   accent: "#3794FF",
   lineColor: "#B8D9FF",
   modalBg: "white",
+  danger: "#EF4444",
+  success: "#22C55E",
+  buttonTextOn: "#04222B",
 };
 
 export const darkHomeTheme = {
@@ -60,6 +63,9 @@ export const darkHomeTheme = {
   accent: "#58AFFF",
   lineColor: "#3A6CA8",
   modalBg: "#111E32",
+  danger: "#FF3B30",
+  success: "#34C759",
+  buttonTextOn: "#04222B",
 };
 
 // Hook to use home theme with context

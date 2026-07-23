@@ -13,7 +13,8 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "@expo/vector-icons/Ionicons";
 
-import { useTheme } from "../../theme/theme";
+import { useAppTheme } from "../../context/ThemeContext";
+import { useHomeTheme } from "../../constants/homeThemes";
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
@@ -26,7 +27,6 @@ type Room = {
   image: any;
 };
 
-// ---------- ROOM DATA (nickname / seating / capacity added) ----------
 const rooms: Room[] = [
   { id: 1, name: "Vasudha Hall", nickname: "Hostel G/E", seating: "Three seater(AC)/Four seater(AC)", capacity: "360 capacity", image: hostelImage },
   { id: 2, name: "Ira Hall", nickname: "Hostel I", seating: "One seater (Non AC)/Three seater(AC)", capacity: "320 capacity", image: hostelImage },
@@ -38,17 +38,8 @@ const rooms: Room[] = [
 
 export default function GirlsScreen() {
   const navigation = useNavigation();
-  const { colors, isDarkMode } = useTheme();
-
-  const theme = {
-    bgGradient: isDarkMode
-      ? (["#020B18", "#061528", "#041220"] as [string, string, string])
-      : (["#F5F9FF", "#E8F0FE", "#D6E4F5"] as [string, string, string]),
-    textPrimary: colors.textPrimary,
-    textSecondary: colors.textSecondary,
-    accent: colors.primary,
-    cardBg: colors.card,
-  };
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
   return (
     <>
@@ -57,7 +48,12 @@ export default function GirlsScreen() {
         backgroundColor="transparent"
         barStyle={isDarkMode ? "light-content" : "dark-content"}
       />
-      <LinearGradient colors={theme.bgGradient} style={styles.container}>
+      <LinearGradient
+        colors={theme.bgGradient as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -73,7 +69,11 @@ export default function GirlsScreen() {
                 key={room.id}
                 style={[
                   styles.hallCard,
-                  { borderColor: "#8F5BFF", backgroundColor: theme.cardBg, shadowColor: "#8F5BFF" },
+                  {
+                    borderColor: theme.accent,
+                    backgroundColor: theme.cardBg,
+                    shadowColor: theme.accent,
+                  },
                 ]}
               >
                 <Image source={room.image} style={styles.hallImage} />

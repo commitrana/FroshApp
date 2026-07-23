@@ -22,7 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView, BlurTargetView } from 'expo-blur';
 import Icon from '@expo/vector-icons/Ionicons';
 
-import { useTheme } from '../../theme/theme';
+import { useAppTheme } from '../../context/ThemeContext';
+import { useOurTeamTheme } from '../../constants/ourTeamThemes';
 
 const { width } = Dimensions.get('window');
 
@@ -58,7 +59,8 @@ const TABS: TabKey[] = ['faculty', 'osc', 'core', 'mentor'];
 // ---------- COMPONENT ----------
 export default function OurTeamScreen() {
   const navigation = useNavigation();
-  const { colors, isDarkMode } = useTheme();
+  const { isDarkMode } = useAppTheme();
+  const theme = useOurTeamTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('faculty');
 
   // --- Team data fetched from the backend (replaces hardcoded arrays) ---
@@ -97,17 +99,6 @@ export default function OurTeamScreen() {
       isMounted = false;
     };
   }, []);
-
-  const theme = {
-    bgGradient: isDarkMode
-      ? (['#020B18', '#061528', '#041220'] as [string, string, string])
-      : (['#F5F9FF', '#E8F0FE', '#D6E4F5'] as [string, string, string]),
-    textPrimary: colors.textPrimary,
-    textSecondary: colors.textSecondary,
-    cardBg: colors.card,
-    accent: colors.primary,
-    lineColor: colors.border,
-  };
 
   // --- Glass pill slider animation ---
   const [containerWidth, setContainerWidth] = useState(0);
@@ -364,12 +355,6 @@ export default function OurTeamScreen() {
     });
   };
 
-  const glassBg = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.35)';
-  const glassBorder = isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.7)';
-  const glassSheen = isDarkMode
-    ? (['rgba(255,255,255,0.14)', 'rgba(255,255,255,0)'] as [string, string])
-    : (['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)'] as [string, string]);
-
   const renderFacultyItem = useCallback(
     ({ item }: { item: FacultyMember }) => (
       <View style={styles.gridItem}>
@@ -560,14 +545,14 @@ export default function OurTeamScreen() {
               style={[
                 styles.glassCard,
                 {
-                  backgroundColor: glassBg,
-                  borderColor: glassBorder,
-                  shadowColor: '#000',
+                  backgroundColor: theme.glassBg,
+                  borderColor: theme.glassBorder,
+                  shadowColor: theme.shadowColor,
                 },
               ]}
             >
               <LinearGradient
-                colors={glassSheen}
+                colors={theme.glassSheen}
                 start={{ x: 0.5, y: 0 }}
                 end={{ x: 0.5, y: 1 }}
                 style={styles.glassSheen}
@@ -607,7 +592,7 @@ export default function OurTeamScreen() {
                         style={[
                           styles.tabText,
                           {
-                            color: isActive ? '#FFFFFF' : theme.textSecondary,
+                            color: isActive ? theme.tabActiveText : theme.textSecondary,
                             fontWeight: isActive ? '700' : '500',
                           },
                         ]}

@@ -5,7 +5,7 @@ import {
   StyleSheet,
 } from "react-native";
 
-import { useTheme } from "../../theme/theme"; // ← Changed
+import { useHomeTheme } from "../../constants/homeThemes";
 
 type Props = {
   title: string;
@@ -18,13 +18,16 @@ export default function FilterChip({
   selected,
   onPress,
 }: Props) {
-  const { colors, isDarkMode } = useTheme(); // ← Added
+  const theme = useHomeTheme();
 
   return (
     <TouchableOpacity
       style={[
         styles.chip,
-        { backgroundColor: selected ? colors.primary : colors.card },
+        {
+          backgroundColor: selected ? theme.accent : theme.cardBg,
+          borderColor: theme.lineColor,
+        },
       ]}
       onPress={onPress}
       activeOpacity={0.8}
@@ -32,8 +35,8 @@ export default function FilterChip({
       <Text
         style={[
           styles.text,
-          { 
-            color: selected ? "white" : colors.textSecondary 
+          {
+            color: selected ? theme.buttonTextOn : theme.textSecondary,
           },
         ]}
         allowFontScaling={false}
@@ -50,6 +53,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 30,
     marginRight: 12,
+    borderWidth: 1,
   },
   text: {
     fontWeight: "600",

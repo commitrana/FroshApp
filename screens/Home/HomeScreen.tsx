@@ -16,8 +16,10 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  PanResponder,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -31,6 +33,7 @@ import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import { useHomeTheme } from "../../constants/homeThemes";
 import { useAppTheme } from "../../context/ThemeContext";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
+import HomeBootcampTab from "../../Components/Home/HomeBootcamptab";
 import Loader from "../../Components/Loader";
 import ImageWithLoader from "../../Components/ImageWithLoader";
 import { useRoute } from "@react-navigation/native";
@@ -167,18 +170,135 @@ useFocusEffect(
   // Tab index mapping for slider animation
   const tabIndex = { bootcamp: 0, frosh: 1, about: 2 };
 
-  // Animate slider when activeTab or containerWidth changes
+  const tabNames = ["bootcamp", "frosh", "about"] as const;
+
+  // Holds the slider offset at the moment a drag begins
+  const dragStartValue = useRef(0);
+  // Which tab index the drag started from (used to decide next/prev on release)
+  const dragStartIndex = useRef(0);
+  // Tracks whether a finger is currently dragging the slider (disables the
+  // tab-press-driven effect below from fighting the gesture)
+  const isDragging = useRef(false);
+  // PanResponder is created once, so fast-changing values are mirrored into
+  // refs to avoid the gesture handlers ever reading stale state
+  const containerWidthRef = useRef(0);
+  const activeTabRef = useRef(activeTab);
   useEffect(() => {
+    containerWidthRef.current = containerWidth;
+  }, [containerWidth]);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  // Smoothly animate the slider to rest on top of a given tab
+  const animateToTab = (tabId: string, duration = 300) => {
     if (containerWidth === 0) return;
     const tabWidth = containerWidth / 3;
-    const targetOffset = tabIndex[activeTab as keyof typeof tabIndex] * tabWidth;
+    const targetOffset = tabIndex[tabId as keyof typeof tabIndex] * tabWidth;
     Animated.timing(slideAnim, {
       toValue: targetOffset,
-      duration: 300,
+      duration,
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
+  };
+
+  // Animate slider when activeTab or containerWidth changes (tap-triggered)
+  useEffect(() => {
+    if (containerWidth === 0 || isDragging.current) return;
+    animateToTab(activeTab);
   }, [activeTab, containerWidth]);
+
+  // Subtle "pop" for the content card whenever the active tab changes
+  const contentOpacity = useRef(new Animated.Value(1)).current;
+  const contentScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    contentOpacity.setValue(0);
+    contentScale.setValue(0.95);
+    Animated.parallel([
+      Animated.timing(contentOpacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.spring(contentScale, {
+        toValue: 1,
+        friction: 7,
+        tension: 90,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [activeTab]);
+
+  // --- Drag-to-slide gesture handling ---
+  const panResponder = useRef(
+    PanResponder.create({
+      // Let taps on the tabs pass through untouched...
+      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponderCapture: () => false,
+      // ...but claim the gesture as soon as it's a clear horizontal drag
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => {
+        return (
+          Math.abs(gestureState.dx) > 6 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
+        );
+      },
+      onPanResponderGrant: () => {
+        isDragging.current = true;
+        dragStartIndex.current = tabIndex[activeTabRef.current as keyof typeof tabIndex];
+        slideAnim.stopAnimation((value) => {
+          dragStartValue.current = value;
+        });
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        const width = containerWidthRef.current;
+        if (width === 0) return;
+        const tabWidth = width / 3;
+        const maxOffset = tabWidth * 2;
+        const newOffset = Math.max(
+          0,
+          Math.min(maxOffset, dragStartValue.current + gestureState.dx)
+        );
+        slideAnim.setValue(newOffset);
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const width = containerWidthRef.current;
+        if (width === 0) {
+          isDragging.current = false;
+          return;
+        }
+        const tabWidth = width / 3;
+        const startIndex = dragStartIndex.current;
+        const dx = gestureState.dx;
+        const vx = gestureState.vx;
+
+        // Only a small drag (or a quick flick) is needed to fully commit to
+        // the next/previous tab — no need to drag halfway across.
+        const distanceThreshold = tabWidth * 0.18;
+        const velocityThreshold = 0.25;
+
+        let targetIndex = startIndex;
+        if (dx > distanceThreshold || vx > velocityThreshold) {
+          targetIndex = Math.min(2, startIndex + 1);
+        } else if (dx < -distanceThreshold || vx < -velocityThreshold) {
+          targetIndex = Math.max(0, startIndex - 1);
+        }
+
+        const newTab = tabNames[targetIndex];
+        isDragging.current = false;
+        if (newTab === "bootcamp" || newTab === "frosh" || newTab === "about") {
+          setActiveTab(newTab);
+        }
+        animateToTab(newTab, 180);
+      },
+      onPanResponderTerminate: () => {
+        isDragging.current = false;
+        animateToTab(activeTabRef.current, 200);
+      },
+    })
+  ).current;
 
   useEffect(() => {
     const getUserName = async () => {
@@ -361,11 +481,14 @@ useFocusEffect(
           </View>
 
           {/* GLASS TOP CARD with sliding indicator */}
-          <View
+          <BlurView
+            intensity={300}
+            tint={isDarkMode ? "dark" : "light"}
+            experimentalBlurMethod="dimezisBlurView"
             style={[
               styles.topCard,
               {
-                backgroundColor: glassBg,
+                backgroundColor: theme.topCard?.backgroundColor ?? glassBg,
                 borderColor: glassBorder,
               },
             ]}
@@ -379,6 +502,7 @@ useFocusEffect(
             />
             <View
               style={styles.tabsContainer}
+              {...panResponder.panHandlers}
               onLayout={(e) => {
                 const { width } = e.nativeEvent.layout;
                 setContainerWidth(width);
@@ -404,13 +528,7 @@ useFocusEffect(
 
               <TouchableOpacity
                 style={styles.tab}
-                onPress={() => {
-                  if (userRole === "faculty") {
-                    setActiveTab("bootcamp");
-                  } else {
-                    navigation.navigate("Bootcamp");
-                  }
-                }}
+                onPress={() => setActiveTab("bootcamp")}
               >
                 <View style={styles.tabContent}>
                   <Ionicons
@@ -463,10 +581,20 @@ useFocusEffect(
                 </View>
               </TouchableOpacity>
             </View>
-          </View>
+          </BlurView>
 
           {/* CONTENT */}
-          {isBootcamp ? (
+          <Animated.View
+            style={{
+              opacity: contentOpacity,
+              transform: [{ scale: contentScale }],
+            }}
+          >
+          {isBootcamp && userRole !== "faculty" ? (
+            <View style={styles.bootcampSection}>
+              <HomeBootcampTab theme={theme} />
+            </View>
+          ) : isBootcamp ? (
             <View style={styles.bootcampSection}>
               <View style={[styles.timeTableHeader, { justifyContent: "space-between" }]}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -694,6 +822,7 @@ useFocusEffect(
           ) : (
             <HomeAboutTab theme={theme} />
           )}
+          </Animated.View>
         </ScrollView>
       </LinearGradient>
 

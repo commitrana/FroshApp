@@ -1,28 +1,23 @@
 import { View, Text, StyleSheet } from "react-native";
+import { useHomeTheme } from "../../constants/homeThemes";
 
 type ProfileHeaderProps = {
   name: string;
   email: string;
-  theme?: any; // ← Added optional theme prop
 };
 
 export default function ProfileHeader({
   name,
   email,
-  theme,
 }: ProfileHeaderProps) {
-  // If theme is not provided, use default colors (fallback)
-  const colors = theme || {
-    textPrimary: "#FFFFFF",
-    textSecondary: "#A1A1AA",
-  };
+  const theme = useHomeTheme();
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.name, { color: colors.textPrimary }]}>
+      <Text style={[styles.name, { color: theme.textPrimary }]}>
         {name}
       </Text>
-      <Text style={[styles.email, { color: colors.textSecondary }]}>
+      <Text style={[styles.email, { color: theme.textSecondary }]}>
         {email}
       </Text>
     </View>

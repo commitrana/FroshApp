@@ -111,53 +111,42 @@ export default function ProfileScreen() {
       >
         <Text style={[styles.heading, { color: colors.textPrimary }]}>My Profile</Text>
 
-        {/* Pass theme colors to ProfileHeader */}
-        <ProfileHeader 
-          name={profile.name} 
-          email={profile.email} 
-          theme={colors}
+        <ProfileHeader
+          name={profile.name}
+          email={profile.email}
         />
 
-        {/* Pass theme colors to InfoCard */}
         <InfoCard 
           label="Roll Number" 
           value={profile.rollNo} 
-          theme={colors}
         />
         <InfoCard 
           label="Branch" 
           value={profile.branch} 
-          theme={colors}
         />
         <InfoCard 
           label="Phone Number" 
           value={profile.phoneNo} 
-          theme={colors}
         />
         <InfoCard 
           label="Date of Birth" 
           value={formatDob(profile.dob)} 
-          theme={colors}
         />
         <InfoCard 
           label="Slot" 
           value={`Slot ${profile.slotNumber}`} 
-          theme={colors}
         />
         <InfoCard 
           label="Bootcamp Batch" 
           value={profile.batch || "Not assigned yet"} 
-          theme={colors}
         />
         <InfoCard 
           label="Father's Name" 
           value={profile.fatherName} 
-          theme={colors}
         />
         <InfoCard 
           label="Mother's Name" 
           value={profile.motherName} 
-          theme={colors}
         />
 
         <View style={{ marginTop: 10 }}>

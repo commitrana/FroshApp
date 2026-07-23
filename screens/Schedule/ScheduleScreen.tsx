@@ -12,8 +12,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 
-import { useTheme } from "../../theme/theme"; // ← Changed
+import { useAppTheme } from "../../context/ThemeContext";
+import { useHomeTheme } from "../../constants/homeThemes";
 import { Event, EventStatus } from "../../constants/events";
 import { getEvents } from "../../services/events";
 import { getMyTickets, registerForEvent } from "../../services/tickets";
@@ -25,7 +27,9 @@ type FilterType = "all" | EventStatus;
 
 export default function ScheduleScreen() {
   const navigation = useNavigation<any>();
-  const { colors, isDarkMode } = useTheme(); // ← Added
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
+
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [events, setEvents] = useState<Event[]>([]);
   const [ticketedEventIds, setTicketedEventIds] = useState<Set<string>>(new Set());
@@ -33,9 +37,11 @@ export default function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
-    useEffect(() => {
-     AsyncStorage.getItem("userRole").then(setUserRole);
-   }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem("userRole").then(setUserRole);
+  }, []);
+
   const fetchEvents = useCallback(async () => {
     try {
       const [data, tickets] = await Promise.all([getEvents(), getMyTickets()]);
@@ -86,84 +92,91 @@ export default function ScheduleScreen() {
   }, [selectedFilter, events]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <View style={styles.container}>
-        <Text style={[styles.heading, { color: colors.textPrimary }]}>Schedule</Text>
-        <Text style={[styles.subHeading, { color: colors.textSecondary }]}>
-          Stay updated with every Frosh event.
-        </Text>
+    <LinearGradient
+      colors={theme.bgGradient as [string, string, ...string[]]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Text style={[styles.heading, { color: theme.textPrimary }]}>Schedule</Text>
+          <Text style={[styles.subHeading, { color: theme.textSecondary }]}>
+            Stay updated with every Frosh event.
+          </Text>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filterScroll}
-          contentContainerStyle={styles.filterContainer}
-        >
-          <FilterChip
-            title="All"
-            selected={selectedFilter === "all"}
-            onPress={() => setSelectedFilter("all")}
-          />
-          <FilterChip
-            title="Live"
-            selected={selectedFilter === "live"}
-            onPress={() => setSelectedFilter("live")}
-          />
-          <FilterChip
-            title="Upcoming"
-            selected={selectedFilter === "upcoming"}
-            onPress={() => setSelectedFilter("upcoming")}
-          />
-          <FilterChip
-            title="Past"
-            selected={selectedFilter === "past"}
-            onPress={() => setSelectedFilter("past")}
-          />
-        </ScrollView>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterScroll}
+            contentContainerStyle={styles.filterContainer}
+          >
+            {/* ✅ No `theme` prop – FilterChip uses useHomeTheme internally */}
+            <FilterChip
+              title="All"
+              selected={selectedFilter === "all"}
+              onPress={() => setSelectedFilter("all")}
+            />
+            <FilterChip
+              title="Live"
+              selected={selectedFilter === "live"}
+              onPress={() => setSelectedFilter("live")}
+            />
+            <FilterChip
+              title="Upcoming"
+              selected={selectedFilter === "upcoming"}
+              onPress={() => setSelectedFilter("upcoming")}
+            />
+            <FilterChip
+              title="Past"
+              selected={selectedFilter === "past"}
+              onPress={() => setSelectedFilter("past")}
+            />
+          </ScrollView>
 
-        {loading ? (
-          <ActivityIndicator color={colors.primary} style={styles.loader} />
-        ) : (
-          <FlatList
-            data={filteredEvents}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <EventCard
-                event={item}
-                hasTicket={ticketedEventIds.has(item.id)}
-                registering={registeringId === item.id}
-                hideRegister={userRole === "faculty"}
-
-                onRegisterPress={() =>
-                  handleRegisterPress(item.id, ticketedEventIds.has(item.id))
-                }
-              />
-            )}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.list}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.textSecondary}
-              />
-            }
-            ListEmptyComponent={
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No events available.
-              </Text>
-            }
-          />
-        )}
-      </View>
-    </SafeAreaView>
+          {loading ? (
+            <ActivityIndicator color={theme.accent} style={styles.loader} />
+          ) : (
+            <FlatList
+              data={filteredEvents}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <EventCard
+                  event={item}
+                  hasTicket={ticketedEventIds.has(item.id)}
+                  registering={registeringId === item.id}
+                  hideRegister={userRole === "faculty"}
+                  onRegisterPress={() =>
+                    handleRegisterPress(item.id, ticketedEventIds.has(item.id))
+                  }
+                  // ✅ No `theme` prop – EventCard uses useHomeTheme internally
+                />
+              )}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.list}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.textSecondary}
+                />
+              }
+              ListEmptyComponent={
+                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                  No events available.
+                </Text>
+              }
+            />
+          )}
+        </View>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+  gradient: { flex: 1 },
+  safeArea: { flex: 1 },
   container: {
     flex: 1,
     paddingHorizontal: 20,

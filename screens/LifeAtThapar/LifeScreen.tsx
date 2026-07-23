@@ -12,7 +12,8 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 
-import { useTheme } from "../../theme/theme";
+import { useAppTheme } from "../../context/ThemeContext";
+import { useHomeTheme } from "../../constants/homeThemes";
 
 type CardSize = "tall" | "small" | "wide";
 
@@ -67,16 +68,8 @@ const CARD_DATA: CardItem[] = [
 
 export default function LifeScreen() {
   const navigation = useNavigation<any>();
-  const { colors, isDarkMode } = useTheme();
-
-  const theme = {
-    bgGradient: isDarkMode
-      ? (["#0A0E27", "#1A1040", "#2D1B4E"] as [string, string, string])
-      : (["#F8FBFF", "#EEF6FF", "#DDEEFF"] as [string, string, string]),
-    textPrimary: colors.textPrimary,
-    textSecondary: colors.textSecondary,
-    accent: colors.primary,
-  };
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
   const scaleAnims = useRef(CARD_DATA.map(() => new Animated.Value(1))).current;
 
@@ -154,7 +147,12 @@ export default function LifeScreen() {
         backgroundColor="transparent"
         barStyle={isDarkMode ? "light-content" : "dark-content"}
       />
-      <LinearGradient colors={theme.bgGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
+      <LinearGradient
+        colors={theme.bgGradient as [string, string, ...string[]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradient}
+      >
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
@@ -169,7 +167,6 @@ export default function LifeScreen() {
             Beyond classrooms, a world of experiences.
           </Text>
 
-          {/* BENTO GRID */}
           <View style={styles.bentoRow}>
             {renderCard(CARD_DATA[0], 0, styles.bentoTall)}
             <View style={styles.bentoColumn}>
