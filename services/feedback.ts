@@ -11,12 +11,29 @@ const studentAuthHeader = async () => {
   return { headers: { Authorization: `Bearer ${token}` } };
 };
 
+export type QuestionType =
+  | "short_answer"
+  | "paragraph"
+  | "multiple_choice"
+  | "checkboxes"
+  | "dropdown"
+  | "linear_scale"
+  | "numerical";
+
+export type QuestionDef = {
+  text: string;
+  type: QuestionType;
+  options?: string[]; // multiple_choice / checkboxes / dropdown
+  scaleMin?: number;   // linear_scale
+  scaleMax?: number;   // linear_scale
+};
+
 // ---------- FACULTY ----------
 
 // Faculty adds exactly 5 questions for a session they just ended.
 export const setSessionFeedbackQuestions = async (
   sessionId: string,
-  questions: string[]
+  questions: QuestionDef[]
 ): Promise<void> => {
   const config = await facultyAuthHeader();
   await API.post(`/feedback/session/${sessionId}/questions`, { questions }, config);
@@ -32,8 +49,10 @@ export type FeedbackAnswer = {
   source: "admin" | "faculty";
   order: number;
   questionText: string;
-  rating: number;
-  comment: string;
+  questionType: QuestionType;
+  textValue?: string;
+  numberValue?: number;
+  selectedOptions?: string[];
 };
 
 export type FeedbackResponseRecord = {
@@ -45,7 +64,7 @@ export type FeedbackResponseRecord = {
 
 export type FacultyFeedbackResponses = {
   subject: string;
-  questions: { text: string; order: number }[];
+  questions: (QuestionDef & { order: number })[];
   count: number;
   responses: FeedbackResponseRecord[];
 };
@@ -63,6 +82,10 @@ export type FeedbackQuestionItem = {
   source: "admin" | "faculty";
   order: number;
   text: string;
+  type: QuestionType;
+  options: string[];
+  scaleMin: number;
+  scaleMax: number;
 };
 
 export type FeedbackFormResponse = {
@@ -81,8 +104,9 @@ export const getFeedbackForm = async (sessionId: string): Promise<FeedbackFormRe
 export type SubmitFeedbackAnswer = {
   source: "admin" | "faculty";
   order: number;
-  rating: number;
-  comment?: string;
+  textValue?: string;
+  numberValue?: number;
+  selectedOptions?: string[];
 };
 
 export const submitFeedback = async (
