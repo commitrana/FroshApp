@@ -251,7 +251,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
           ) : (
             <TouchableOpacity
               style={[styles.markAttendanceBtn, { backgroundColor: theme.accent }]}
-              onPress={() => navigation.navigate('ScanAttendance')}
+              onPress={() => navigation.navigate('EnterAttendanceCode')}
             >
               <Text style={styles.markAttendanceBtnText}>📷 Mark Attendance</Text>
             </TouchableOpacity>
