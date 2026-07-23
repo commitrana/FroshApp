@@ -218,11 +218,11 @@ useFocusEffect(
 
   // Holds the slider offset at the moment a drag begins
   const dragStartValue = useRef(0);
-  // Which tab index the drag started from (used to decide next/prev on release)
-  const dragStartIndex = useRef(0);
   // Tracks whether a finger is currently dragging the slider (disables the
   // tab-press-driven effect below from fighting the gesture)
   const isDragging = useRef(false);
+  // Store the current offset during drag
+  const currentOffsetRef = useRef(0);
   // PanResponder is created once, so fast-changing values are mirrored into
   // refs to avoid the gesture handlers ever reading stale state
   const containerWidthRef = useRef(0);
@@ -291,9 +291,9 @@ useFocusEffect(
       },
       onPanResponderGrant: () => {
         isDragging.current = true;
-        dragStartIndex.current = tabIndex[activeTabRef.current as keyof typeof tabIndex];
         slideAnim.stopAnimation((value) => {
           dragStartValue.current = value;
+          currentOffsetRef.current = value;
         });
       },
       onPanResponderMove: (evt, gestureState) => {
@@ -306,6 +306,7 @@ useFocusEffect(
           Math.min(maxOffset, dragStartValue.current + gestureState.dx)
         );
         slideAnim.setValue(newOffset);
+        currentOffsetRef.current = newOffset;
       },
       onPanResponderRelease: (evt, gestureState) => {
         const width = containerWidthRef.current;
@@ -313,22 +314,12 @@ useFocusEffect(
           isDragging.current = false;
           return;
         }
+
         const tabWidth = width / 3;
-        const startIndex = dragStartIndex.current;
-        const dx = gestureState.dx;
-        const vx = gestureState.vx;
-
-        // Only a small drag (or a quick flick) is needed to fully commit to
-        // the next/previous tab — no need to drag halfway across.
-        const distanceThreshold = tabWidth * 0.18;
-        const velocityThreshold = 0.25;
-
-        let targetIndex = startIndex;
-        if (dx > distanceThreshold || vx > velocityThreshold) {
-          targetIndex = Math.min(2, startIndex + 1);
-        } else if (dx < -distanceThreshold || vx < -velocityThreshold) {
-          targetIndex = Math.max(0, startIndex - 1);
-        }
+        // Use the final offset to determine the closest tab
+        const finalOffset = currentOffsetRef.current;
+        let targetIndex = Math.round(finalOffset / tabWidth);
+        targetIndex = Math.max(0, Math.min(2, targetIndex));
 
         const newTab = tabNames[targetIndex];
         isDragging.current = false;

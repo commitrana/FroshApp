@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  ScrollView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -24,9 +25,7 @@ import { useAppTheme } from '../../context/ThemeContext';
 import ImageWithLoader from '../ImageWithLoader';
 
 // Converts a "#RRGGBB" hex color + 0-1 alpha into an "rgba(...)" string,
-// for use inside a CSS boxShadow value. Plain shadowColor+elevation can't
-// render a colored shadow on Android, so every glow on this screen goes
-// through this instead.
+// for use inside a CSS boxShadow value.
 function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace('#', '');
   const r = parseInt(clean.substring(0, 2), 16);
@@ -36,10 +35,7 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 // This is the student "Bootcamp" tab content — batch, weekly class
-// schedule, live-class/attendance card and timetable image. It's rendered
-// inline inside HomeScreen's single navbar (see the isBootcamp branch
-// there) instead of behind its own navigation.navigate('Bootcamp') screen,
-// so there is only ever one tab bar on screen at a time.
+// schedule (grid), live-class/attendance card and timetable image.
 export default function HomeBootcampTab({ theme }: { theme: any }) {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
@@ -57,9 +53,6 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
   const [timetableImage, setTimetableImage] = useState<string | null>(null);
   const [classSchedule, setClassSchedule] = useState<MyTimetableResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  // First load blocks on a spinner; every later focus of this tab just
-  // refetches quietly behind the already-visible content, so re-opening
-  // Bootcamp never feels like a fresh multi-second load again.
   const hasLoadedOnce = useRef(false);
 
   const [activeSession, setActiveSession] = useState<ActiveSessionInfo>(null);
@@ -71,10 +64,6 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
     try {
       if (isInitial) setLoading(true);
 
-      // studentData (local), getMyBatch, and getMyTimetable don't depend on
-      // each other, so they're fired together instead of one after another
-      // — this alone cuts the wait roughly to the slowest single call
-      // instead of the sum of all three.
       const [studentDataRaw, freshBatch, schedule] = await Promise.all([
         AsyncStorage.getItem('studentData'),
         getMyBatch(),
@@ -96,9 +85,6 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
         await AsyncStorage.setItem('studentData', JSON.stringify(student));
       }
 
-      // The timetable image genuinely needs batchCode first, so it can only
-      // start once the above resolves — but it no longer blocks anything
-      // else from showing up in the meantime.
       if (batchCode) {
         const imageUrl = await getBatchTimetableImage(batchCode);
         setTimetableImage(imageUrl);
@@ -132,10 +118,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
 
   useAutoRefresh(fetchActiveSession, 8000);
 
-  // Same pop-in as the Frosh/About tabs (fade + spring scale). HomeScreen's
-  // own wrapper only animates on tab *switch*, so without this, the first
-  // time this tab loads its data the content would just snap into place
-  // once the spinner disappears instead of popping in like the others.
+  // Pop-in animation
   const contentOpacity = useRef(new Animated.Value(0)).current;
   const contentScale = useRef(new Animated.Value(0.95)).current;
 
@@ -160,6 +143,18 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
 
   if (loading) {
     return <ActivityIndicator color={theme.accent} size="large" style={{ marginTop: 60 }} />;
+  }
+
+  // Prepare grid data
+  const timeSlots = classSchedule?.timeSlots ?? [];
+  const days = classSchedule?.days ?? [];
+  // Build a map: day -> slot -> class
+  const scheduleMap: { [day: string]: { [slot: string]: any } } = {};
+  if (classSchedule) {
+    classSchedule.classes.forEach((cls) => {
+      if (!scheduleMap[cls.day]) scheduleMap[cls.day] = {};
+      scheduleMap[cls.day][cls.slot] = cls;
+    });
   }
 
   return (
@@ -305,12 +300,13 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
             <Text style={[styles.batchName, { color: theme.accent }]}>{batch}</Text>
           </View>
 
+          {/* Weekly Schedule Grid - exactly like faculty */}
           <View style={styles.timeTableHeader}>
-            <MaterialCommunityIcons name="table-large" size={22} color={theme.accent} />
-            <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Class Schedule</Text>
+            <MaterialCommunityIcons name="calendar-month-outline" size={22} color={theme.accent} />
+            <Text style={[styles.timeTableTitle, { color: theme.textPrimary }]}>Weekly Schedule</Text>
           </View>
 
-          {!classSchedule || classSchedule.classes.length === 0 ? (
+          {timeSlots.length === 0 || days.length === 0 ? (
             <View
               style={[
                 styles.emptyBox,
@@ -318,77 +314,79 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
               ]}
             >
               <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                No classes have been assigned to your batch yet.
+                No schedule assigned yet
+              </Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary, marginTop: 4 }]}>
+                Please contact admin
               </Text>
             </View>
           ) : (
-            <View
-              style={[
-                styles.scheduleCard,
-                cardShadow(
-                  theme.topCard?.shadowColor ?? theme.shadowColor,
-                  theme.topCard?.shadowOpacity ?? 0.2,
-                  theme.topCard?.shadowRadius ?? 22,
-                  theme.topCard?.shadowOffset?.height ?? 10
-                ),
-                {
-                  backgroundColor: theme.topCard?.backgroundColor ?? glassBg,
-                  borderColor: glassBorder,
-                  borderWidth: 1,
-                  overflow: 'hidden',
-                },
-              ]}
-            >
-              <LinearGradient
-                colors={glassSheen}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.glassSheen}
-                pointerEvents="none"
-              />
-              {classSchedule.days.map((day) => {
-                // More than one faculty can teach this batch in the same
-                // time slot, so every match for the day is kept (sorted by
-                // slot) instead of just the first one.
-                const dayClasses = classSchedule.classes
-                  .filter((c) => c.day === day)
-                  .sort(
-                    (a, b) =>
-                      classSchedule.timeSlots.indexOf(a.slot) -
-                      classSchedule.timeSlots.indexOf(b.slot)
-                  );
+            <View style={styles.gridWrapper}>
+              <View style={styles.dayColumn}>
+                <View style={styles.cornerSpacer} />
+                {days.map((day) => (
+                  <View key={day} style={[styles.dayLabelCell, { borderBottomColor: theme.lineColor }]}>
+                    <Text style={[styles.dayLabelText, { color: theme.textSecondary }]}>
+                      {day.slice(0, 3)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
 
-                if (dayClasses.length === 0) return null;
-
-                return (
-                  <View key={day} style={styles.scheduleDayBlock}>
-                    <Text style={[styles.scheduleDayLabel, { color: theme.accent }]}>{day}</Text>
-                    {dayClasses.map((cls) => (
-                      <View
-                        key={`${cls.day}-${cls.slot}-${cls.faculty}-${cls.subject}`}
-                        style={styles.scheduleRow}
-                      >
-                        <View style={styles.scheduleTimeCol}>
-                          <Text style={[styles.scheduleTime, { color: theme.textSecondary }]}>
-                            {cls.slot}
-                          </Text>
-                        </View>
-                        <View style={styles.scheduleDetailsCol}>
-                          <Text style={[styles.scheduleSubject, { color: theme.textPrimary }]}>
-                            {cls.subject}
-                          </Text>
-                          <Text style={[styles.scheduleMeta, { color: theme.textSecondary }]}>
-                            {cls.faculty}
-                            {cls.venue ? ` · 📍 ${cls.venue}` : ''}
-                          </Text>
-                        </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View>
+                  <View style={styles.gridHeaderRow}>
+                    {timeSlots.map((slot) => (
+                      <View key={slot} style={[styles.slotHeaderCell, { backgroundColor: theme.cardBg }]}>
+                        <Text style={[styles.slotHeaderText, { color: theme.accent }]}>{slot}</Text>
                       </View>
                     ))}
                   </View>
-                );
-              })}
+
+                  {days.map((day) => (
+                    <View key={day} style={[styles.gridRow, { borderBottomColor: theme.lineColor }]}>
+                      {timeSlots.map((slot) => {
+                        const cls = scheduleMap[day]?.[slot];
+                        return (
+                          <View
+                            key={slot}
+                            style={[
+                              styles.gridCell,
+                              cls && { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor },
+                            ]}
+                          >
+                            {cls ? (
+                              <>
+                                <Text style={[styles.cellSubject, { color: theme.textPrimary }]} numberOfLines={2}>
+                                  {cls.subject}
+                                </Text>
+                                {cls.venue ? (
+                                  <Text style={[styles.cellVenue, { color: theme.textSecondary }]} numberOfLines={1}>
+                                    {cls.venue}
+                                  </Text>
+                                ) : null}
+                                {cls.faculty ? (
+                                  <Text style={[styles.cellFaculty, { color: theme.accent }]} numberOfLines={1}>
+                                    {cls.faculty}
+                                  </Text>
+                                ) : null}
+                              </>
+                            ) : (
+                              <Text style={[styles.cellEmptyDash, { color: theme.lineColor }]}>—</Text>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
             </View>
           )}
+
+          <Text style={[styles.note, { color: theme.textSecondary }]}>
+            Tap a class to view details.
+          </Text>
 
           <View
             style={[
@@ -502,33 +500,28 @@ const styles = StyleSheet.create({
   batchLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   batchName: { fontSize: 32, fontWeight: '800', marginTop: 6 },
 
-  scheduleCard: {
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 18,
-  },
-  scheduleDayBlock: { marginBottom: 16 },
-  scheduleDayLabel: {
-    fontSize: 14,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  scheduleRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
-  },
-  scheduleTimeCol: { width: 92 },
-  scheduleTime: { fontSize: 12, fontWeight: '600' },
-  scheduleDetailsCol: { flex: 1 },
-  scheduleSubject: { fontSize: 15, fontWeight: '700' },
-  scheduleMeta: { fontSize: 12, marginTop: 2 },
+  // Grid styles (identical to faculty)
+  gridWrapper: { flexDirection: 'row' },
+  dayColumn: { width: 52 },
+  cornerSpacer: { height: 40 },
+  dayLabelCell: { height: 64, justifyContent: 'center', alignItems: 'flex-start', borderBottomWidth: 1 },
+  dayLabelText: { fontSize: 12, fontWeight: '700' },
+  gridHeaderRow: { flexDirection: 'row', height: 40 },
+  slotHeaderCell: { width: 110, justifyContent: 'center', alignItems: 'center', marginLeft: 4, borderRadius: 6 },
+  slotHeaderText: { fontSize: 11, fontWeight: '700' },
+  gridRow: { flexDirection: 'row', height: 64, borderBottomWidth: 1 },
+  gridCell: { width: 110, marginLeft: 4, marginVertical: 4, borderRadius: 10, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
+  cellSubject: { fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  cellVenue: { fontSize: 10, marginTop: 2, textAlign: 'center' },
+  cellFaculty: { fontSize: 9, marginTop: 2, textAlign: 'center', fontWeight: '700' },
+  cellEmptyDash: { fontSize: 14 },
+  note: { fontSize: 12, marginTop: 10, textAlign: 'center' },
 
   timetableCard: {
     borderRadius: 24,
     padding: 18,
     alignItems: 'center',
+    marginTop: 10,
   },
   timetableLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, alignSelf: 'flex-start' },
   timetableImage: { width: '100%', height: 300, borderRadius: 14 },
