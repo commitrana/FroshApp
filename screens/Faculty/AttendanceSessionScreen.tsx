@@ -3,7 +3,6 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Bac
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import QRCode from 'react-native-qrcode-svg';
 import { RootStackParamList } from '../../types/navigation';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import {
@@ -127,19 +126,17 @@ const AttendanceSessionScreen = () => {
         </Text>
       </View>
 
-      <View style={[styles.qrCard, { shadowColor: FacultyTheme.shadowColor }]}>
-        <QRCode
-          value={session.qrToken}
-          size={220}
-          color={isEnded ? '#9CA3AF' : '#000000'}
-          backgroundColor="#FFFFFF"
-        />
+      <View style={[styles.codeCard, { shadowColor: FacultyTheme.shadowColor }]}>
+        <Text style={styles.codeCardLabel}>ATTENDANCE CODE</Text>
+        <Text style={[styles.codeCardValue, isEnded && styles.codeCardValueEnded]}>
+          {session.attendanceCode}
+        </Text>
       </View>
 
       <Text style={[styles.hint, { color: FacultyTheme.textSecondary }]}>
         {isEnded
-          ? 'This session has ended. QR code is no longer accepting scans.'
-          : "Show this QR code to your students — they'll scan it to mark attendance."}
+          ? 'This session has ended. The code is no longer accepting entries.'
+          : 'Read this code out or display it — students type it in to mark attendance.'}
       </Text>
 
       <View style={styles.statsRow}>
@@ -244,7 +241,22 @@ const styles = StyleSheet.create({
   header: { alignItems: 'center', marginBottom: 16 },
   headerTitle: { fontSize: 24, fontWeight: '700' },
   headerSubtitle: { fontSize: 14, marginTop: 4 },
-  qrCard: { backgroundColor: 'white', alignSelf: 'center', padding: 20, borderRadius: 20, marginBottom: 14, shadowOpacity: 0.15, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  codeCard: {
+    backgroundColor: 'white',
+    alignSelf: 'center',
+    paddingVertical: 28,
+    paddingHorizontal: 36,
+    borderRadius: 20,
+    marginBottom: 14,
+    alignItems: 'center',
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+  codeCardLabel: { fontSize: 12, fontWeight: '700', color: '#9CA3AF', letterSpacing: 2, marginBottom: 10 },
+  codeCardValue: { fontSize: 44, fontWeight: '800', color: '#111827', letterSpacing: 10 },
+  codeCardValueEnded: { color: '#9CA3AF' },
   hint: { fontSize: 13, textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   statBox: { flex: 1, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginHorizontal: 4, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },

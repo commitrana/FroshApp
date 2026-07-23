@@ -23,7 +23,7 @@ import AttendanceRosterScreen from "../screens/Faculty/AttendanceRosterScreen";
 import ClassHistoryScreen from "../screens/Faculty/ClassHistoryScreen";
 import ClassHistoryRosterScreen from "../screens/Faculty/ClassHistoryRosterScreen";
 import StudentClassHistoryScreen from "../screens/Bootcamp/StudentClassHistoryScreen";
-import ScanAttendanceScreen from "../screens/Attendance/ScanAttendanceScreen";
+import EnterAttendanceCodeScreen from '../screens/Faculty/Enterattendancecodescreen';
 import FeedbackQuestionsScreen from "../screens/Faculty/FeedbackQuestionsScreen";
 import FeedbackResponsesScreen from "../screens/Faculty/FeedbackResponsesScreen";
 import GiveFeedbackScreen from "../screens/Feedback/GiveFeedbackScreen";
@@ -84,6 +84,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Explore" component={ExploreScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
 
+        {/* Student entry point — HomeScreen itself branches on userRole, so
+            MainTabs (student) and FacultyTabs (faculty) both point here. */}
+        <Stack.Screen name="MainTabs" component={HomeScreen} />
+
         {/* Faculty entry point — HomeScreen itself branches on userRole and
             renders the faculty Weekly Schedule (with Class History button)
             under its own "Bootcamp" tab. FacultyDashboard / FacultyBootcampScreen
@@ -98,7 +102,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ClassHistory" component={ClassHistoryScreen} />
         <Stack.Screen name="ClassHistoryRoster" component={ClassHistoryRosterScreen} />
         <Stack.Screen name="StudentClassHistory" component={StudentClassHistoryScreen} />
-        <Stack.Screen name="ScanAttendance" component={ScanAttendanceScreen} />
+        <Stack.Screen name="EnterAttendanceCode" component={EnterAttendanceCodeScreen} />
         <Stack.Screen name="FeedbackQuestions" component={FeedbackQuestionsScreen} />
         <Stack.Screen name="FeedbackResponses" component={FeedbackResponsesScreen} />
         <Stack.Screen name="GiveFeedback" component={GiveFeedbackScreen} />

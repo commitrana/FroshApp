@@ -22,7 +22,7 @@ export type AttendanceSession = {
   anchorAccuracy: number;
   radiusMeters: number;
   batches: string[];
-  qrToken: string;
+  attendanceCode: string;
   status: "active" | "ended";
   startedAt: string;
   endedAt: string | null;
@@ -229,11 +229,11 @@ export type MarkAttendanceResult = {
 };
 
 export const markAttendance = async (params: {
-  qrToken: string;
+  code: string;
   studentGPS: { lat: number; lng: number };
   studentAccuracy?: number;
 }): Promise<MarkAttendanceResult> => {
   const config = await studentAuthHeader();
-  const res = await API.post("/attendance/mark", params, config);
+  const res = await API.post("/attendance/mark", { ...params, code: params.code.trim().toUpperCase() }, config);
   return res.data;
 };
