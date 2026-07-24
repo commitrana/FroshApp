@@ -20,7 +20,6 @@ import { BlurView, BlurTargetView } from "expo-blur";
 import Icon from "@expo/vector-icons/Ionicons";
 import { Feather } from "@expo/vector-icons";
 
-// Shared app theming (same pattern as HomeScreen / OurTeamScreen / AccountScreen)
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 
@@ -50,13 +49,10 @@ type Contact = { name: string; number: string };
 const contacts: Contact[] = [
   { name: "Vanshaj Kaushik", number: "8439818347" },
   { name: "Snehil Jhanwar", number: "9057241613" },
-  { name: "Nandini", number: "7009036797" },
 ];
 
 export default function ConnectScreen() {
   const navigation = useNavigation();
-
-  // Real app theme (matches every other screen — light/dark colors live in one place)
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
 
@@ -68,8 +64,7 @@ export default function ConnectScreen() {
   const isNavigating = useRef(false);
   const blurTargetRef = useRef<View | null>(null);
 
-  // Disable the navigator's own push/pop transition & gesture for this screen.
-  // We fully own the visual transition via slideY/fadeAnim, matching OurTeamScreen.
+  // Disable default transitions
   useEffect(() => {
     navigation.setOptions({
       animation: "none",
@@ -77,44 +72,59 @@ export default function ConnectScreen() {
     });
   }, [navigation]);
 
+  // Entry animation
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-
-    Animated.timing(slideY, {
-      toValue: 0,
-      duration: 350,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
-  // Exit animation (slide back down / fade out) — mirrors the entry so the
-  // screen closes the same way it opened, then hands off to goBack().
-  const handleBack = () => {
-    if (isNavigating.current) return;
-    isNavigating.current = true;
-
     Animated.parallel([
-      Animated.timing(slideY, {
-        toValue: screenHeight,
-        duration: 300,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
       Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 250,
+        toValue: 1,
+        duration: 300,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      navigation.goBack();
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // --- Exit animation (intercept any back action) ---
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      if (isNavigating.current) return;
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+        isNavigating.current = false;
+      });
     });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Header back button now just calls goBack()
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    navigation.goBack();
   };
 
   const handlePress = (item: HelpLink) => {
@@ -134,7 +144,6 @@ export default function ConnectScreen() {
     return <Icon name={item.icon as any} size={size} color={color} />;
   };
 
-  // Glass styling — same recipe used across the app (HomeScreen / OurTeamScreen)
   const glassBg = isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.35)";
   const glassBorder = isDarkMode ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.7)";
   const glassSheen = isDarkMode
@@ -170,7 +179,6 @@ export default function ConnectScreen() {
         >
           <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
             <SafeAreaView style={{ flex: 1 }}>
-              {/* Header */}
               <View style={styles.header}>
                 <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
                   <Icon name="arrow-back" size={24} color={theme.textPrimary} />
@@ -179,7 +187,6 @@ export default function ConnectScreen() {
                 <View style={{ width: 40 }} />
               </View>
 
-              {/* Subtitle */}
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
                 Connect with us through any of these channels
               </Text>
@@ -221,7 +228,7 @@ export default function ConnectScreen() {
         </LinearGradient>
       </Animated.View>
 
-      {/* Phone Modal */}
+      {/* Phone Modal (unchanged) */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
           <View style={[styles.modalOverlay, { backgroundColor: "rgba(0,0,0,0.5)" }]}>

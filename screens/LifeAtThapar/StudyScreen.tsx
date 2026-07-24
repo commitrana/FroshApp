@@ -12,6 +12,7 @@ import {
   Easing,
   Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -75,17 +76,14 @@ export default function StudyScreen() {
 
   const bgColor = theme.bgGradient[0];
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
   const slideY = useRef(new Animated.Value(screenHeight)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
   const isNavigating = useRef(false);
 
   const cardFade = useRef(STUDY_SPOTS.map(() => new Animated.Value(0))).current;
   const cardSlide = useRef(STUDY_SPOTS.map(() => new Animated.Value(18))).current;
   const scaleAnims = useRef(STUDY_SPOTS.map(() => new Animated.Value(1))).current;
 
-  // Disable the navigator's own push/pop transition & gesture for this screen.
-  // We fully own the visual transition via slideY/fadeAnim, matching OurTeamScreen.
   useEffect(() => {
     navigation.setOptions({
       animation: "none",
@@ -94,19 +92,20 @@ export default function StudyScreen() {
   }, [navigation]);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-
-    Animated.timing(slideY, {
-      toValue: 0,
-      duration: 350,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
 
     Animated.stagger(
       100,
@@ -129,18 +128,39 @@ export default function StudyScreen() {
     ).start();
   }, []);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      if (isNavigating.current) return;
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+        isNavigating.current = false;
+      });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   const handleBack = () => {
     if (isNavigating.current) return;
-    isNavigating.current = true;
-
-    Animated.timing(slideAnim, {
-      toValue: 1,
-      duration: 250,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start(() => {
-      navigation.goBack();
-    });
+    navigation.goBack();
   };
 
   const pressIn = (i: number) =>
@@ -170,16 +190,8 @@ export default function StudyScreen() {
         style={[
           styles.flexOne,
           {
-            opacity: fadeAnim,
-            transform: [
-              { translateY: slideY },
-              {
-                translateY: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 300],
-                }),
-              },
-            ],
+            opacity: opacityAnim,
+            transform: [{ translateY: slideY }],
           },
         ]}
       >
@@ -189,96 +201,110 @@ export default function StudyScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
-            </TouchableOpacity>
+          <SafeAreaView style={styles.safeArea}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+              <View style={styles.header}>
+                <TouchableOpacity onPress={handleBack}>
+                  <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
+                </TouchableOpacity>
+                <Text style={[styles.heading, { color: theme.textPrimary }]}>Study</Text>
+                <View style={{ width: 26 }} />
+              </View>
 
-            <Text style={[styles.eyebrow, { color: theme.accent }]}>✦  CAMPUS STUDY  ✦</Text>
-            <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>
-              Study{"\n"}
-              <Text style={{ color: theme.accent }}>Spaces</Text>
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
-              Three spots, every kind of focus — find yours.
-            </Text>
+              <Text style={[styles.eyebrow, { color: theme.accent }]}>✦  CAMPUS STUDY  ✦</Text>
+              <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>
+                Study{"\n"}
+                <Text style={{ color: theme.accent }}>Spaces</Text>
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+                Three spots, every kind of focus — find yours.
+              </Text>
 
-            <View style={styles.list}>
-              {STUDY_SPOTS.map((item, index) => (
-                <Animated.View
-                  key={item.id}
-                  style={{
-                    opacity: cardFade[index],
-                    transform: [{ translateY: cardSlide[index] }, { scale: scaleAnims[index] }],
-                  }}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.92}
-                    onPressIn={() => pressIn(index)}
-                    onPressOut={() => pressOut(index)}
-                    style={[styles.card, { borderColor: `${item.accent}55`, shadowColor: item.accent }]}
+              <View style={styles.list}>
+                {STUDY_SPOTS.map((item, index) => (
+                  <Animated.View
+                    key={item.id}
+                    style={{
+                      opacity: cardFade[index],
+                      transform: [{ translateY: cardSlide[index] }, { scale: scaleAnims[index] }],
+                    }}
                   >
-                    <View style={styles.photoWrap}>
-                      <Image source={item.image} style={styles.photo} />
-                      <LinearGradient
-                        colors={["transparent", "rgba(3,8,18,0.85)"]}
-                        style={styles.photoFade}
-                        pointerEvents="none"
-                      />
+                    <TouchableOpacity
+                      activeOpacity={0.92}
+                      onPressIn={() => pressIn(index)}
+                      onPressOut={() => pressOut(index)}
+                      style={[styles.card, { borderColor: `${item.accent}55`, shadowColor: item.accent }]}
+                    >
+                      <View style={styles.photoWrap}>
+                        <Image source={item.image} style={styles.photo} />
+                        <LinearGradient
+                          colors={["transparent", "rgba(3,8,18,0.85)"]}
+                          style={styles.photoFade}
+                          pointerEvents="none"
+                        />
+                        <View
+                          style={[
+                            styles.tagChip,
+                            { borderColor: item.accent, backgroundColor: "rgba(6,14,26,0.55)" },
+                          ]}
+                        >
+                          <Ionicons name={item.icon as any} size={15} color={item.accent} />
+                          <Text style={[styles.tagChipText, { color: item.accent }]}>{item.tag}</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.seamRow} pointerEvents="none">
+                        {Array.from({ length: NOTCH_COUNT }).map((_, n) => (
+                          <View key={n} style={[styles.notch, { backgroundColor: bgColor }]} />
+                        ))}
+                      </View>
+
                       <View
                         style={[
-                          styles.tagChip,
-                          { borderColor: item.accent, backgroundColor: "rgba(6,14,26,0.55)" },
+                          styles.panel,
+                          {
+                            backgroundColor: theme.cardBg,
+                            borderTopColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
+                          },
                         ]}
                       >
-                        <Ionicons name={item.icon as any} size={15} color={item.accent} />
-                        <Text style={[styles.tagChipText, { color: item.accent }]}>{item.tag}</Text>
+                        <View style={styles.panelHeaderRow}>
+                          <Text style={[styles.stallName, { color: item.accent }]}>{item.name}</Text>
+                        </View>
+                        <Text style={[styles.description, { color: theme.textSecondary }]}>{item.description}</Text>
                       </View>
-                    </View>
-
-                    <View style={styles.seamRow} pointerEvents="none">
-                      {Array.from({ length: NOTCH_COUNT }).map((_, n) => (
-                        <View key={n} style={[styles.notch, { backgroundColor: bgColor }]} />
-                      ))}
-                    </View>
-
-                    <View
-                      style={[
-                        styles.panel,
-                        {
-                          backgroundColor: theme.cardBg,
-                          borderTopColor: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
-                        },
-                      ]}
-                    >
-                      <View style={styles.panelHeaderRow}>
-                        <Text style={[styles.stallName, { color: item.accent }]}>{item.name}</Text>
-                      </View>
-                      <Text style={[styles.description, { color: theme.textSecondary }]}>{item.description}</Text>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </View>
-          </ScrollView>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))}
+              </View>
+            </ScrollView>
+          </SafeAreaView>
         </LinearGradient>
       </Animated.View>
     </View>
   );
 }
 
+// Styles are the same as the original
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flexOne: { flex: 1 },
   gradient: { flex: 1 },
+  safeArea: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 22,
-    paddingTop: 55,
     paddingBottom: 40,
   },
-  backButton: {
-    marginBottom: 24,
-    width: 32,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  heading: {
+    fontSize: 26,
+    fontWeight: "700",
   },
   eyebrow: {
     fontSize: 13,

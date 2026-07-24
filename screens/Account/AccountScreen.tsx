@@ -73,13 +73,12 @@ export default function AccountScreen() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
 
-  // --- Entry animation (slide up from bottom / fade in), matching OurTeamScreen ---
+  // --- Entry animation (slide up from bottom / fade in) ---
   const slideY = useRef(new Animated.Value(screenHeight)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const isNavigating = useRef(false);
 
   // Disable the navigator's own push/pop transition & gesture for this screen.
-  // We fully own the visual transition via slideY/opacityAnim.
   useEffect(() => {
     navigation.setOptions({
       animation: "none",
@@ -87,6 +86,7 @@ export default function AccountScreen() {
     });
   }, [navigation]);
 
+  // Run entry animation on mount
   useEffect(() => {
     Animated.parallel([
       Animated.timing(slideY, {
@@ -102,31 +102,49 @@ export default function AccountScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Exit animation (slide back down / fade out) — mirrors the entry so the
-  // screen closes the same way it opened, then hands off to goBack().
+  // --- Exit animation (slide down + fade out) triggered by any back action ---
+  // Intercept 'beforeRemove' to run our custom animation before the screen is popped.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      // If we are already animating out, let it pass through (the animation already dispatched the action)
+      if (isNavigating.current) return;
+
+      // Prevent the default removal so we can animate first
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          // Now that the animation has completed, dispatch the original action.
+          navigation.dispatch(e.data.action);
+        }
+        // Reset the flag after dispatching (though the screen will be unmounted).
+        isNavigating.current = false;
+      });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // The header back button now simply calls goBack(), which will be intercepted by 'beforeRemove'.
   const handleBack = () => {
     if (isNavigating.current) return;
-    isNavigating.current = true;
-
-    Animated.parallel([
-      Animated.timing(slideY, {
-        toValue: screenHeight,
-        duration: 300,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 250,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      navigation.goBack();
-    });
+    navigation.goBack();
   };
 
   const fetchProfile = useCallback(async () => {
@@ -161,10 +179,7 @@ export default function AccountScreen() {
     setRefreshing(false);
   }, [fetchProfile]);
 
-  // Resizes + compresses the picked image on-device before it's ever sent
-  // over the network. Keeps individual uploads small (roughly 30-80KB at
-  // these settings) so ~4,000 students' worth of photos comfortably fit
-  // inside Supabase's 1GB free storage bucket.
+  // Compress image before upload
   const compressForUpload = async (uri: string) => {
     const manipulated = await ImageManipulator.manipulateAsync(
       uri,

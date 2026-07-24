@@ -10,14 +10,19 @@ import {
   Platform,
   Animated,
   Easing,
+  Dimensions,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "@expo/vector-icons/Ionicons";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import Feather from "@expo/vector-icons/Feather";
 
-import { useTheme } from "../../theme/theme";
+import { useAppTheme } from "../../context/ThemeContext";
+import { useHomeTheme } from "../../constants/homeThemes";
+
+const { height: screenHeight } = Dimensions.get("window");
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
@@ -60,20 +65,77 @@ const FacilityIcon = ({
 
 export default function HostelsScreen() {
   const navigation = useNavigation<any>();
-  const { colors, isDarkMode } = useTheme();
+  const { isDarkMode } = useAppTheme();
+  const theme = useHomeTheme();
 
-  const theme = {
-    bgGradient: isDarkMode
-      ? (["#020B18", "#061528", "#041220"] as [string, string, string])
-      : (["#F5F9FF", "#E8F0FE", "#D6E4F5"] as [string, string, string]),
-    textPrimary: colors.textPrimary,
-    textSecondary: colors.textSecondary,
-    accent: colors.primary,
-    cardBg: colors.card,
+  // --- Entry / exit animations (same as AccountScreen) ---
+  const slideY = useRef(new Animated.Value(screenHeight)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+
+  // Disable default navigator transitions
+  useEffect(() => {
+    navigation.setOptions({
+      animation: "none",
+      gestureEnabled: false,
+    });
+  }, [navigation]);
+
+  // Entry animation
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Exit animation (intercept back actions)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      if (isNavigating.current) return;
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+        isNavigating.current = false;
+      });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    navigation.goBack();
   };
 
-  const bgColor = theme.bgGradient[0];
-
+  // --- Hostel data (unchanged) ---
   const HOSTELS: Wing[] = [
     {
       id: "boys",
@@ -109,63 +171,8 @@ export default function HostelsScreen() {
     },
   ];
 
-  // --- Entrance + back-navigation animation ---
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const isNavigating = useRef(false);
-
-  const ITEM_COUNT = HOSTELS.length;
-  const cardFade = useRef(
-    Array.from({ length: ITEM_COUNT }, () => new Animated.Value(0))
-  ).current;
-  const cardSlide = useRef(
-    Array.from({ length: ITEM_COUNT }, () => new Animated.Value(18))
-  ).current;
+  // Scale animations for card press (unchanged)
   const scaleAnims = useRef(HOSTELS.map(() => new Animated.Value(1))).current;
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-
-    Animated.stagger(
-      100,
-      cardFade.map((_, i) =>
-        Animated.parallel([
-          Animated.timing(cardFade[i], {
-            toValue: 1,
-            duration: 420,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(cardSlide[i], {
-            toValue: 0,
-            duration: 420,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ])
-      )
-    ).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleBack = () => {
-    if (isNavigating.current) return;
-    isNavigating.current = true;
-
-    Animated.timing(slideAnim, {
-      toValue: 1,
-      duration: 250,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start(() => {
-      navigation.goBack();
-    });
-  };
 
   const pressIn = (i: number) =>
     Animated.spring(scaleAnims[i], {
@@ -183,8 +190,10 @@ export default function HostelsScreen() {
       useNativeDriver: true,
     }).start();
 
+  const bgColor = theme.bgGradient[0];
+
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
+    <View style={{ flex: 1, backgroundColor: bgColor }}>
       <StatusBar
         barStyle={isDarkMode ? "light-content" : "dark-content"}
         backgroundColor="transparent"
@@ -192,122 +201,118 @@ export default function HostelsScreen() {
       />
       <Animated.View
         style={[
-          styles.flexOne,
           {
-            opacity: fadeAnim,
-            transform: [
-              {
-                translateY: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 300],
-                }),
-              },
-            ],
+            flex: 1,
+            opacity: opacityAnim,
+            transform: [{ translateY: slideY }],
           },
         ]}
       >
         <LinearGradient
-          colors={theme.bgGradient}
+          colors={theme.bgGradient as [string, string, ...string[]]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Icon name="arrow-back" size={24} color={theme.textPrimary} />
-            </TouchableOpacity>
+          <SafeAreaView style={styles.safeArea}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Header with back button (matches AccountScreen style) */}
+              <View style={styles.header}>
+                <TouchableOpacity onPress={handleBack}>
+                  <Icon name="arrow-back" size={26} color={theme.iconColor} />
+                </TouchableOpacity>
+                <Text style={[styles.heading, { color: theme.textPrimary }]}>Hostels</Text>
+                <View style={{ width: 26 }} />
+              </View>
 
-            <Text style={[styles.eyebrow, { color: theme.accent }]}>✦  CAMPUS HOSTELS  ✦</Text>
-            <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>
-              Hostel{"\n"}
-              <Text style={{ color: theme.accent }}>Wings</Text>
-            </Text>
-            <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
-              Boys' and Girls' hostels on campus.
-            </Text>
+              <Text style={[styles.eyebrow, { color: theme.accent }]}>✦  CAMPUS HOSTELS  ✦</Text>
+              <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>
+                Hostel{"\n"}
+                <Text style={{ color: theme.accent }}>Wings</Text>
+              </Text>
+              <Text style={[styles.heroSubtitle, { color: theme.textSecondary }]}>
+                Boys' and Girls' hostels on campus.
+              </Text>
 
-            {/* ---- WING CARDS ---- */}
-            <View style={styles.list}>
-              {HOSTELS.map((item, index) => (
-                <Animated.View
-                  key={item.id}
-                  style={{
-                    opacity: cardFade[index],
-                    transform: [{ translateY: cardSlide[index] }, { scale: scaleAnims[index] }],
-                  }}
-                >
-                  <TouchableOpacity
-                    activeOpacity={0.92}
-                    onPressIn={() => pressIn(index)}
-                    onPressOut={() => pressOut(index)}
-                    onPress={() => navigation.navigate(item.route)}
-                    style={[
-                      styles.card,
-                      {
-                        borderColor: isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.1)",
-                        shadowColor: item.accent,
-                      },
-                    ]}
+              <View style={styles.list}>
+                {HOSTELS.map((item, index) => (
+                  <Animated.View
+                    key={item.id}
+                    style={{
+                      transform: [{ scale: scaleAnims[index] }],
+                    }}
                   >
-                    {/* Photo */}
-                    <View style={styles.photoWrap}>
-                      <Image source={item.image} style={styles.photo} />
-
-                      <LinearGradient
-                        colors={[`${item.accent}33`, "transparent"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0.8 }}
-                        style={StyleSheet.absoluteFill}
-                        pointerEvents="none"
-                      />
-
-                      <LinearGradient
-                        colors={["transparent", "rgba(3,8,18,0.85)"]}
-                        style={styles.photoFade}
-                        pointerEvents="none"
-                      />
-                    </View>
-
-                    {/* Torn-ticket perforation seam */}
-                    <View style={styles.seamRow} pointerEvents="none">
-                      {Array.from({ length: NOTCH_COUNT }).map((_, n) => (
-                        <View key={n} style={[styles.notch, { backgroundColor: bgColor }]} />
-                      ))}
-                    </View>
-
-                    {/* Description panel (solid, no glass blur) */}
-                    <View
+                    <TouchableOpacity
+                      activeOpacity={0.92}
+                      onPressIn={() => pressIn(index)}
+                      onPressOut={() => pressOut(index)}
+                      onPress={() => navigation.navigate(item.route)}
                       style={[
-                        styles.panel,
+                        styles.card,
                         {
-                          backgroundColor: theme.cardBg,
-                          borderTopColor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                          borderColor: isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.1)",
+                          shadowColor: item.accent,
                         },
                       ]}
                     >
-                      <View style={styles.panelHeaderRow}>
-                        <Text style={[styles.stallName, { color: item.accent }]}>{item.name}</Text>
+                      <View style={styles.photoWrap}>
+                        <Image source={item.image} style={styles.photo} />
+                        <LinearGradient
+                          colors={[`${item.accent}33`, "transparent"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0.8 }}
+                          style={StyleSheet.absoluteFill}
+                          pointerEvents="none"
+                        />
+                        <LinearGradient
+                          colors={["transparent", "rgba(3,8,18,0.85)"]}
+                          style={styles.photoFade}
+                          pointerEvents="none"
+                        />
                       </View>
-                      <Text style={[styles.description, { color: theme.textSecondary }]}>
-                        {item.description}
-                      </Text>
 
-                      <View style={[styles.facilityDivider, { backgroundColor: `${item.accent}40` }]} />
-
-                      <View style={styles.facilityRow}>
-                        {item.facilities.map((f) => (
-                          <View key={f.name} style={styles.facilityItem}>
-                            <FacilityIcon lib={f.lib} name={f.name} size={18} color={item.accent} />
-                            <Text style={[styles.facilityText, { color: theme.textPrimary }]}>{f.label}</Text>
-                          </View>
+                      <View style={styles.seamRow} pointerEvents="none">
+                        {Array.from({ length: NOTCH_COUNT }).map((_, n) => (
+                          <View key={n} style={[styles.notch, { backgroundColor: bgColor }]} />
                         ))}
                       </View>
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </View>
-          </ScrollView>
+
+                      <View
+                        style={[
+                          styles.panel,
+                          {
+                            backgroundColor: theme.cardBg,
+                            borderTopColor: isDarkMode ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+                          },
+                        ]}
+                      >
+                        <View style={styles.panelHeaderRow}>
+                          <Text style={[styles.stallName, { color: item.accent }]}>{item.name}</Text>
+                        </View>
+                        <Text style={[styles.description, { color: theme.textSecondary }]}>
+                          {item.description}
+                        </Text>
+
+                        <View style={[styles.facilityDivider, { backgroundColor: `${item.accent}40` }]} />
+
+                        <View style={styles.facilityRow}>
+                          {item.facilities.map((f) => (
+                            <View key={f.name} style={styles.facilityItem}>
+                              <FacilityIcon lib={f.lib} name={f.name} size={18} color={item.accent} />
+                              <Text style={[styles.facilityText, { color: theme.textPrimary }]}>{f.label}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))}
+              </View>
+            </ScrollView>
+          </SafeAreaView>
         </LinearGradient>
       </Animated.View>
     </View>
@@ -315,17 +320,22 @@ export default function HostelsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  flexOne: { flex: 1 },
   gradient: { flex: 1 },
+  safeArea: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 22,
-    paddingTop: 55,
     paddingBottom: 40,
   },
-  backButton: {
-    marginBottom: 24,
-    width: 32,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  heading: {
+    fontSize: 26,
+    fontWeight: "700",
   },
   eyebrow: {
     fontSize: 13,
@@ -345,12 +355,10 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     maxWidth: "85%",
   },
-
   list: {
     marginTop: 28,
     gap: 26,
   },
-
   card: {
     borderRadius: 26,
     borderWidth: 1,
@@ -360,7 +368,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,
   },
-
   photoWrap: {
     height: 190,
     width: "100%",
@@ -378,7 +385,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: "55%",
   },
-
   seamRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -392,7 +398,6 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
   },
-
   panel: {
     paddingHorizontal: 20,
     paddingTop: 16,

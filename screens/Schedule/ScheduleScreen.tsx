@@ -45,13 +45,12 @@ export default function ScheduleScreen() {
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
-  // --- Entry animation (slide up from bottom / fade in), matching OurTeamScreen ---
+  // --- Entry animation (slide up from bottom / fade in) ---
   const slideY = useRef(new Animated.Value(screenHeight)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
   const isNavigating = useRef(false);
 
   // Disable the navigator's own push/pop transition & gesture for this screen.
-  // We fully own the visual transition via slideY/opacityAnim.
   useEffect(() => {
     navigation.setOptions({
       animation: "none",
@@ -59,6 +58,7 @@ export default function ScheduleScreen() {
     });
   }, [navigation]);
 
+  // Entry animation
   useEffect(() => {
     Animated.parallel([
       Animated.timing(slideY, {
@@ -74,31 +74,43 @@ export default function ScheduleScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Exit animation (slide back down / fade out) — mirrors the entry so the
-  // screen closes the same way it opened, then hands off to goBack().
+  // --- Exit animation (intercept any back action) ---
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      if (isNavigating.current) return;
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+        isNavigating.current = false;
+      });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Header back button now simply calls goBack() – intercepted by beforeRemove
   const handleBack = () => {
     if (isNavigating.current) return;
-    isNavigating.current = true;
-
-    Animated.parallel([
-      Animated.timing(slideY, {
-        toValue: screenHeight,
-        duration: 300,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 250,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      navigation.goBack();
-    });
+    navigation.goBack();
   };
 
   useEffect(() => {
@@ -171,84 +183,82 @@ export default function ScheduleScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={handleBack}>
-              <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
-            </TouchableOpacity>
-            <Text style={[styles.heading, { color: theme.textPrimary }]}>Schedule</Text>
-            <View style={{ width: 26 }} />
-          </View>
-          <Text style={[styles.subHeading, { color: theme.textSecondary }]}>
-            Stay updated with every Frosh event.
-          </Text>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.container}>
+              <View style={styles.header}>
+                <TouchableOpacity onPress={handleBack}>
+                  <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
+                </TouchableOpacity>
+                <Text style={[styles.heading, { color: theme.textPrimary }]}>Schedule</Text>
+                <View style={{ width: 26 }} />
+              </View>
+              <Text style={[styles.subHeading, { color: theme.textSecondary }]}>
+                Stay updated with every Frosh event.
+              </Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.filterScroll}
-            contentContainerStyle={styles.filterContainer}
-          >
-            {/* ✅ No `theme` prop – FilterChip uses useHomeTheme internally */}
-            <FilterChip
-              title="All"
-              selected={selectedFilter === "all"}
-              onPress={() => setSelectedFilter("all")}
-            />
-            <FilterChip
-              title="Live"
-              selected={selectedFilter === "live"}
-              onPress={() => setSelectedFilter("live")}
-            />
-            <FilterChip
-              title="Upcoming"
-              selected={selectedFilter === "upcoming"}
-              onPress={() => setSelectedFilter("upcoming")}
-            />
-            <FilterChip
-              title="Past"
-              selected={selectedFilter === "past"}
-              onPress={() => setSelectedFilter("past")}
-            />
-          </ScrollView>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScroll}
+                contentContainerStyle={styles.filterContainer}
+              >
+                <FilterChip
+                  title="All"
+                  selected={selectedFilter === "all"}
+                  onPress={() => setSelectedFilter("all")}
+                />
+                <FilterChip
+                  title="Live"
+                  selected={selectedFilter === "live"}
+                  onPress={() => setSelectedFilter("live")}
+                />
+                <FilterChip
+                  title="Upcoming"
+                  selected={selectedFilter === "upcoming"}
+                  onPress={() => setSelectedFilter("upcoming")}
+                />
+                <FilterChip
+                  title="Past"
+                  selected={selectedFilter === "past"}
+                  onPress={() => setSelectedFilter("past")}
+                />
+              </ScrollView>
 
-          {loading ? (
-            <ActivityIndicator color={theme.accent} style={styles.loader} />
-          ) : (
-            <FlatList
-              data={filteredEvents}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <EventCard
-                  event={item}
-                  hasTicket={ticketedEventIds.has(item.id)}
-                  registering={registeringId === item.id}
-                  hideRegister={userRole === "faculty"}
-                  onRegisterPress={() =>
-                    handleRegisterPress(item.id, ticketedEventIds.has(item.id))
+              {loading ? (
+                <ActivityIndicator color={theme.accent} style={styles.loader} />
+              ) : (
+                <FlatList
+                  data={filteredEvents}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <EventCard
+                      event={item}
+                      hasTicket={ticketedEventIds.has(item.id)}
+                      registering={registeringId === item.id}
+                      hideRegister={userRole === "faculty"}
+                      onRegisterPress={() =>
+                        handleRegisterPress(item.id, ticketedEventIds.has(item.id))
+                      }
+                    />
+                  )}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.list}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={refreshing}
+                      onRefresh={onRefresh}
+                      tintColor={theme.textSecondary}
+                    />
                   }
-                  // ✅ No `theme` prop – EventCard uses useHomeTheme internally
+                  ListEmptyComponent={
+                    <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+                      No events available.
+                    </Text>
+                  }
                 />
               )}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.list}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor={theme.textSecondary}
-                />
-              }
-              ListEmptyComponent={
-                <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                  No events available.
-                </Text>
-              }
-            />
-          )}
-        </View>
-      </SafeAreaView>
+            </View>
+          </SafeAreaView>
         </LinearGradient>
       </Animated.View>
     </View>
