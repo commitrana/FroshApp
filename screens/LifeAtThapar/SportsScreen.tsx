@@ -10,6 +10,7 @@ import {
   Image,
   Animated,
   Easing,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+
+const { height: screenHeight } = Dimensions.get("window");
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
 
@@ -84,17 +87,34 @@ export default function SportsScreen() {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(screenHeight)).current;
   const isNavigating = useRef(false);
 
   const cardFade = useRef(SPORTS.map(() => new Animated.Value(0))).current;
   const cardSlide = useRef(SPORTS.map(() => new Animated.Value(18))).current;
   const scaleAnims = useRef(SPORTS.map(() => new Animated.Value(1))).current;
 
+  // Disable the navigator's own push/pop transition & gesture for this screen.
+  // We fully own the visual transition via slideY/fadeAnim, matching OurTeamScreen.
+  useEffect(() => {
+    navigation.setOptions({
+      animation: "none",
+      gestureEnabled: false,
+    });
+  }, [navigation]);
+
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 300,
       easing: Easing.inOut(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+
+    Animated.timing(slideY, {
+      toValue: 0,
+      duration: 350,
+      easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
 
@@ -162,6 +182,7 @@ export default function SportsScreen() {
           {
             opacity: fadeAnim,
             transform: [
+              { translateY: slideY },
               {
                 translateY: slideAnim.interpolate({
                   inputRange: [0, 1],

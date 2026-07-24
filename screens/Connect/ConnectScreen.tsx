@@ -24,7 +24,7 @@ import { Feather } from "@expo/vector-icons";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 
-const { width } = Dimensions.get("window");
+const { width, height: screenHeight } = Dimensions.get("window");
 
 type IconSet = "Ionicons" | "Feather";
 
@@ -64,9 +64,18 @@ export default function ConnectScreen() {
 
   // --- Animations ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(screenHeight)).current;
   const isNavigating = useRef(false);
   const blurTargetRef = useRef<View | null>(null);
+
+  // Disable the navigator's own push/pop transition & gesture for this screen.
+  // We fully own the visual transition via slideY/fadeAnim, matching OurTeamScreen.
+  useEffect(() => {
+    navigation.setOptions({
+      animation: "none",
+      gestureEnabled: false,
+    });
+  }, [navigation]);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -75,18 +84,35 @@ export default function ConnectScreen() {
       easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
+
+    Animated.timing(slideY, {
+      toValue: 0,
+      duration: 350,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
   }, [fadeAnim]);
 
+  // Exit animation (slide back down / fade out) — mirrors the entry so the
+  // screen closes the same way it opened, then hands off to goBack().
   const handleBack = () => {
     if (isNavigating.current) return;
     isNavigating.current = true;
 
-    Animated.timing(slideAnim, {
-      toValue: 1,
-      duration: 250,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: screenHeight,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       navigation.goBack();
     });
   };
@@ -132,14 +158,7 @@ export default function ConnectScreen() {
             opacity: fadeAnim,
           },
           {
-            transform: [
-              {
-                translateY: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 300],
-                }),
-              },
-            ],
+            transform: [{ translateY: slideY }],
           },
         ]}
       >

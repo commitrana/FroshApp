@@ -26,7 +26,7 @@ import Icon from '@expo/vector-icons/Ionicons';
 import { useAppTheme } from '../../context/ThemeContext';
 import { useOurTeamTheme } from '../../constants/ourTeamThemes';
 
-const { width } = Dimensions.get('window');
+const { width, height: screenHeight } = Dimensions.get('window');
 
 const H_PADDING = 12;
 const GRID_GAP = 8;
@@ -101,10 +101,42 @@ export default function OurTeamScreen() {
 
   const blurTargetRef = useRef<View | null>(null);
 
-  // --- Screen fade + slide-out animations ---
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideOutAnim = useRef(new Animated.Value(0)).current;
+  // --- Entry & Exit animations (slide from bottom / slide to bottom) ---
+  const slideY = useRef(new Animated.Value(screenHeight)).current; // start off‑screen bottom
+  const opacityAnim = useRef(new Animated.Value(0)).current;      // subtle fade
   const isNavigating = useRef(false);
+
+  // Disable the navigator's own push/pop transition & gesture for this screen.
+  // We fully own the visual transition via slideY/opacityAnim, so letting the
+  // default stack transition also run is what causes the flash at the end
+  // (it snaps the screen back to its normal opacity/position for one frame
+  // before removing it).
+  useEffect(() => {
+    navigation.setOptions({
+      animation: 'none',
+      gestureEnabled: false,
+    });
+  }, [navigation]);
+
+  // Run entry animation on mount
+  useEffect(() => {
+    // Start both animations simultaneously
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Full-screen swipe-to-change-page effect ---
   const contentDragX = useRef(new Animated.Value(-width * TABS.indexOf('faculty'))).current;
@@ -160,16 +192,6 @@ export default function OurTeamScreen() {
     }).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
-
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // --- Tab bar swipe gesture (drag the pill itself) - multi‑tab skipping ---
   const panResponder = useRef(
@@ -332,18 +354,51 @@ export default function OurTeamScreen() {
     })
   ).current;
 
+  // --- Back navigation with exit animation (flash-free) ---
+  // Strategy: intercept EVERY way this screen can be removed (button press,
+  // hardware back, swipe-back gesture) via `beforeRemove`. We prevent the
+  // default removal, run our own slide+fade animation to completion, and
+  // only then dispatch the action that was originally requested. Because the
+  // default transition is prevented up front, there's nothing left to snap
+  // back to a visible state after our animation ends — which is what was
+  // causing the flash.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (isNavigating.current) {
+        // Animation already ran and we're the ones dispatching this action;
+        // let it through.
+        return;
+      }
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]);
+
   const handleBack = () => {
     if (isNavigating.current) return;
-    isNavigating.current = true;
-
-    Animated.timing(slideOutAnim, {
-      toValue: 1,
-      duration: 250,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start(() => {
-      navigation.goBack();
-    });
+    navigation.goBack();
   };
 
   // --- Render functions (unchanged) ---
@@ -505,17 +560,8 @@ export default function OurTeamScreen() {
           {
             flex: 1,
             backgroundColor: theme.bgGradient[0],
-            opacity: fadeAnim,
-          },
-          {
-            transform: [
-              {
-                translateY: slideOutAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, 300],
-                }),
-              },
-            ],
+            opacity: opacityAnim,
+            transform: [{ translateY: slideY }],
           },
         ]}
       >

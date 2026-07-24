@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   SafeAreaView,
   View,
@@ -8,6 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  Animated,
+  Easing,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +20,7 @@ import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
+const { height: screenHeight } = Dimensions.get("window");
 
 type Room = {
   id: number;
@@ -41,17 +45,95 @@ const rooms: Room[] = [
 ];
 
 export default function BoysScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
 
+  // --- Entry & Exit animations (slide from bottom / slide to bottom) ---
+  const slideY = useRef(new Animated.Value(screenHeight)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+
+  // Disable the navigator's own push/pop transition & gesture for this screen.
+  // We fully own the visual transition via slideY/opacityAnim.
+  useEffect(() => {
+    navigation.setOptions({
+      animation: "none",
+      gestureEnabled: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Back navigation with exit animation (flash-free) ---
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+      if (isNavigating.current) {
+        return;
+      }
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: screenHeight,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]);
+
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    navigation.goBack();
+  };
+
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.bgGradient[0] }}>
       <StatusBar
         translucent
         backgroundColor="transparent"
         barStyle={isDarkMode ? "light-content" : "dark-content"}
       />
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity: opacityAnim,
+          transform: [{ translateY: slideY }],
+        }}
+      >
       <LinearGradient
         colors={theme.bgGradient as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
@@ -60,7 +142,7 @@ export default function BoysScreen() {
       >
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
               <Icon name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: theme.textPrimary }]}>BOYS HOSTEL</Text>
@@ -92,7 +174,8 @@ export default function BoysScreen() {
           </ScrollView>
         </SafeAreaView>
       </LinearGradient>
-    </>
+      </Animated.View>
+    </View>
   );
 }
 
