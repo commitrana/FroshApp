@@ -82,7 +82,7 @@ const ClassHistoryScreen = () => {
         >
           {loadError ? (
             <View style={[styles.emptyState, styles.errorState]}>
-              <Text style={styles.errorStateText}>⚠️ {loadError}</Text>
+              <Text style={styles.errorStateText}> {loadError}</Text>
             </View>
           ) : sessions.length === 0 ? (
             <View style={styles.emptyState}>

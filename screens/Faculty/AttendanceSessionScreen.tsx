@@ -101,8 +101,7 @@ const AttendanceSessionScreen = () => {
   };
 
   const handleBackToDashboard = () => {
-    // FacultyTabs is the real faculty home (HomeScreen w/ Bootcamp tab) —
-    // FacultyDashboard/FacultyBootcampScreen is retired.
+    
     navigation.reset({ index: 0, routes: [{ name: 'FacultyTabs' }] });
   };
 
@@ -122,7 +121,7 @@ const AttendanceSessionScreen = () => {
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: FacultyTheme.textPrimary }]}>{subject}</Text>
         <Text style={[styles.headerSubtitle, { color: FacultyTheme.textSecondary }]}>
-          {isEnded ? '⚪ Session ended — viewing attendance' : '🟢 Session active'}
+          {isEnded ? ' Session ended — viewing attendance' : ' Session active'}
         </Text>
       </View>
 

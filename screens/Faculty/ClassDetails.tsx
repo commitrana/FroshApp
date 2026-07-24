@@ -104,25 +104,25 @@ const ClassDetails = () => {
           <View style={[styles.divider, { backgroundColor: FacultyTheme.lineColor }]} />
 
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}>📅 Day</Text>
+            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}> Day</Text>
             <Text style={[styles.detailValue, { color: FacultyTheme.textPrimary }]}>{day}</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: FacultyTheme.lineColor }]} />
 
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}>🕒 Time</Text>
+            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}> Time</Text>
             <Text style={[styles.detailValue, { color: FacultyTheme.textPrimary }]}>{slot}</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: FacultyTheme.lineColor }]} />
 
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}>📍 Venue</Text>
+            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}> Venue</Text>
             <Text style={[styles.detailValue, { color: FacultyTheme.textPrimary }]}>{venue ? venue : 'Not specified'}</Text>
           </View>
           <View style={[styles.divider, { backgroundColor: FacultyTheme.lineColor }]} />
 
           <View style={styles.detailRow}>
-            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}>🎯 Batches</Text>
+            <Text style={[styles.detailLabel, { color: FacultyTheme.textSecondary }]}> Batches</Text>
             <Text style={[styles.detailValue, { color: FacultyTheme.textPrimary }]}>
               {batches && batches.length > 0 ? batches.join(', ') : 'All batches'}
             </Text>
@@ -138,8 +138,8 @@ const ClassDetails = () => {
             <View style={[styles.alreadyRanBanner, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}>
               <Text style={[styles.alreadyRanText, { color: FacultyTheme.textSecondary }]}>
                 {todaysSession.status === 'active'
-                  ? '🟢 Attendance is currently running for this class.'
-                  : '✅ Attendance was already taken for this class today.'}
+                  ? ' Attendance is currently running for this class.'
+                  : ' Attendance was already taken for this class today.'}
               </Text>
             </View>
             <TouchableOpacity style={[styles.attendanceButton, { backgroundColor: FacultyTheme.accent }]} onPress={handleViewAttendance}>

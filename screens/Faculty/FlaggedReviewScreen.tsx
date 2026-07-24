@@ -93,7 +93,7 @@ const FlaggedReviewScreen = () => {
       >
         {records.length === 0 ? (
           <View style={[styles.emptyState, { backgroundColor: FacultyTheme.cardBg }]}>
-            <Text style={[styles.emptyStateText, { color: FacultyTheme.textPrimary }]}>Nothing to review 🎉</Text>
+            <Text style={[styles.emptyStateText, { color: FacultyTheme.textPrimary }]}>Nothing to review </Text>
             <Text style={[styles.emptyStateSubText, { color: FacultyTheme.textSecondary }]}>All scans are within range.</Text>
           </View>
         ) : (
@@ -122,7 +122,7 @@ const FlaggedReviewScreen = () => {
               {record.reviewedByProfessor ? (
                 <View style={styles.resolvedRow}>
                   <Text style={[styles.resolvedText, { color: FacultyTheme.textSecondary }]}>
-                    ✅ Marked {record.finalStatus === 'present' ? 'Present' : 'Absent'}
+                     Marked {record.finalStatus === 'present' ? 'Present' : 'Absent'}
                   </Text>
                 </View>
               ) : (
