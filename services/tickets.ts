@@ -19,16 +19,25 @@ export type Ticket = {
   };
   student: string;
   qrToken: string;
+  // Which slot (1-5) this ticket is for, if the event has slots.
+  // 0 = the event has no slots (booked the plain event).
+  slot: number;
   status: "valid" | "used";
   issuedAt: string;
   scannedAt: string | null;
 };
 
 // Register for an event — issues a ticket (or returns the existing one
-// if the student already registered). Throws on sold-out / server errors.
-export const registerForEvent = async (eventId: string): Promise<Ticket> => {
+// if the student already registered, regardless of which slot they pick —
+// a student can only ever hold one ticket per event). Throws on sold-out,
+// slot-not-live, or other server errors.
+// `slot` is required for events with slots (1-5) and ignored/omitted for
+// events without slots.
+export const registerForEvent = async (eventId: string, slot?: number): Promise<Ticket> => {
   const config = await authHeader();
-  const res = await API.post("/tickets/register", { eventId }, config);
+  const body: { eventId: string; slot?: number } = { eventId };
+  if (slot !== undefined) body.slot = slot;
+  const res = await API.post("/tickets/register", body, config);
   return res.data.ticket;
 };
 

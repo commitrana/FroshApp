@@ -249,12 +249,20 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
               </Text>
             </View>
           ) : (
-            <TouchableOpacity
-              style={[styles.markAttendanceBtn, { backgroundColor: theme.accent }]}
-              onPress={() => navigation.navigate('EnterAttendanceCode')}
-            >
-              <Text style={styles.markAttendanceBtnText}>📷 Mark Attendance</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                style={[styles.markAttendanceBtn, { backgroundColor: theme.accent, flex: 1 }]}
+                onPress={() => navigation.navigate('ScanAttendance')}
+              >
+                <Text style={styles.markAttendanceBtnText}>📷 Scan QR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.markAttendanceBtn, { backgroundColor: theme.accent, flex: 1 }]}
+                onPress={() => navigation.navigate('EnterAttendanceCode')}
+              >
+                <Text style={styles.markAttendanceBtnText}>⌨️ Enter Code</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       )}
@@ -531,4 +539,4 @@ const styles = StyleSheet.create({
 
   emptyBox: { borderRadius: 24, padding: 24 },
   emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-});
+}); 

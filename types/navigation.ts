@@ -79,6 +79,7 @@ export type RootStackParamList = {
   };
   StudentClassHistory: undefined;
   EnterAttendanceCode: undefined;
+  ScanAttendance: undefined;
   FeedbackQuestions: {
     sessionId: string;
     subject: string;
