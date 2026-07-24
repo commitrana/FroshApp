@@ -14,10 +14,15 @@ export const lightOurTeamTheme = {
   lineColor: lightColors.border,
   accent: lightColors.primary,
   shadowColor: lightColors.glowBlue,
-  tabActiveText: lightColors.white,
-  glassBg: lightColors.glassFill,
-  glassBorder: lightColors.glassBorder,
-  glassSheen: [lightColors.glassHighlight, "rgba(255,255,255,0)"] as [string, string],
+  // Matches Home screen's nav bar pill exactly (light tinted background +
+  // dark navy text) instead of a solid accent-colored bar.
+  tabActiveBg: "#D7EAFF",
+  tabActiveText: "#0A2A4A",
+  // Matches Home screen's nav bar exactly: same solid background,
+  // translucent border, and sheen gradient values as topCard.
+  glassBg: "white",
+  glassBorder: "rgba(255, 255, 255, 0.7)",
+  glassSheen: ["rgba(255,255,255,0.55)", "rgba(255,255,255,0)"] as [string, string],
 };
 
 export const darkOurTeamTheme = {
@@ -29,10 +34,15 @@ export const darkOurTeamTheme = {
   lineColor: darkColors.border,
   accent: darkColors.primary,
   shadowColor: darkColors.glowCyan,
-  tabActiveText: darkColors.white,
-  glassBg: darkColors.glassFill,
-  glassBorder: darkColors.glassBorder,
-  glassSheen: [darkColors.glassHighlight, "rgba(255,255,255,0)"] as [string, string],
+  // Matches Home screen's nav bar pill exactly (medium-blue background +
+  // white text).
+  tabActiveBg: "#1C4F8F",
+  tabActiveText: "#FFFFFF",
+  // Matches Home screen's nav bar exactly: same solid background,
+  // translucent border, and sheen gradient values as topCard.
+  glassBg: "#11233D",
+  glassBorder: "rgba(255, 255, 255, 0.2)",
+  glassSheen: ["rgba(255,255,255,0.14)", "rgba(255,255,255,0)"] as [string, string],
 };
 
 // Hook to use the Our Team theme with context, mirroring useHomeTheme().

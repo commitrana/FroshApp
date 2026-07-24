@@ -236,8 +236,8 @@ useFocusEffect(
 
   // Smoothly animate the slider to rest on top of a given tab
   const animateToTab = (tabId: string, duration = 300) => {
-    if (containerWidth === 0) return;
-    const tabWidth = containerWidth / 3;
+    if (containerWidthRef.current === 0) return;
+    const tabWidth = containerWidthRef.current / 3;
     const targetOffset = tabIndex[tabId as keyof typeof tabIndex] * tabWidth;
     Animated.timing(slideAnim, {
       toValue: targetOffset,
@@ -855,7 +855,13 @@ useFocusEffect(
               )}
             </>
           ) : (
-            <HomeAboutTab theme={theme} />
+            <HomeAboutTab
+              theme={{
+                ...theme,
+                // Match the Live Event card's background exactly.
+                cardBg: theme.liveCard?.backgroundColor ?? theme.cardBg,
+              }}
+            />
           )}
           </Animated.View>
         </ScrollView>

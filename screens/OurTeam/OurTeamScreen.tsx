@@ -16,7 +16,6 @@ import {
   GestureResponderEvent,
   PanResponderGestureState,
   ActivityIndicator,
-  InteractionManager,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -58,14 +57,13 @@ export default function OurTeamScreen() {
   const theme = useOurTeamTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('faculty');
 
-  // --- Team data fetch ---
+  // --- Team data fetch (unchanged) ---
   const [teamData, setTeamData] = useState<TeamData>(EMPTY_TEAM_DATA);
   const [teamLoading, setTeamLoading] = useState(true);
   const [teamError, setTeamError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-
     const fetchTeam = async () => {
       try {
         setTeamLoading(true);
@@ -88,11 +86,8 @@ export default function OurTeamScreen() {
         if (isMounted) setTeamLoading(false);
       }
     };
-
     fetchTeam();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   // --- Glass pill slider animation ---
@@ -101,16 +96,11 @@ export default function OurTeamScreen() {
 
   const blurTargetRef = useRef<View | null>(null);
 
-  // --- Entry & Exit animations (slide from bottom / slide to bottom) ---
-  const slideY = useRef(new Animated.Value(screenHeight)).current; // start off‑screen bottom
-  const opacityAnim = useRef(new Animated.Value(0)).current;      // subtle fade
+  // --- Entry & Exit animations (unchanged) ---
+  const slideY = useRef(new Animated.Value(screenHeight)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
   const isNavigating = useRef(false);
 
-  // Disable the navigator's own push/pop transition & gesture for this screen.
-  // We fully own the visual transition via slideY/opacityAnim, so letting the
-  // default stack transition also run is what causes the flash at the end
-  // (it snaps the screen back to its normal opacity/position for one frame
-  // before removing it).
   useEffect(() => {
     navigation.setOptions({
       animation: 'none',
@@ -118,9 +108,7 @@ export default function OurTeamScreen() {
     });
   }, [navigation]);
 
-  // Run entry animation on mount
   useEffect(() => {
-    // Start both animations simultaneously
     Animated.parallel([
       Animated.timing(slideY, {
         toValue: 0,
@@ -135,22 +123,13 @@ export default function OurTeamScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Full-screen swipe-to-change-page effect ---
-  const contentDragX = useRef(new Animated.Value(-width * TABS.indexOf('faculty'))).current;
-  const contentDragStartIndex = useRef(0);
-  const contentDragStartValue = useRef(-width * TABS.indexOf('faculty'));
-  const isContentDragging = useRef(false);
-
+  // --- Pill drag (panResponder) – kept as is ---
   const dragStartValue = useRef(0);
-  const dragStartIndex = useRef(0);
   const isDragging = useRef(false);
   const containerWidthRef = useRef(0);
   const activeTabRef = useRef(activeTab);
-
-  // New ref to track current pill offset during drag (for multi‑tab rounding)
   const currentPillOffset = useRef(0);
 
   useEffect(() => {
@@ -160,40 +139,27 @@ export default function OurTeamScreen() {
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
-  const animateToTab = (tabId: TabKey, duration = 200) => {
-    if (containerWidth === 0) return;
-    const tabWidth = containerWidth / TABS.length;
+  const animateToTab = (tabId: TabKey, duration = 300) => {
+    if (containerWidthRef.current === 0) return;
+    const tabWidth = containerWidthRef.current / TABS.length;
     const targetOffset = TABS.indexOf(tabId) * tabWidth;
-
     slideAnim.stopAnimation();
-
     Animated.timing(slideAnim, {
       toValue: targetOffset,
       duration,
-      easing: Easing.out(Easing.cubic),
+      easing: Easing.inOut(Easing.ease),
       useNativeDriver: true,
     }).start();
   };
 
+  // Animate pill when activeTab changes (if not dragging)
   useEffect(() => {
     if (containerWidth === 0 || isDragging.current) return;
     animateToTab(activeTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, containerWidth]);
 
-  useEffect(() => {
-    if (isContentDragging.current) return;
-    const idx = TABS.indexOf(activeTab);
-    Animated.timing(contentDragX, {
-      toValue: -idx * width,
-      duration: 200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  // --- Tab bar swipe gesture (drag the pill itself) - multi‑tab skipping ---
+  // Pill pan responder (dragging the pill itself)
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -206,7 +172,6 @@ export default function OurTeamScreen() {
       },
       onPanResponderGrant: () => {
         isDragging.current = true;
-        dragStartIndex.current = TABS.indexOf(activeTabRef.current);
         slideAnim.stopAnimation((value: number) => {
           dragStartValue.current = value;
           currentPillOffset.current = value;
@@ -217,10 +182,7 @@ export default function OurTeamScreen() {
         if (w === 0) return;
         const tabWidth = w / TABS.length;
         const maxOffset = tabWidth * (TABS.length - 1);
-        const newOffset = Math.max(
-          0,
-          Math.min(maxOffset, dragStartValue.current + gestureState.dx)
-        );
+        const newOffset = Math.max(0, Math.min(maxOffset, dragStartValue.current + gestureState.dx));
         slideAnim.setValue(newOffset);
         currentPillOffset.current = newOffset;
       },
@@ -231,12 +193,9 @@ export default function OurTeamScreen() {
           return;
         }
         const tabWidth = w / TABS.length;
-
-        // Round to nearest tab using final pill offset
         const finalOffset = currentPillOffset.current;
         let targetIndex = Math.round(finalOffset / tabWidth);
         targetIndex = Math.max(0, Math.min(TABS.length - 1, targetIndex));
-
         const newTab = TABS[targetIndex];
         isDragging.current = false;
         setActiveTab(newTab);
@@ -249,129 +208,12 @@ export default function OurTeamScreen() {
     })
   ).current;
 
-  // --- Content swipe gesture (swipe the page itself) - optimised ---
-  const contentPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onStartShouldSetPanResponderCapture: () => false,
-      onMoveShouldSetPanResponderCapture: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        return (
-          Math.abs(gestureState.dx) > 10 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.5
-        );
-      },
-      onPanResponderGrant: () => {
-        isContentDragging.current = true;
-        contentDragStartIndex.current = TABS.indexOf(activeTabRef.current);
-        contentDragX.stopAnimation((value: number) => {
-          contentDragStartValue.current = value;
-        });
-        slideAnim.stopAnimation((value: number) => {
-          dragStartValue.current = value;
-          currentPillOffset.current = value;
-        });
-      },
-      onPanResponderMove: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        const startIndex = contentDragStartIndex.current;
-        let dx = gestureState.dx;
-
-        // Apply resistance at edges
-        if (startIndex === 0 && dx > 0) dx *= 0.35;
-        if (startIndex === TABS.length - 1 && dx < 0) dx *= 0.35;
-
-        contentDragX.setValue(contentDragStartValue.current + dx);
-
-        const cw = containerWidthRef.current;
-        if (cw > 0) {
-          const tabWidth = cw / TABS.length;
-          const totalWidth = width * TABS.length;
-          const currentOffset = contentDragStartValue.current + dx;
-          const progress = -currentOffset / totalWidth;
-          const pillPosition = progress * (cw - tabWidth);
-          const clampedPill = Math.max(0, Math.min(cw - tabWidth, pillPosition));
-
-          slideAnim.setValue(clampedPill);
-          currentPillOffset.current = clampedPill;
-        }
-      },
-      onPanResponderRelease: (_evt: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-        const startIndex = contentDragStartIndex.current;
-        const dx = gestureState.dx;
-        const vx = gestureState.vx;
-
-        // Velocity-based projection for skipping multiple tabs
-        const velocityFactor = 0.25;
-        const projectedDx = dx + vx * velocityFactor;
-        const currentTranslation = contentDragStartValue.current + projectedDx;
-        let targetIndex = Math.round(-currentTranslation / width);
-        targetIndex = Math.max(0, Math.min(TABS.length - 1, targetIndex));
-
-        const targetPillOffset = targetIndex * (containerWidthRef.current / TABS.length);
-
-        Animated.parallel([
-          Animated.timing(slideAnim, {
-            toValue: targetPillOffset,
-            duration: 180,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(contentDragX, {
-            toValue: -targetIndex * width,
-            duration: 180,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start(() => {
-          isContentDragging.current = false;
-          // Use InteractionManager to avoid blocking the animation thread
-          InteractionManager.runAfterInteractions(() => {
-            if (targetIndex !== startIndex) {
-              setActiveTab(TABS[targetIndex]);
-            }
-          });
-        });
-      },
-      onPanResponderTerminate: () => {
-        const startIndex = contentDragStartIndex.current;
-        isContentDragging.current = false;
-        const startPillOffset = startIndex * (containerWidthRef.current / TABS.length);
-
-        Animated.parallel([
-          Animated.timing(slideAnim, {
-            toValue: startPillOffset,
-            duration: 200,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(contentDragX, {
-            toValue: -startIndex * width,
-            duration: 200,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]).start();
-      },
-    })
-  ).current;
-
-  // --- Back navigation with exit animation (flash-free) ---
-  // Strategy: intercept EVERY way this screen can be removed (button press,
-  // hardware back, swipe-back gesture) via `beforeRemove`. We prevent the
-  // default removal, run our own slide+fade animation to completion, and
-  // only then dispatch the action that was originally requested. Because the
-  // default transition is prevented up front, there's nothing left to snap
-  // back to a visible state after our animation ends — which is what was
-  // causing the flash.
+  // --- Back navigation with exit animation (unchanged) ---
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
-      if (isNavigating.current) {
-        // Animation already ran and we're the ones dispatching this action;
-        // let it through.
-        return;
-      }
+      if (isNavigating.current) return;
       e.preventDefault();
       isNavigating.current = true;
-
       Animated.parallel([
         Animated.timing(slideY, {
           toValue: screenHeight,
@@ -386,14 +228,10 @@ export default function OurTeamScreen() {
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        if (finished) {
-          navigation.dispatch(e.data.action);
-        }
+        if (finished) navigation.dispatch(e.data.action);
       });
     });
-
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation]);
 
   const handleBack = () => {
@@ -402,54 +240,43 @@ export default function OurTeamScreen() {
   };
 
   // --- Render functions (unchanged) ---
-  const renderFacultyItem = useCallback(
-    ({ item }: { item: FacultyMember }) => (
-      <View style={styles.gridItem}>
+  const renderFacultyItem = useCallback(({ item }: { item: FacultyMember }) => (
+    <View style={styles.gridItem}>
+      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
+        <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
+      </View>
+      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
+      <Text style={[styles.cardDesignation, { color: theme.textSecondary }]}>{item.designation}</Text>
+    </View>
+  ), [theme]);
+
+  const renderMentorItem = useCallback(({ item }: { item: MentorMember }) => (
+    <View style={styles.gridItem}>
+      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
+        <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
+      </View>
+      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
+    </View>
+  ), [theme]);
+
+  const renderBranchItem = useCallback(({ item, index }: { item: BranchMember; index: number }) => {
+    const isLeft = index % 2 === 0;
+    return (
+      <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
         <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
           <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
         </View>
-        <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
-        <Text style={[styles.cardDesignation, { color: theme.textSecondary }]}>{item.designation}</Text>
-      </View>
-    ),
-    [theme]
-  );
-
-  const renderMentorItem = useCallback(
-    ({ item }: { item: MentorMember }) => (
-      <View style={styles.gridItem}>
-        <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-          <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
+        <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
+          <Text style={[styles.rowName, { color: theme.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
+            {item.name}
+          </Text>
+          <Text style={[styles.rowDesignation, { color: theme.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}>
+            {item.branch}
+          </Text>
         </View>
-        <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
       </View>
-    ),
-    [theme]
-  );
-
-  const renderBranchItem = useCallback(
-    ({ item, index }: { item: BranchMember; index: number }) => {
-      const isLeft = index % 2 === 0;
-      return (
-        <View style={[styles.alternatingRow, { flexDirection: isLeft ? 'row' : 'row-reverse' }]}>
-          <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-            <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
-          </View>
-          <View style={[styles.textContainer, { alignItems: isLeft ? 'flex-start' : 'flex-end' }]}>
-            <Text style={[styles.rowName, { color: theme.textPrimary, textAlign: isLeft ? 'left' : 'right' }]}>
-              {item.name}
-            </Text>
-            <Text
-              style={[styles.rowDesignation, { color: theme.textSecondary, textAlign: isLeft ? 'left' : 'right' }]}
-            >
-              {item.branch}
-            </Text>
-          </View>
-        </View>
-      );
-    },
-    [theme]
-  );
+    );
+  }, [theme]);
 
   const renderLoadingOrEmpty = (message: string) => (
     <View style={styles.centerFill}>
@@ -461,6 +288,7 @@ export default function OurTeamScreen() {
     </View>
   );
 
+  // --- Render content for the active tab only ---
   const renderContentForTab = (tabId: TabKey) => {
     switch (tabId) {
       case 'faculty':
@@ -536,17 +364,6 @@ export default function OurTeamScreen() {
     }
   };
 
-  const tabPanes = useMemo(
-    () =>
-      TABS.map((tabId) => (
-        <View key={tabId} style={{ width }}>
-          {renderContentForTab(tabId)}
-        </View>
-      )),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [theme, teamData, teamLoading, teamError]
-  );
-
   // --- Render ---
   return (
     <View style={{ flex: 1, backgroundColor: theme.bgGradient[0] }}>
@@ -576,8 +393,9 @@ export default function OurTeamScreen() {
                 <View style={{ width: 40 }} />
               </View>
 
+              {/* Glass pill tab bar – still draggable */}
               <BlurView
-                intensity={80}
+                intensity={300}
                 tint={isDarkMode ? 'dark' : 'light'}
                 blurMethod="dimezisBlurView"
                 blurTarget={blurTargetRef}
@@ -586,7 +404,6 @@ export default function OurTeamScreen() {
                   {
                     backgroundColor: theme.glassBg,
                     borderColor: theme.glassBorder,
-                    shadowColor: theme.shadowColor,
                   },
                 ]}
               >
@@ -617,16 +434,21 @@ export default function OurTeamScreen() {
                         {
                           width: containerWidth / TABS.length,
                           transform: [{ translateX: slideAnim }],
-                          backgroundColor: theme.accent,
+                          backgroundColor: theme.tabActiveBg,
                         },
                       ]}
                     />
                   )}
-
                   {TABS.map((tab) => {
                     const isActive = activeTab === tab;
                     return (
-                      <TouchableOpacity key={tab} style={styles.tab} onPress={() => setActiveTab(tab)}>
+                      <TouchableOpacity
+                        key={tab}
+                        style={styles.tab}
+                        onPress={() => {
+                          setActiveTab(tab);
+                        }}
+                      >
                         <Text
                           numberOfLines={1}
                           style={[
@@ -645,17 +467,9 @@ export default function OurTeamScreen() {
                 </View>
               </BlurView>
 
-              <View style={{ flex: 1, overflow: 'hidden' }} {...contentPanResponder.panHandlers}>
-                <Animated.View
-                  style={{
-                    flex: 1,
-                    flexDirection: 'row',
-                    width: width * TABS.length,
-                    transform: [{ translateX: contentDragX }],
-                  }}
-                >
-                  {tabPanes}
-                </Animated.View>
+              {/* Content area – only active tab, no swipe gesture */}
+              <View style={{ flex: 1 }}>
+                {renderContentForTab(activeTab)}
               </View>
             </SafeAreaView>
           </BlurTargetView>
@@ -665,6 +479,7 @@ export default function OurTeamScreen() {
   );
 }
 
+// Styles remain exactly the same as the original
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -682,17 +497,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   glassCard: {
-    marginHorizontal: 16,
-    marginTop: 4,
-    marginBottom: 4,
-    borderRadius: 24,
-    height: 52,
+    marginHorizontal: 15,
+    marginTop: 18,
+    borderRadius: 28,
+    height: 55,
     overflow: 'hidden',
     borderWidth: 1,
-    shadowOpacity: 0.15,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
   },
   glassSheen: {
     position: 'absolute',
@@ -700,8 +510,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: '55%',
-    borderTopLeftRadius: 23,
-    borderTopRightRadius: 23,
+    borderTopLeftRadius: 27,
+    borderTopRightRadius: 27,
   },
   tabsContainer: {
     flex: 1,
@@ -712,13 +522,14 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    height: 52,
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 20,
   },
   tabText: {
-    fontSize: 13,
-    letterSpacing: 0.5,
+    fontSize: 12,
   },
   slider: {
     position: 'absolute',

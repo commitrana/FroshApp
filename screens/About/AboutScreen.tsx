@@ -41,13 +41,22 @@ const AboutScreen = () => {
     ? ['#020B18', '#061528', '#041220']
     : ['#F5F9FF', '#E8F0FE', '#D6E4F5'];
 
+  // Same translucent "glass" background/border used by the Live Event
+  // card on the Home screen, so the About Us card matches it exactly.
+  const glassBg = isDarkMode
+    ? 'rgba(255, 255, 255, 0.05)'
+    : 'rgba(255, 255, 255, 0.35)';
+  const glassBorder = isDarkMode
+    ? 'rgba(255, 255, 255, 0.2)'
+    : 'rgba(255, 255, 255, 0.7)';
+
   // HomeAboutTab expects this exact theme shape (cardBg, shadowColor, etc.)
   const homeAboutTabTheme = {
-    cardBg: colors.card,
+    cardBg: glassBg,
     shadowColor: colors.primary,
     textPrimary: colors.textPrimary,
     textSecondary: colors.textSecondary,
-    borderColor: colors.border,
+    borderColor: glassBorder,
     primary: colors.primary,
   };
 
