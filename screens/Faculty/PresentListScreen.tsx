@@ -88,7 +88,7 @@ const PresentListScreen = () => {
       >
         {loadError ? (
           <View style={[styles.emptyState, styles.errorState, { backgroundColor: FacultyTheme.cardBg }]}>
-            <Text style={[styles.errorStateText, { color: FacultyTheme.danger }]}>⚠️ Couldn't load the list</Text>
+            <Text style={[styles.errorStateText, { color: FacultyTheme.danger }]}> Couldn't load the list</Text>
             <Text style={[styles.emptyStateSubText, { color: FacultyTheme.textSecondary }]}>{loadError}</Text>
           </View>
         ) : records.length === 0 ? (

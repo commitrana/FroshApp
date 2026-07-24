@@ -1,15 +1,18 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, BackHandler, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import QRCode from 'react-native-qrcode-svg';
 import { RootStackParamList } from '../../types/navigation';
 import { useAutoRefresh } from '../../hooks/useAutoRefresh';
 import {
   AttendanceSession,
   AttendanceLiveCounts,
+  RotatingCode,
   getAttendanceSession,
   getAttendanceLive,
+  getRotatingCode,
   endAttendanceSession,
 } from '../../services/attendance';
 import { startSessionFeedback } from '../../services/feedback';
@@ -29,6 +32,9 @@ const AttendanceSessionScreen = () => {
   const [loading, setLoading] = useState(true);
   const [ending, setEnding] = useState(false);
   const [startingFeedback, setStartingFeedback] = useState(false);
+  const [rotatingCode, setRotatingCode] = useState<RotatingCode | null>(null);
+  const [rotatingCodeError, setRotatingCodeError] = useState<string | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -46,6 +52,41 @@ const AttendanceSessionScreen = () => {
   }, [sessionId]);
 
   useAutoRefresh(fetchData, 5000);
+
+  // The code/QR the professor is showing rotate every few seconds — this is
+  // purely computed on the server (no DB writes on rotation), so polling it
+  // is cheap. Stops once the session has ended, since there's nothing left
+  // to rotate.
+  const fetchRotatingCode = useCallback(async () => {
+    if (session?.status === 'ended') return;
+    try {
+      const data = await getRotatingCode(sessionId);
+      setRotatingCode(data);
+      setRotatingCodeError(null);
+    } catch (error: any) {
+      console.log('Error fetching rotating code:', error?.response?.data || error?.message);
+      setRotatingCodeError(error?.response?.data?.error || 'Live code refresh failed — showing the static code.');
+    }
+  }, [sessionId, session?.status]);
+
+  useAutoRefresh(fetchRotatingCode, 7000);
+
+  // Visual countdown to the next rotation, ticking off the server's
+  // expiresAt rather than a locally-started timer (keeps it accurate even
+  // if this screen was backgrounded for a while).
+  useEffect(() => {
+    if (!rotatingCode?.active || !rotatingCode.expiresAt) {
+      setSecondsLeft(null);
+      return;
+    }
+    const tick = () => {
+      const diff = Math.max(0, Math.round((rotatingCode.expiresAt! - Date.now()) / 1000));
+      setSecondsLeft(diff);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [rotatingCode?.expiresAt, rotatingCode?.active]);
 
   useFocusEffect(
     useCallback(() => {
@@ -101,8 +142,7 @@ const AttendanceSessionScreen = () => {
   };
 
   const handleBackToDashboard = () => {
-    // FacultyTabs is the real faculty home (HomeScreen w/ Bootcamp tab) —
-    // FacultyDashboard/FacultyBootcampScreen is retired.
+    
     navigation.reset({ index: 0, routes: [{ name: 'FacultyTabs' }] });
   };
 
@@ -122,21 +162,39 @@ const AttendanceSessionScreen = () => {
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: FacultyTheme.textPrimary }]}>{subject}</Text>
         <Text style={[styles.headerSubtitle, { color: FacultyTheme.textSecondary }]}>
-          {isEnded ? '⚪ Session ended — viewing attendance' : '🟢 Session active'}
+          {isEnded ? ' Session ended — viewing attendance' : ' Session active'}
         </Text>
       </View>
 
       <View style={[styles.codeCard, { shadowColor: FacultyTheme.shadowColor }]}>
+        {!isEnded ? (
+          <View style={styles.qrWrapperFaculty}>
+            <QRCode
+              value={rotatingCode?.qrValue ?? JSON.stringify({ s: session._id, c: session.attendanceCode })}
+              size={150}
+              color="#000000"
+              backgroundColor="#FFFFFF"
+            />
+          </View>
+        ) : null}
         <Text style={styles.codeCardLabel}>ATTENDANCE CODE</Text>
         <Text style={[styles.codeCardValue, isEnded && styles.codeCardValueEnded]}>
-          {session.attendanceCode}
+          {rotatingCode?.code ?? session.attendanceCode}
         </Text>
+        {!isEnded && secondsLeft !== null && (
+          <Text style={[styles.rotateHint, { color: FacultyTheme.textSecondary }]}>
+            Changes in {secondsLeft}s
+          </Text>
+        )}
+        {!isEnded && rotatingCodeError && (
+          <Text style={[styles.rotateHint, { color: FacultyTheme.danger }]}>⚠️ {rotatingCodeError}</Text>
+        )}
       </View>
 
       <Text style={[styles.hint, { color: FacultyTheme.textSecondary }]}>
         {isEnded
           ? 'This session has ended. The code is no longer accepting entries.'
-          : 'Read this code out or display it — students type it in to mark attendance.'}
+          : 'Students can scan the QR code or type in the code — both change every few seconds, so a screenshot stops working almost immediately.'}
       </Text>
 
       <View style={styles.statsRow}>
@@ -257,6 +315,8 @@ const styles = StyleSheet.create({
   codeCardLabel: { fontSize: 12, fontWeight: '700', color: '#9CA3AF', letterSpacing: 2, marginBottom: 10 },
   codeCardValue: { fontSize: 44, fontWeight: '800', color: '#111827', letterSpacing: 10 },
   codeCardValueEnded: { color: '#9CA3AF' },
+  qrWrapperFaculty: { marginBottom: 18, padding: 10, backgroundColor: 'white', borderRadius: 12 },
+  rotateHint: { fontSize: 12, marginTop: 8, fontWeight: '600' },
   hint: { fontSize: 13, textAlign: 'center', marginBottom: 20, paddingHorizontal: 10 },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   statBox: { flex: 1, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginHorizontal: 4, shadowOpacity: 0.1, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },

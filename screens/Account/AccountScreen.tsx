@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -12,14 +13,18 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Alert,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { RootStackParamList } from "../../types/navigation";
-import { getMyProfile, StudentProfile } from "../../services/student";
+import { getMyProfile, uploadProfilePhoto, StudentProfile } from "../../services/student";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
@@ -65,6 +70,8 @@ export default function AccountScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoViewerVisible, setPhotoViewerVisible] = useState(false);
 
   // --- Entry animation (slide up from bottom / fade in), matching OurTeamScreen ---
   const slideY = useRef(new Animated.Value(screenHeight)).current;
@@ -154,6 +161,70 @@ export default function AccountScreen() {
     setRefreshing(false);
   }, [fetchProfile]);
 
+  // Resizes + compresses the picked image on-device before it's ever sent
+  // over the network. Keeps individual uploads small (roughly 30-80KB at
+  // these settings) so ~4,000 students' worth of photos comfortably fit
+  // inside Supabase's 1GB free storage bucket.
+  const compressForUpload = async (uri: string) => {
+    const manipulated = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 500 } }],
+      { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    return manipulated.uri;
+  };
+
+  const pickAndUploadPhoto = async (source: "camera" | "gallery") => {
+    try {
+      const permission =
+        source === "camera"
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission needed",
+          `Please allow ${source === "camera" ? "camera" : "photo library"} access to set a profile photo.`
+        );
+        return;
+      }
+
+      const pickerOptions: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 0.8,
+      };
+
+      const result =
+        source === "camera"
+          ? await ImagePicker.launchCameraAsync(pickerOptions)
+          : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      setUploadingPhoto(true);
+
+      const compressedUri = await compressForUpload(result.assets[0].uri);
+      const newUrl = await uploadProfilePhoto(compressedUri);
+
+      setStudentProfile((prev) => (prev ? { ...prev, profileImage: newUrl } : prev));
+    } catch (error: any) {
+      Alert.alert(
+        "Upload failed",
+        error?.response?.data?.error || error?.message || "Could not upload photo. Please try again."
+      );
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleAddPhoto = () => {
+    Alert.alert("Profile Photo", "Choose a source", [
+      { text: "Camera", onPress: () => pickAndUploadPhoto("camera") },
+      { text: "Choose from Gallery", onPress: () => pickAndUploadPhoto("gallery") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.bgGradient[0] }}>
       <StatusBar
@@ -211,6 +282,38 @@ export default function AccountScreen() {
                 </>
               ) : studentProfile ? (
                 <>
+                  <View style={styles.photoSection}>
+                    <TouchableOpacity
+                      activeOpacity={studentProfile.profileImage ? 0.8 : 1}
+                      onPress={() => {
+                        if (studentProfile.profileImage) setPhotoViewerVisible(true);
+                      }}
+                      style={[styles.avatarWrap, { borderColor: theme.accent }]}
+                    >
+                      {studentProfile.profileImage ? (
+                        <Image
+                          source={{ uri: studentProfile.profileImage }}
+                          style={styles.avatar}
+                        />
+                      ) : (
+                        <Ionicons name="person" size={44} color={theme.iconColor} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleAddPhoto}
+                      disabled={uploadingPhoto}
+                      style={[styles.photoBtn, { backgroundColor: theme.accent }]}
+                    >
+                      {uploadingPhoto ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <Text style={styles.photoBtnText}>
+                          {studentProfile.profileImage ? "Change Photo" : "Add Photo"}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
                   <ProfileHeader name={studentProfile.name} email={studentProfile.email} />
                   <InfoCard label="Roll Number" value={studentProfile.rollNo} />
                   <InfoCard label="Branch" value={studentProfile.branch} />
@@ -226,6 +329,33 @@ export default function AccountScreen() {
           </SafeAreaView>
         </LinearGradient>
       </Animated.View>
+
+      {studentProfile?.profileImage && (
+        <Modal
+          visible={photoViewerVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPhotoViewerVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.viewerBackdrop}
+            activeOpacity={1}
+            onPress={() => setPhotoViewerVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.viewerCloseBtn}
+              onPress={() => setPhotoViewerVisible(false)}
+            >
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+            <Image
+              source={{ uri: studentProfile.profileImage }}
+              style={styles.viewerImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -244,4 +374,52 @@ const styles = StyleSheet.create({
   loader: { marginTop: 60 },
   errorBox: { marginTop: 60, alignItems: "center", paddingHorizontal: 20 },
   errorText: { fontSize: 15, textAlign: "center" },
+  photoSection: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  avatarWrap: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginBottom: 10,
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+  },
+  photoBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  photoBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  viewerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerCloseBtn: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  viewerImage: {
+    width: "100%",
+    height: "70%",
+  },
 });

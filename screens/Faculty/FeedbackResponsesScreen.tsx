@@ -5,17 +5,20 @@ import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import { FacultyFeedbackResponses, getFacultyFeedbackResponses } from '../../services/feedback';
-import { useFacultyTheme } from '../../constants/facultyTheme'; // ← Changed
+import { FacultyFeedbackResponses, FeedbackAnswer, getFacultyFeedbackResponses } from '../../services/feedback';
+import { useFacultyTheme } from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'FeedbackResponses'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'FeedbackResponses'>;
+
+// Averages only make sense for numeric question types.
+const isNumericType = (t: string) => t === 'linear_scale' || t === 'numerical';
 
 const FeedbackResponsesScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { sessionId } = route.params;
-  const FacultyTheme = useFacultyTheme(); // ← Added
+  const FacultyTheme = useFacultyTheme();
 
   const [data, setData] = useState<FacultyFeedbackResponses | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,16 +49,49 @@ const FeedbackResponsesScreen = () => {
     setRefreshing(false);
   }, [fetchData]);
 
-  const questionAverages = data
+  const questionSummaries = data
     ? data.questions.map((q) => {
-        const ratings = data.responses
-          .flatMap((r) => r.answers)
-          .filter((a) => a.order === q.order)
-          .map((a) => a.rating);
-        const avg = ratings.length ? ratings.reduce((sum, r) => sum + r, 0) / ratings.length : null;
-        return { ...q, avg };
+        const answersForQ = data.responses.flatMap((r) => r.answers).filter((a) => a.order === q.order);
+        if (isNumericType(q.type)) {
+          const values = answersForQ.map((a) => a.numberValue).filter((v): v is number => typeof v === 'number');
+          const avg = values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+          return { ...q, kind: 'numeric' as const, avg };
+        }
+        // Non-numeric: show how many responses came in for this question instead of an average.
+        return { ...q, kind: 'other' as const, answered: answersForQ.length };
       })
     : [];
+
+  const renderAnswerValue = (a: FeedbackAnswer) => {
+    if (a.questionType === 'short_answer' || a.questionType === 'paragraph') {
+      return <Text style={[styles.answerText, { color: FacultyTheme.textPrimary }]}>"{a.textValue}"</Text>;
+    }
+    if (a.questionType === 'numerical') {
+      return <Text style={[styles.answerText, { color: FacultyTheme.textPrimary }]}>{a.numberValue}</Text>;
+    }
+    if (a.questionType === 'linear_scale') {
+      return <Text style={[styles.answerRating, { color: FacultyTheme.warning }]}>{'⭐'.repeat(a.numberValue ?? 0)}</Text>;
+    }
+    if (a.questionType === 'multiple_choice' || a.questionType === 'dropdown') {
+      return (
+        <View style={[styles.chip, { backgroundColor: 'rgba(55,148,255,0.12)' }]}>
+          <Text style={[styles.chipText, { color: FacultyTheme.accent }]}>{a.selectedOptions?.[0]}</Text>
+        </View>
+      );
+    }
+    if (a.questionType === 'checkboxes') {
+      return (
+        <View style={styles.chipRow}>
+          {(a.selectedOptions || []).map((o, i) => (
+            <View key={i} style={[styles.chip, { backgroundColor: 'rgba(55,148,255,0.12)' }]}>
+              <Text style={[styles.chipText, { color: FacultyTheme.accent }]}>{o}</Text>
+            </View>
+          ))}
+        </View>
+      );
+    }
+    return null;
+  };
 
   if (loading) {
     return (
@@ -98,11 +134,17 @@ const FeedbackResponsesScreen = () => {
           </View>
         ) : (
           <>
-            <Text style={[styles.sectionTitle, { color: FacultyTheme.textPrimary }]}>Average Ratings</Text>
-            {questionAverages.map((q) => (
+            <Text style={[styles.sectionTitle, { color: FacultyTheme.textPrimary }]}>Summary</Text>
+            {questionSummaries.map((q) => (
               <View key={q.order} style={[styles.avgCard, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}>
                 <Text style={[styles.avgQuestionText, { color: FacultyTheme.textSecondary }]}>{q.text}</Text>
-                <Text style={[styles.avgValue, { color: FacultyTheme.success }]}>{q.avg != null ? `⭐ ${q.avg.toFixed(1)}` : '—'}</Text>
+                {q.kind === 'numeric' ? (
+                  <Text style={[styles.avgValue, { color: FacultyTheme.success }]}>
+                    {q.avg != null ? `⭐ ${q.avg.toFixed(1)}` : '—'}
+                  </Text>
+                ) : (
+                  <Text style={[styles.avgValue, { color: FacultyTheme.textSecondary }]}>{q.answered} answered</Text>
+                )}
               </View>
             ))}
 
@@ -116,8 +158,7 @@ const FeedbackResponsesScreen = () => {
                 {r.answers.map((a) => (
                   <View key={a.order} style={styles.answerRow}>
                     <Text style={[styles.answerQuestion, { color: FacultyTheme.textSecondary }]}>{a.questionText}</Text>
-                    <Text style={[styles.answerRating, { color: FacultyTheme.warning }]}>{'⭐'.repeat(a.rating)}</Text>
-                    {a.comment ? <Text style={[styles.answerComment, { color: FacultyTheme.textSecondary }]}>“{a.comment}”</Text> : null}
+                    {renderAnswerValue(a)}
                   </View>
                 ))}
               </View>
@@ -153,8 +194,11 @@ const styles = StyleSheet.create({
   studentMeta: { fontSize: 12, marginTop: 2, marginBottom: 10 },
   answerRow: { marginTop: 8 },
   answerQuestion: { fontSize: 13, fontWeight: '600' },
+  answerText: { fontSize: 13, marginTop: 2 },
   answerRating: { fontSize: 13, marginTop: 2 },
-  answerComment: { fontSize: 12, marginTop: 2, fontStyle: 'italic' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  chip: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginTop: 4, alignSelf: 'flex-start' },
+  chipText: { fontSize: 12, fontWeight: '600' },
 });
 
 export default FeedbackResponsesScreen;

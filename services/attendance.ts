@@ -108,6 +108,26 @@ export const reviewAttendanceRecord = async (
   await API.post(`/attendance/session/${sessionId}/review`, { recordId, finalStatus }, config);
 };
 
+// The code/QR shown to the professor rotate every `rotateSeconds` — this is
+// purely computed server-side (no DB writes happen on rotation), so this
+// can be polled freely. `expiresAt` is a server timestamp (ms) for when the
+// current code will next change; use it to time the next poll / show a
+// countdown instead of polling on a fixed interval that can drift.
+export type RotatingCode = {
+  active: boolean;
+  code: string;
+  qrValue: string;
+  rotateSeconds: number;
+  expiresAt: number | null;
+  serverTime: number;
+};
+
+export const getRotatingCode = async (sessionId: string): Promise<RotatingCode> => {
+  const config = await facultyAuthHeader();
+  const res = await API.get(`/attendance/session/${sessionId}/rotating-code`, config);
+  return res.data;
+};
+
 export const endAttendanceSession = async (sessionId: string): Promise<AttendanceSession> => {
   const config = await facultyAuthHeader();
   const res = await API.post(`/attendance/session/${sessionId}/end`, {}, config);
@@ -230,6 +250,11 @@ export type MarkAttendanceResult = {
 
 export const markAttendance = async (params: {
   code: string;
+  // Present when the code came from a QR scan (the QR encodes both the
+  // session id and the current code) — lets the server skip straight to
+  // that session instead of checking every active one. Omit when the code
+  // was typed by hand; the server will search active sessions for a match.
+  sessionId?: string;
   studentGPS: { lat: number; lng: number };
   studentAccuracy?: number;
 }): Promise<MarkAttendanceResult> => {

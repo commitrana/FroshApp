@@ -61,6 +61,13 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
 const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
 
+// Colors for the per-slot status pill in the live event's slot picker.
+const SLOT_STATUS_COLORS: Record<string, string> = {
+  live: "#c62828",
+  upcoming: "#ef6c00",
+  past: "#9e9e9e",
+};
+
 // Converts a "#RRGGBB" hex color + 0-1 alpha into an "rgba(...)" string,
 // for use inside a CSS boxShadow value.
 function hexToRgba(hex: string, alpha: number): string {
@@ -207,6 +214,14 @@ useFocusEffect(
   const [liveEvent, setLiveEvent] = useState<Event | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [ticketedEventIds, setTicketedEventIds] = useState<Set<string>>(new Set());
+  // For slotted events: which slot (1-5) the student already holds a ticket
+  // for, keyed by event id. A student can only ever hold one ticket per
+  // event, so once this is set for an event they can no longer pick a
+  // different slot for it.
+  const [ticketedEventSlots, setTicketedEventSlots] = useState<Record<string, number>>({});
+  // Which slot the student currently has selected in the live-event card
+  // (slotted events only — not persisted, just picker state).
+  const [selectedLiveSlot, setSelectedLiveSlot] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
@@ -377,6 +392,11 @@ useFocusEffect(
         setTicketedEventIds(
           new Set(ticketsResult.value.map((t) => t.event?._id).filter(Boolean))
         );
+        const slotMap: Record<string, number> = {};
+        ticketsResult.value.forEach((t) => {
+          if (t.event?._id) slotMap[t.event._id] = t.slot || 0;
+        });
+        setTicketedEventSlots(slotMap);
       } else {
         console.log("Failed to fetch tickets:", ticketsResult.reason);
       }
@@ -399,15 +419,16 @@ useFocusEffect(
 }, [fetchEvents, fetchFacultyProfile, userRole]);
 
   const handleRegisterPress = useCallback(
-    async (eventId: string, hasTicket: boolean) => {
+    async (eventId: string, hasTicket: boolean, slot?: number) => {
       if (hasTicket) {
         navigation.navigate("QR");
         return;
       }
       setRegisteringId(eventId);
       try {
-        await registerForEvent(eventId);
+        const ticket = await registerForEvent(eventId, slot);
         setTicketedEventIds((prev) => new Set(prev).add(eventId));
+        setTicketedEventSlots((prev) => ({ ...prev, [eventId]: ticket?.slot || slot || 0 }));
         navigation.navigate("QR");
       } catch (err: any) {
         const message = err?.response?.data?.error || "Failed to register. Please try again.";
@@ -418,6 +439,13 @@ useFocusEffect(
     },
     [navigation]
   );
+
+  // Reset the slot picker only when the live event itself changes (not on
+  // every 30s auto-refresh) — otherwise an in-progress selection would get
+  // wiped out from under the student while they're choosing.
+  useEffect(() => {
+    setSelectedLiveSlot(null);
+  }, [liveEvent?.id]);
 
  const handleLogout = () => {
     closeMenu();
@@ -776,47 +804,243 @@ useFocusEffect(
                       {liveEvent.title}
                     </Text>
 
-                    <View style={styles.infoRow}>
-                      <Ionicons name="location" size={18} color={theme.accent} />
-                      <Text style={[styles.location, { color: theme.accent }]}>
-                        {liveEvent.venue}
-                      </Text>
-                    </View>
+                    {(liveEvent.slotCount ?? 0) > 0 ? (
+                      // ---- Slotted event: show a slot picker, then that
+                      // slot's own time/venue/status once one is picked ----
+                      <>
+                        {(() => {
+                          const hasTicket = ticketedEventIds.has(liveEvent.id);
+                          // 0/undefined both mean "no real slot on this ticket"
+                          // (e.g. booked before the event had slots at all) —
+                          // treat that the same as "no slot" rather than as
+                          // slot 0, which doesn't exist as a chip.
+                          const ticketedSlotNum = ticketedEventSlots[liveEvent.id] || null;
+                          return (
+                            <View style={styles.slotPickerRow}>
+                              {(liveEvent.slots || []).map((slot) => {
+                                const isSelected = hasTicket
+                                  ? ticketedSlotNum === slot.number
+                                  : selectedLiveSlot === slot.number;
+                                // Once the student holds ANY ticket for this
+                                // event, every chip locks — they already have
+                                // their slot and can't pick another one.
+                                const isLocked = hasTicket;
+                                return (
+                                  <TouchableOpacity
+                                    key={slot.number}
+                                    disabled={isLocked}
+                                    onPress={() => setSelectedLiveSlot(slot.number)}
+                                    style={[
+                                      styles.slotChip,
+                                      {
+                                        borderColor: isSelected ? theme.accent : theme.lineColor,
+                                        backgroundColor: isSelected ? theme.accent : "transparent",
+                                        opacity: isLocked && !isSelected ? 0.4 : 1,
+                                      },
+                                    ]}
+                                  >
+                                    <Text
+                                      style={[
+                                        styles.slotChipText,
+                                        { color: isSelected ? "#fff" : theme.textPrimary },
+                                      ]}
+                                    >
+                                      Slot {slot.number}
+                                    </Text>
+                                    <View
+                                      style={[
+                                        styles.slotStatusDot,
+                                        {
+                                          backgroundColor:
+                                            SLOT_STATUS_COLORS[slot.status] || theme.lineColor,
+                                        },
+                                      ]}
+                                    />
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          );
+                        })()}
 
-                    <View style={styles.infoRow}>
-                      <Feather name="calendar" size={16} color={theme.accent} />
-                      <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                        {liveEvent.date}
-                      </Text>
-                    </View>
+                        {(() => {
+                          const hasTicket = ticketedEventIds.has(liveEvent.id);
+                          const ticketedSlotNum = ticketedEventSlots[liveEvent.id] || null;
 
-                    <View style={[styles.bottomRow, { marginTop: 0 }]}>
-                      <View style={styles.infoRow}>
-                        <Feather name="clock" size={16} color={theme.accent} />
-                        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                          {liveEvent.time}
-                        </Text>
-                      </View>
-                      {userRole !== "faculty" && (
-                        <TouchableOpacity
-                          style={[styles.arrowCircle, { borderColor: theme.accent }]}
-                          onPress={() =>
-                            handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
+                          // Already registered: always show View Ticket, using
+                          // their booked slot's details if we have a real one
+                          // (falls back to the event's own venue/time for a
+                          // legacy ticket from before this event had slots).
+                          if (hasTicket) {
+                            const registeredSlot = ticketedSlotNum
+                              ? (liveEvent.slots || []).find((s) => s.number === ticketedSlotNum)
+                              : null;
+                            return (
+                              <>
+                                <View style={styles.infoRow}>
+                                  <Ionicons name="location" size={18} color={theme.accent} />
+                                  <Text style={[styles.location, { color: theme.accent }]}>
+                                    {registeredSlot?.venue || liveEvent.venue}
+                                  </Text>
+                                </View>
+
+                                <View style={styles.infoRow}>
+                                  <Feather name="calendar" size={16} color={theme.accent} />
+                                  <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                                    {liveEvent.date}
+                                  </Text>
+                                </View>
+
+                                <View style={[styles.bottomRow, { marginTop: 0 }]}>
+                                  <View style={styles.infoRow}>
+                                    <Feather name="clock" size={16} color={theme.accent} />
+                                    <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                                      {registeredSlot?.time || liveEvent.time}
+                                    </Text>
+                                  </View>
+                                  {userRole !== "faculty" && (
+                                    <TouchableOpacity
+                                      style={[styles.arrowCircle, { borderColor: theme.accent }]}
+                                      onPress={() => handleRegisterPress(liveEvent.id, true)}
+                                      disabled={registeringId === liveEvent.id}
+                                    >
+                                      {registeringId === liveEvent.id ? (
+                                        <ActivityIndicator size="small" color={theme.accent} />
+                                      ) : (
+                                        <Ionicons name="qr-code" size={24} color={theme.accent} />
+                                      )}
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+
+                                <Text style={[styles.slotHint, { color: theme.textSecondary }]}>
+                                  {registeredSlot
+                                    ? `You're registered for Slot ${registeredSlot.number}.`
+                                    : "You're already registered for this event."}
+                                </Text>
+                              </>
+                            );
                           }
-                          disabled={registeringId === liveEvent.id}
-                        >
-                          {registeringId === liveEvent.id ? (
-                            <ActivityIndicator size="small" color={theme.accent} />
-                          ) : (
-                            <Ionicons
-                              name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
-                              size={24}
-                              color={theme.accent}
-                            />
+
+                          // Not registered yet: need a slot picked before
+                          // showing its details / letting them register.
+                          const activeSlot = (liveEvent.slots || []).find(
+                            (s) => s.number === selectedLiveSlot
+                          );
+
+                          if (!activeSlot) {
+                            return (
+                              <Text
+                                style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}
+                              >
+                                Select a slot above to see its time and venue.
+                              </Text>
+                            );
+                          }
+
+                          const canRegister = activeSlot.status === "live";
+
+                          return (
+                            <>
+                              <View style={styles.infoRow}>
+                                <Ionicons name="location" size={18} color={theme.accent} />
+                                <Text style={[styles.location, { color: theme.accent }]}>
+                                  {activeSlot.venue || liveEvent.venue}
+                                </Text>
+                              </View>
+
+                              <View style={styles.infoRow}>
+                                <Feather name="calendar" size={16} color={theme.accent} />
+                                <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                                  {liveEvent.date}
+                                </Text>
+                              </View>
+
+                              <View style={[styles.bottomRow, { marginTop: 0 }]}>
+                                <View style={styles.infoRow}>
+                                  <Feather name="clock" size={16} color={theme.accent} />
+                                  <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                                    {activeSlot.time || liveEvent.time}
+                                  </Text>
+                                </View>
+                                {userRole !== "faculty" && (
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.arrowCircle,
+                                      { borderColor: theme.accent, opacity: canRegister ? 1 : 0.4 },
+                                    ]}
+                                    onPress={() =>
+                                      canRegister &&
+                                      handleRegisterPress(liveEvent.id, false, activeSlot.number)
+                                    }
+                                    disabled={registeringId === liveEvent.id || !canRegister}
+                                  >
+                                    {registeringId === liveEvent.id ? (
+                                      <ActivityIndicator size="small" color={theme.accent} />
+                                    ) : (
+                                      <Ionicons name="arrow-forward" size={24} color={theme.accent} />
+                                    )}
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+
+                              {activeSlot.status !== "live" && (
+                                <Text style={[styles.slotHint, { color: theme.textSecondary }]}>
+                                  {activeSlot.status === "upcoming"
+                                    ? "Registration opens once this slot goes live."
+                                    : "Registration is closed — this slot has ended."}
+                                </Text>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </>
+                    ) : (
+                      // ---- No slots: unchanged single date/time/venue behavior ----
+                      <>
+                        <View style={styles.infoRow}>
+                          <Ionicons name="location" size={18} color={theme.accent} />
+                          <Text style={[styles.location, { color: theme.accent }]}>
+                            {liveEvent.venue}
+                          </Text>
+                        </View>
+
+                        <View style={styles.infoRow}>
+                          <Feather name="calendar" size={16} color={theme.accent} />
+                          <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                            {liveEvent.date}
+                          </Text>
+                        </View>
+
+                        <View style={[styles.bottomRow, { marginTop: 0 }]}>
+                          <View style={styles.infoRow}>
+                            <Feather name="clock" size={16} color={theme.accent} />
+                            <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                              {liveEvent.time}
+                            </Text>
+                          </View>
+                          {userRole !== "faculty" && (
+                            <TouchableOpacity
+                              style={[styles.arrowCircle, { borderColor: theme.accent }]}
+                              onPress={() =>
+                                handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
+                              }
+                              disabled={registeringId === liveEvent.id}
+                            >
+                              {registeringId === liveEvent.id ? (
+                                <ActivityIndicator size="small" color={theme.accent} />
+                              ) : (
+                                <Ionicons
+                                  name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
+                                  size={24}
+                                  color={theme.accent}
+                                />
+                              )}
+                            </TouchableOpacity>
                           )}
-                        </TouchableOpacity>
-                      )}
-                    </View>
+                        </View>
+                      </>
+                    )}
                   </>
                 ) : (
                   <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
@@ -843,9 +1067,18 @@ useFocusEffect(
                         },
                       ]}
                     >
-                      <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
-                        {event.title}
-                      </Text>
+                      <View style={styles.upcomingTitleRow}>
+                        <Text style={[styles.upcomingTitle, { color: theme.textPrimary }]}>
+                          {event.title}
+                        </Text>
+                        {(event.slotCount ?? 0) > 0 && (
+                          <View style={[styles.upcomingSlotBadge, { borderColor: theme.accent }]}>
+                            <Text style={[styles.upcomingSlotBadgeText, { color: theme.accent }]}>
+                              {event.slotCount} slot{event.slotCount === 1 ? "" : "s"}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={[styles.upcomingDate, { color: theme.textSecondary }]}>
                         {event.date}
                       </Text>
@@ -1070,8 +1303,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: "hidden",
   },
-  upcomingTitle: { fontSize: 16, fontWeight: "700" },
+  upcomingTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  upcomingTitle: { fontSize: 16, fontWeight: "700", flexShrink: 1 },
   upcomingDate: { fontSize: 13, marginTop: 4 },
+  upcomingSlotBadge: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  upcomingSlotBadgeText: { fontSize: 11, fontWeight: "700" },
+
+  // LIVE EVENT — slot picker (slotted events only)
+  slotPickerRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  slotChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1.5,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  slotChipText: { fontSize: 13, fontWeight: "700" },
+  slotStatusDot: { width: 7, height: 7, borderRadius: 4 },
+  slotHint: { fontSize: 12, marginTop: 8 },
 
   // BOOTCAMP TAB (faculty) - weekly schedule grid
   bootcampSection: { marginHorizontal: 22, marginTop: 24 },

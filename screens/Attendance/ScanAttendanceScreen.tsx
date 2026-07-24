@@ -48,8 +48,25 @@ const ScanAttendanceScreen = () => {
         accuracy: Location.Accuracy.High,
       });
 
+      // The QR encodes { s: sessionId, c: currentCode } — it rotates every
+      // few seconds along with the code shown on the professor's screen.
+      // Fall back to treating the raw scanned text as a bare code, in case
+      // it's ever an older-format or manually-shared QR.
+      let sessionId: string | undefined;
+      let code: string = scan.data;
+      try {
+        const parsed = JSON.parse(scan.data);
+        if (parsed && typeof parsed.c === 'string') {
+          sessionId = parsed.s;
+          code = parsed.c;
+        }
+      } catch {
+        // not JSON — use scan.data as-is
+      }
+
       const data = await markAttendance({
-        qrToken: scan.data,
+        code,
+        sessionId,
         studentGPS: {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
@@ -282,4 +299,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ScanAttendanceScreen;
+export default ScanAttendanceScreen;  

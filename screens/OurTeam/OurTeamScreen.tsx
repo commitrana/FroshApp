@@ -71,12 +71,13 @@ export default function OurTeamScreen() {
         const response = await fetch(`${API_BASE}/team`);
         if (!response.ok) throw new Error('Failed to load team data');
         const data = await response.json();
+        const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
         if (isMounted) {
           setTeamData({
-            faculty: data.faculty || [],
-            osc: data.osc || [],
-            core: data.core || [],
-            mentor: data.mentor || [],
+            faculty: [...(data.faculty || [])].sort(byName),
+            osc: [...(data.osc || [])].sort(byName),
+            core: [...(data.core || [])].sort(byName),
+            mentor: [...(data.mentor || [])].sort(byName),
           });
         }
       } catch (err) {
