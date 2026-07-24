@@ -65,16 +65,76 @@ export default function SocietiesScreen() {
   const [activeCategory, setActiveCategory] = useState<Society['category']>('tech');
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // --- Entry & Exit animations (slide from bottom / slide to bottom) ---
+  const slideY = useRef(new Animated.Value(height)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+
+  // Disable the navigator's own push/pop transition & gesture for this screen.
+  // We fully own the visual transition via slideY/opacityAnim.
+  useEffect(() => {
+    navigation.setOptions({
+      animation: 'none',
+      gestureEnabled: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- Back navigation with exit animation (flash-free) ---
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (isNavigating.current) {
+        return;
+      }
+      e.preventDefault();
+      isNavigating.current = true;
+
+      Animated.parallel([
+        Animated.timing(slideY, {
+          toValue: height,
+          duration: 300,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) {
+          navigation.dispatch(e.data.action);
+        }
+      });
+    });
+
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]);
+
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    navigation.goBack();
+  };
 
   const filtered = societies.filter(s => s.category === activeCategory);
 
@@ -82,12 +142,19 @@ export default function SocietiesScreen() {
   const closePopup = () => setSelectedSociety(null);
 
   return (
-    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+    <View style={{ flex: 1, backgroundColor: theme.bgGradient[0] }}>
       <StatusBar
         translucent
         backgroundColor="transparent"
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
+      <Animated.View
+        style={{
+          flex: 1,
+          opacity: opacityAnim,
+          transform: [{ translateY: slideY }],
+        }}
+      >
       <LinearGradient
         colors={theme.bgGradient as [string, string, ...string[]]}
         start={{ x: 0, y: 0 }}
@@ -96,7 +163,7 @@ export default function SocietiesScreen() {
       >
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
               <Icon name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: theme.textPrimary }]}>SOCIETIES</Text>
@@ -161,6 +228,7 @@ export default function SocietiesScreen() {
           </ScrollView>
         </SafeAreaView>
       </LinearGradient>
+      </Animated.View>
 
       <Modal visible={selectedSociety !== null} transparent animationType="fade">
         <TouchableWithoutFeedback onPress={closePopup}>
@@ -199,7 +267,7 @@ export default function SocietiesScreen() {
           </BlurView>
         </TouchableWithoutFeedback>
       </Modal>
-    </Animated.View>
+    </View>
   );
 }
 

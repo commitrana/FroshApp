@@ -61,25 +61,106 @@ export default function AppNavigator() {
           name="OurTeam"
           component={OurTeamScreen}
           options={{
-            
+            presentation: "transparentModal",
             animation: "none",
-            
             gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
           }}
         />
-        <Stack.Screen name="Hostels" component={HostelsScreen} />
-        <Stack.Screen name="Boys" component={BoysScreen} />
-        <Stack.Screen name="Girls" component={GirlsScreen} />
-        <Stack.Screen name="Societies" component={SocietiesScreen} />
-        <Stack.Screen name="LifeAtThapar" component={LifeScreen} />
+        <Stack.Screen
+          name="Hostels"
+          component={HostelsScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="Boys"
+          component={BoysScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="Girls"
+          component={GirlsScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="Societies"
+          component={SocietiesScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="LifeAtThapar"
+          component={LifeScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
         <Stack.Screen name="CampusMap" component={CampusMapScreen} />
 
         {/* Shared screens reachable from any nested tree */}
         <Stack.Screen name="Help" component={HelpScreen} />
-        <Stack.Screen name="Account" component={AccountScreen} />
-        <Stack.Screen name="About" component={AboutScreen} />
-        <Stack.Screen name="Connect" component={ConnectScreen} />
-        <Stack.Screen name="Schedule" component={ScheduleScreen} />
+        <Stack.Screen
+          name="Account"
+          component={AccountScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="About"
+          component={AboutScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="Connect"
+          component={ConnectScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="Schedule"
+          component={ScheduleScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
         <Stack.Screen name="QR" component={QRScreen} />
         <Stack.Screen name="Explore" component={ExploreScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
@@ -106,10 +187,46 @@ export default function AppNavigator() {
         <Stack.Screen name="FeedbackQuestions" component={FeedbackQuestionsScreen} />
         <Stack.Screen name="FeedbackResponses" component={FeedbackResponsesScreen} />
         <Stack.Screen name="GiveFeedback" component={GiveFeedbackScreen} />
-        <Stack.Screen name="EateryPoints" component={EateryScreen} />
-        <Stack.Screen name="SportsComplex" component={SportsScreen} />
-        <Stack.Screen name="StudyZones" component={StudyScreen} />
-        <Stack.Screen name="CulturalCentres" component={CulturalScreen} />
+        <Stack.Screen
+          name="EateryPoints"
+          component={EateryScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="SportsComplex"
+          component={SportsScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="StudyZones"
+          component={StudyScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="CulturalCentres"
+          component={CulturalScreen}
+          options={{
+            presentation: "transparentModal",
+            animation: "none",
+            gestureEnabled: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

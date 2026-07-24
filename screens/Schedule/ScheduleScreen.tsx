@@ -1,18 +1,23 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
+  Easing,
   FlatList,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
@@ -22,6 +27,8 @@ import { getMyTickets, registerForEvent } from "../../services/tickets";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 import FilterChip from "../../Components/Schedule/FilterChip";
 import EventCard from "../../Components/Schedule/EventCard";
+
+const { height: screenHeight } = Dimensions.get("window");
 
 type FilterType = "all" | EventStatus;
 
@@ -37,6 +44,62 @@ export default function ScheduleScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+
+  // --- Entry animation (slide up from bottom / fade in), matching OurTeamScreen ---
+  const slideY = useRef(new Animated.Value(screenHeight)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+
+  // Disable the navigator's own push/pop transition & gesture for this screen.
+  // We fully own the visual transition via slideY/opacityAnim.
+  useEffect(() => {
+    navigation.setOptions({
+      animation: "none",
+      gestureEnabled: false,
+    });
+  }, [navigation]);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: 0,
+        duration: 350,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Exit animation (slide back down / fade out) — mirrors the entry so the
+  // screen closes the same way it opened, then hands off to goBack().
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    Animated.parallel([
+      Animated.timing(slideY, {
+        toValue: screenHeight,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      navigation.goBack();
+    });
+  };
 
   useEffect(() => {
     AsyncStorage.getItem("userRole").then(setUserRole);
@@ -92,15 +155,31 @@ export default function ScheduleScreen() {
   }, [selectedFilter, events]);
 
   return (
-    <LinearGradient
-      colors={theme.bgGradient as [string, string, ...string[]]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.gradient}
-    >
+    <View style={{ flex: 1, backgroundColor: theme.bgGradient[0] }}>
+      <Animated.View
+        style={[
+          {
+            flex: 1,
+            opacity: opacityAnim,
+            transform: [{ translateY: slideY }],
+          },
+        ]}
+      >
+        <LinearGradient
+          colors={theme.bgGradient as [string, string, ...string[]]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+        >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
-          <Text style={[styles.heading, { color: theme.textPrimary }]}>Schedule</Text>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleBack}>
+              <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
+            </TouchableOpacity>
+            <Text style={[styles.heading, { color: theme.textPrimary }]}>Schedule</Text>
+            <View style={{ width: 26 }} />
+          </View>
           <Text style={[styles.subHeading, { color: theme.textSecondary }]}>
             Stay updated with every Frosh event.
           </Text>
@@ -170,7 +249,9 @@ export default function ScheduleScreen() {
           )}
         </View>
       </SafeAreaView>
-    </LinearGradient>
+        </LinearGradient>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -183,8 +264,13 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   heading: {
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: "700",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   subHeading: {
     marginTop: 6,

@@ -266,16 +266,6 @@ export default function HostelsScreen() {
                         style={styles.photoFade}
                         pointerEvents="none"
                       />
-
-                      <View
-                        style={[
-                          styles.tagChip,
-                          { borderColor: item.accent, backgroundColor: "rgba(6,14,26,0.55)" },
-                        ]}
-                      >
-                        <Icon name={item.icon as any} size={15} color={item.accent} />
-                        <Text style={[styles.tagChipText, { color: item.accent }]}>{item.tag}</Text>
-                      </View>
                     </View>
 
                     {/* Torn-ticket perforation seam */}
@@ -387,23 +377,6 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: "55%",
-  },
-  tagChip: {
-    position: "absolute",
-    left: 14,
-    bottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-  },
-  tagChipText: {
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.4,
   },
 
   seamRow: {
