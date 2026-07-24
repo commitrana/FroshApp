@@ -38,10 +38,9 @@ export default function EventCard({
       ]}
     >
       <Text style={[styles.title, { color: theme.textPrimary }]}>{event.title}</Text>
-      <Text style={[styles.society, { color: theme.accent }]}>{event.society}</Text>
-      <Text style={[styles.info, { color: theme.textSecondary }]}>📍 {event.venue}</Text>
+      <Text style={[styles.info, { color: theme.textSecondary }]}> {event.venue}</Text>
       <Text style={[styles.info, { color: theme.textSecondary }]}>
-        🕒 {event.date} • {event.time}
+         {event.date} • {event.time}
       </Text>
 
       {showButton && (

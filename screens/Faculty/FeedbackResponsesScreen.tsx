@@ -151,7 +151,7 @@ const FeedbackResponsesScreen = () => {
             <Text style={[styles.sectionTitle, { color: FacultyTheme.textPrimary }, { marginTop: 20 }]}>All Responses</Text>
             {data.responses.map((r) => (
               <View key={r._id} style={[styles.responseCard, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}>
-                <Text style={[styles.studentName, { color: FacultyTheme.textPrimary }]}>{r.student?.name}</Text>
+                <Text style={[styles.studentName, { color: FacultyTheme.textPrimary }]}>Student</Text>
                 <Text style={[styles.studentMeta, { color: FacultyTheme.textSecondary }]}>
                   {r.student?.rollNo} · {r.student?.branch}
                 </Text>

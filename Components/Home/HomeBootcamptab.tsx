@@ -308,6 +308,14 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
             <Text style={[styles.batchName, { color: theme.accent }]}>{batch}</Text>
           </View>
 
+          <TouchableOpacity
+            style={[styles.historyBtn, { backgroundColor: theme.accent }]}
+            onPress={() => navigation.navigate('StudentClassHistory')}
+          >
+            <MaterialCommunityIcons name="history" size={18} color="#fff" />
+            <Text style={styles.historyBtnText}>Attendance History</Text>
+          </TouchableOpacity>
+
           {/* Weekly Schedule Grid - exactly like faculty */}
           <View style={styles.timeTableHeader}>
             <MaterialCommunityIcons name="calendar-month-outline" size={22} color={theme.accent} />
@@ -508,6 +516,17 @@ const styles = StyleSheet.create({
   batchLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   batchName: { fontSize: 32, fontWeight: '800', marginTop: 6 },
 
+  historyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginBottom: 18,
+  },
+  historyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
   // Grid styles (identical to faculty)
   gridWrapper: { flexDirection: 'row' },
   dayColumn: { width: 52 },
@@ -539,4 +558,4 @@ const styles = StyleSheet.create({
 
   emptyBox: { borderRadius: 24, padding: 24 },
   emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
-}); 
+});
