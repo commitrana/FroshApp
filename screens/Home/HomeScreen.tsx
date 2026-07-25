@@ -45,6 +45,11 @@ interface FacultyLectureSlot {
   subject: string;
   venue?: string;
   batches?: string[];
+  // Undefined/true = repeats every week unchanged (default, existing
+  // behavior). false = one-off — admin set it as a "this week only"
+  // lecture, which the backend auto-clears from the schedule the moment
+  // the faculty ends attendance for it (see attendance.js session/:id/end).
+  recurring?: boolean;
 }
 
 interface FacultyProfileData {

@@ -133,13 +133,11 @@ const ClassDetails = () => {
           <View style={styles.checkingBox}>
             <ActivityIndicator color={FacultyTheme.accent} />
           </View>
-        ) : todaysSession ? (
+        ) : todaysSession && todaysSession.status === 'active' ? (
           <>
             <View style={[styles.alreadyRanBanner, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}>
               <Text style={[styles.alreadyRanText, { color: FacultyTheme.textSecondary }]}>
-                {todaysSession.status === 'active'
-                  ? ' Attendance is currently running for this class.'
-                  : ' Attendance was already taken for this class today.'}
+                 Attendance is currently running for this class.
               </Text>
             </View>
             <TouchableOpacity style={[styles.attendanceButton, { backgroundColor: FacultyTheme.accent }]} onPress={handleViewAttendance}>
