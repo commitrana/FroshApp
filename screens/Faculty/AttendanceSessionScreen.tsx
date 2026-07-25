@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, BackHandler, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
@@ -53,34 +53,77 @@ const AttendanceSessionScreen = () => {
 
   useAutoRefresh(fetchData, 5000);
 
+  // Sane fallback only — overwritten the moment we hear the server's real
+  // rotateSeconds. Used for the very first poll and for retrying after a
+  // transient fetch error, when we don't yet have a fresh expiresAt to
+  // schedule off.
+  const lastRotateSecondsRef = useRef(10);
+
   // The code/QR the professor is showing rotate every few seconds — this is
   // purely computed on the server (no DB writes on rotation), so polling it
   // is cheap. Stops once the session has ended, since there's nothing left
-  // to rotate.
+  // to rotate. Returns the fetched payload (or null on error/ended) so the
+  // poll loop below can schedule its next fetch off it.
   const fetchRotatingCode = useCallback(async () => {
-    if (session?.status === 'ended') return;
+    if (session?.status === 'ended') return null;
     try {
       const data = await getRotatingCode(sessionId);
       setRotatingCode(data);
       setRotatingCodeError(null);
+      if (data.rotateSeconds) lastRotateSecondsRef.current = data.rotateSeconds;
+      return data;
     } catch (error: any) {
       console.log('Error fetching rotating code:', error?.response?.data || error?.message);
       setRotatingCodeError(error?.response?.data?.error || 'Live code refresh failed — showing the static code.');
+      return null;
     }
   }, [sessionId, session?.status]);
 
-  useAutoRefresh(fetchRotatingCode, 7000);
+  // Poll in lockstep with the server's own rotation boundary (expiresAt)
+  // instead of a fixed client-side interval. A hardcoded poll timer (e.g.
+  // "every 7 seconds") is a second source of truth that can silently drift
+  // out of sync with the server's actual rotation length the moment one
+  // side changes without the other — which is exactly what was happening
+  // here. Scheduling each next fetch for just after the server's own
+  // expiresAt keeps the QR/code and the "Changes in Ns" countdown aligned
+  // to the real window, no matter how long that window is set to.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const poll = async () => {
+        if (cancelled) return;
+        const data = await fetchRotatingCode();
+        if (cancelled) return;
+        if (data && data.active === false) return; // session ended — nothing left to rotate
+
+        const delay = data?.expiresAt
+          ? Math.max(500, data.expiresAt - Date.now() + 250) // fire just after the real boundary
+          : lastRotateSecondsRef.current * 1000; // no expiresAt yet (error / legacy session) — retry on the last known cadence
+        timeoutId = setTimeout(poll, delay);
+      };
+
+      poll();
+
+      return () => {
+        cancelled = true;
+        clearTimeout(timeoutId);
+      };
+    }, [fetchRotatingCode])
+  );
 
   // Visual countdown to the next rotation, ticking off the server's
   // expiresAt rather than a locally-started timer (keeps it accurate even
-  // if this screen was backgrounded for a while).
+  // if this screen was backgrounded for a while). Uses ceil so it reads
+  // "1s" down to the last moment instead of flashing "0s" a beat early.
   useEffect(() => {
     if (!rotatingCode?.active || !rotatingCode.expiresAt) {
       setSecondsLeft(null);
       return;
     }
     const tick = () => {
-      const diff = Math.max(0, Math.round((rotatingCode.expiresAt! - Date.now()) / 1000));
+      const diff = Math.max(0, Math.ceil((rotatingCode.expiresAt! - Date.now()) / 1000));
       setSecondsLeft(diff);
     };
     tick();

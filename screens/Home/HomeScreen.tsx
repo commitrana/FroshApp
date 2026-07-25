@@ -62,7 +62,20 @@ interface FacultyProfileData {
   };
 }
 
+// Lets `intensity` (a BlurView prop, not a style) be driven by an
+// Animated.Value — used to blur the live-event carousel's side cards.
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+// Live-event carousel sizing: side inset matches the card's old fixed
+// margin (22) so a single live event still looks identical to before.
+const LIVE_CARD_SIDE_INSET = 22;
+// Centered-carousel sizing (used only when there are 2+ live events): each
+// card is a fraction of the screen so its neighbours peek in on both
+// sides — those peeking neighbours are shrunk + blurred (see the scroll
+// interpolation below) and grow sharp again as they're swiped to center.
+const LIVE_CAROUSEL_CARD_RATIO = 0.7;
+const LIVE_CAROUSEL_SPACING = 10;
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
 const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
 
@@ -216,7 +229,8 @@ useFocusEffect(
   };
 
   // ----- Real backend data -----
-  const [liveEvent, setLiveEvent] = useState<Event | null>(null);
+  const [liveEvents, setLiveEvents] = useState<Event[]>([]);
+  const [activeLiveIndex, setActiveLiveIndex] = useState(0);
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [ticketedEventIds, setTicketedEventIds] = useState<Set<string>>(new Set());
   // For slotted events: which slot (1-5) the student already holds a ticket
@@ -226,7 +240,7 @@ useFocusEffect(
   const [ticketedEventSlots, setTicketedEventSlots] = useState<Record<string, number>>({});
   // Which slot the student currently has selected in the live-event card
   // (slotted events only — not persisted, just picker state).
-  const [selectedLiveSlot, setSelectedLiveSlot] = useState<number | null>(null);
+  const [selectedLiveSlots, setSelectedLiveSlots] = useState<Record<string, number>>({});
   const [refreshing, setRefreshing] = useState(false);
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
@@ -387,7 +401,7 @@ useFocusEffect(
       ]);
 
       if (eventsResult.status === "fulfilled") {
-        setLiveEvent(eventsResult.value.find((e) => e.status === "live") || null);
+        setLiveEvents(eventsResult.value.filter((e) => e.status === "live"));
         setUpcomingEvents(eventsResult.value.filter((e) => e.status === "upcoming"));
       } else {
         console.log("Failed to fetch events:", eventsResult.reason);
@@ -423,12 +437,10 @@ useFocusEffect(
   setRefreshing(false);
 }, [fetchEvents, fetchFacultyProfile, userRole]);
 
-  const handleRegisterPress = useCallback(
-    async (eventId: string, hasTicket: boolean, slot?: number) => {
-      if (hasTicket) {
-        navigation.navigate("QR");
-        return;
-      }
+  // Does the actual network call — only ever invoked after the student has
+  // confirmed via the Alert in handleRegisterPress below.
+  const performRegistration = useCallback(
+    async (eventId: string, slot?: number) => {
       setRegisteringId(eventId);
       try {
         const ticket = await registerForEvent(eventId, slot);
@@ -445,12 +457,114 @@ useFocusEffect(
     [navigation]
   );
 
-  // Reset the slot picker only when the live event itself changes (not on
-  // every 30s auto-refresh) — otherwise an in-progress selection would get
-  // wiped out from under the student while they're choosing.
+  const handleRegisterPress = useCallback(
+    (eventId: string, hasTicket: boolean, slot?: number) => {
+      // Already registered — this button just opens their ticket, no need
+      // to confirm anything.
+      if (hasTicket) {
+        navigation.navigate("QR");
+        return;
+      }
+
+      // Not registered yet — a single tap used to register instantly. Make
+      // it a deliberate action with a confirm/cancel step first.
+      Alert.alert(
+        "Confirm registration",
+        slot
+          ? `Register for Slot ${slot}? You can only hold one slot for this event, so make sure this is the one you want.`
+          : "Are you sure you want to register for this event?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Register", onPress: () => performRegistration(eventId, slot) },
+        ]
+      );
+    },
+    [navigation, performRegistration]
+  );
+
+  // Prune slot picks only for events that are no longer live (not on every
+  // 30s auto-refresh) — otherwise an in-progress selection on a still-live
+  // event would get wiped out from under the student while they're choosing.
+  const liveEventIdsKey = liveEvents.map((e) => e.id).join(",");
   useEffect(() => {
-    setSelectedLiveSlot(null);
-  }, [liveEvent?.id]);
+    const liveIds = new Set(liveEventIdsKey ? liveEventIdsKey.split(",") : []);
+    setSelectedLiveSlots((prev) => {
+      const next: Record<string, number> = {};
+      let changed = false;
+      Object.entries(prev).forEach(([id, slot]) => {
+        if (liveIds.has(id)) {
+          next[id] = slot;
+        } else {
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+    // If events dropped off the end of the list, keep the carousel index in range.
+    setActiveLiveIndex((prev) => Math.max(0, Math.min(liveIds.size - 1, prev)));
+  }, [liveEventIdsKey]);
+
+  // One-time "nudge": as soon as there's more than one live event, gently
+  // peek the carousel toward the next card and spring back. A static
+  // sliver at the screen edge is easy to miss entirely — a bit of motion
+  // right when the screen appears is a far more reliable way to signal
+  // "there's more here, swipe" than any static visual treatment.
+  useEffect(() => {
+    if (liveEvents.length <= 1 || hasNudgedLiveCarouselRef.current) return;
+    hasNudgedLiveCarouselRef.current = true;
+    const NUDGE_PX = 44;
+    const timer = setTimeout(() => {
+      liveScrollRef.current?.scrollTo({ x: NUDGE_PX, animated: true });
+      setTimeout(() => {
+        liveScrollRef.current?.scrollTo({ x: 0, animated: true });
+      }, 420);
+    }, 500); // small delay so it doesn't fire mid-mount/layout jank
+    return () => clearTimeout(timer);
+  }, [liveEvents.length]);
+
+
+  // fills the width like it always used to (and, being unscrollable, the
+  // scale/blur interpolation below naturally stays at rest — no special
+  // casing needed in the JSX itself). The centered-carousel treatment only
+  // kicks in once there are 2+ events to swipe between.
+  const liveCarouselCardWidth =
+    liveEvents.length > 1 ? screenWidth * LIVE_CAROUSEL_CARD_RATIO : screenWidth - LIVE_CARD_SIDE_INSET * 2;
+  const liveCarouselItemSize = liveCarouselCardWidth + LIVE_CAROUSEL_SPACING;
+  const liveCarouselSidePad =
+    liveEvents.length > 1 ? (screenWidth - liveCarouselCardWidth) / 2 : LIVE_CARD_SIDE_INSET;
+  // Drives the shrink interpolation for each card as the carousel scrolls.
+  // This one is NATIVE-driven — scale + opacity are both animatable native
+  // style props, so keeping this on the UI thread is what makes the resize
+  // track the finger smoothly instead of stuttering.
+  const liveScrollX = useRef(new Animated.Value(0)).current;
+  // A second value updated from the same scroll events, but on the JS side,
+  // used only for things that CAN'T be native-driven: BlurView's `intensity`
+  // is a regular prop (not a style), and setActiveLiveIndex needs to run in
+  // JS. Kept separate so neither one holds back the size animation above.
+  const liveScrollXBlur = useRef(new Animated.Value(0)).current;
+  const liveScrollRef = useRef<any>(null);
+  const hasNudgedLiveCarouselRef = useRef(false);
+
+  // Built fresh each render (cheap) so the listener always closes over the
+  // current liveCarouselItemSize/liveEvents — Animated.event with
+  // useNativeDriver:true returns an AnimatedEvent object meant to be handed
+  // straight to a component's onScroll prop, NOT called manually as a plain
+  // function (that throws "Object is not a function"). Passing a `listener`
+  // alongside useNativeDriver:true is the supported way to still run JS side
+  // effects (updating the blur value / active index) off the same events.
+  const handleLiveCarouselScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { x: liveScrollX } } }],
+    {
+      useNativeDriver: true,
+      listener: (e: any) => {
+        const x = e.nativeEvent.contentOffset.x;
+        liveScrollXBlur.setValue(x);
+        const idx = Math.round(x / liveCarouselItemSize);
+        const clamped = Math.max(0, Math.min(liveEvents.length - 1, idx));
+        setActiveLiveIndex((prev) => (prev === clamped ? prev : clamped));
+      },
+    }
+  );
 
  const handleLogout = () => {
     closeMenu();
@@ -761,9 +875,137 @@ useFocusEffect(
             </View>
           ) : isFrosh ? (
             <>
+            <>
+              {liveEvents.length === 0 ? (
+                <View
+                  style={[
+                    styles.liveCardShadowWrapper,
+                    {
+                      boxShadow: `0px ${theme.liveCard?.shadowOffset?.height ?? 8}px ${theme.liveCard?.shadowRadius ?? 18}px 0px ${hexToRgba(
+                        theme.liveCard?.shadowColor ?? theme.shadowColor,
+                        theme.liveCard?.shadowOpacity ?? 0.15
+                      )}`,
+                    } as any,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.liveCard,
+                      {
+                        backgroundColor: theme.liveCard?.backgroundColor ?? glassBg,
+                        borderColor: glassBorder,
+                      },
+                    ]}
+                  >
+                    <LinearGradient
+                      colors={glassSheen}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={[styles.glassSheen, styles.liveCardSheen]}
+                      pointerEvents="none"
+                    />
+                    <View style={styles.liveHeadingContainer}>
+                      <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                      <Text style={[styles.liveHeading, { color: theme.accent }]}>• LIVE EVENT •</Text>
+                      <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
+                    </View>
+                    <Text style={[styles.infoText, { color: theme.textSecondary, marginTop: 4 }]}>
+                      No live event right now. Check back soon!
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  {/* Multiple live events (from different admin slots) can be
+                      live at once. Show all of them in a centered, snapping
+                      carousel: the card in focus is full size and sharp,
+                      while its neighbours peek in at the edges shrunk down
+                      and blurred — swiping smoothly grows/sharpens the next
+                      one into focus while the current one shrinks/blurs
+                      away, so it's immediately obvious there's more to see. */}
+                  <Animated.ScrollView
+                    ref={liveScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    decelerationRate="fast"
+                    snapToInterval={liveCarouselItemSize}
+                    snapToAlignment="start"
+                    // Without this, snapToInterval + decelerationRate="fast"
+                    // can overshoot/undershoot the exact snap point (mainly
+                    // on Android) — the scroll keeps drifting on momentum
+                    // after your finger lifts instead of stopping right
+                    // there. That's why only the very first card (which
+                    // starts at a perfect x=0 rest position) ever hit true
+                    // scale 1 while swiped-to cards landed a few px short.
+                    disableIntervalMomentum
+                    contentContainerStyle={{
+                      paddingHorizontal: liveCarouselSidePad,
+                      // Without this, RN's default cross-axis behavior
+                      // (stretch) forces every card to the height of
+                      // whichever one is currently tallest — e.g. a card
+                      // showing slot chips vs one that isn't. A shrunk card
+                      // then scales down from the center of that taller,
+                      // artificial box instead of the center of its own
+                      // visible content, which reads as the card sinking
+                      // downward instead of shrinking in place. Centering
+                      // keeps each card sized to its own content.
+                      alignItems: "center",
+                    }}
+                    onScroll={handleLiveCarouselScroll}
+                    scrollEventThrottle={16}
+                  >
+                    {liveEvents.map((event, index) => {
+                      // A few px of tolerance around the exact center point
+                      // (instead of one single pixel) so any residual snap
+                      // imprecision still reads as full scale.
+                      const peakTolerance = liveCarouselItemSize * 0.06;
+                      const inputRange = [
+                        (index - 1) * liveCarouselItemSize,
+                        index * liveCarouselItemSize - peakTolerance,
+                        index * liveCarouselItemSize,
+                        index * liveCarouselItemSize + peakTolerance,
+                        (index + 1) * liveCarouselItemSize,
+                      ];
+                      // Native-driven — runs on the UI thread, stays smooth
+                      // no matter what the JS thread is doing.
+                      const cardScale = liveScrollX.interpolate({
+                        inputRange,
+                        outputRange: [0.86, 1, 1, 1, 0.86],
+                        extrapolate: "clamp",
+                      });
+                      const cardOpacity = liveScrollX.interpolate({
+                        inputRange,
+                        outputRange: [0.85, 1, 1, 1, 0.85],
+                        extrapolate: "clamp",
+                      });
+                      // JS-driven — only the blur needs this, since
+                      // BlurView's `intensity` isn't a native-animatable
+                      // style prop. A frame or two of lag on the blur is
+                      // invisible; it no longer holds back the size change.
+                      const blurIntensity = liveScrollXBlur.interpolate({
+                        inputRange,
+                        outputRange: [10, 0, 0, 0, 10],
+                        extrapolate: "clamp",
+                      });
+                      const blurOpacity = liveScrollXBlur.interpolate({
+                        inputRange,
+                        outputRange: [1, 0, 0, 0, 1],
+                        extrapolate: "clamp",
+                      });
+
+                      return (
+                      <View
+                        key={event.id}
+                        style={{
+                          width: liveCarouselCardWidth,
+                          marginRight: index === liveEvents.length - 1 ? 0 : LIVE_CAROUSEL_SPACING,
+                        }}
+                      >
+                      <Animated.View style={{ transform: [{ scale: cardScale }], opacity: cardOpacity }}>
               <View
                 style={[
                   styles.liveCardShadowWrapper,
+                  { marginHorizontal: 0 },
                   {
                     boxShadow: `0px ${theme.liveCard?.shadowOffset?.height ?? 8}px ${theme.liveCard?.shadowRadius ?? 18}px 0px ${hexToRgba(
                       theme.liveCard?.shadowColor ?? theme.shadowColor,
@@ -794,10 +1036,10 @@ useFocusEffect(
                   <View style={[styles.line, { backgroundColor: theme.lineColor }]} />
                 </View>
 
-                {liveEvent ? (
+                {event ? (
                   <>
                     <ImageWithLoader 
-                      source={liveEvent.imageUrl ? { uri: `${SERVER_ORIGIN}${liveEvent.imageUrl}` } : DEFAULT_IMAGE}
+                      source={event.imageUrl ? { uri: `${SERVER_ORIGIN}${event.imageUrl}` } : DEFAULT_IMAGE}
                       style={styles.eventImage}
                     />
 
@@ -806,26 +1048,26 @@ useFocusEffect(
                     </View>
 
                     <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
-                      {liveEvent.title}
+                      {event.title}
                     </Text>
 
-                    {(liveEvent.slotCount ?? 0) > 0 ? (
+                    {(event.slotCount ?? 0) > 0 ? (
                       // ---- Slotted event: show a slot picker, then that
                       // slot's own time/venue/status once one is picked ----
                       <>
                         {(() => {
-                          const hasTicket = ticketedEventIds.has(liveEvent.id);
+                          const hasTicket = ticketedEventIds.has(event.id);
                           // 0/undefined both mean "no real slot on this ticket"
                           // (e.g. booked before the event had slots at all) —
                           // treat that the same as "no slot" rather than as
                           // slot 0, which doesn't exist as a chip.
-                          const ticketedSlotNum = ticketedEventSlots[liveEvent.id] || null;
+                          const ticketedSlotNum = ticketedEventSlots[event.id] || null;
                           return (
                             <View style={styles.slotPickerRow}>
-                              {(liveEvent.slots || []).map((slot) => {
+                              {(event.slots || []).map((slot) => {
                                 const isSelected = hasTicket
                                   ? ticketedSlotNum === slot.number
-                                  : selectedLiveSlot === slot.number;
+                                  : (selectedLiveSlots[event.id] ?? null) === slot.number;
                                 // Once the student holds ANY ticket for this
                                 // event, every chip locks — they already have
                                 // their slot and can't pick another one.
@@ -846,7 +1088,7 @@ useFocusEffect(
                                         return;
                                       }
                                       if (isLocked) return; // tapping their own booked slot chip does nothing
-                                      setSelectedLiveSlot(slot.number);
+                                      setSelectedLiveSlots((prev) => ({ ...prev, [event.id]: slot.number }));
                                     }}
                                     style={[
                                       styles.slotChip,
@@ -882,8 +1124,8 @@ useFocusEffect(
                         })()}
 
                         {(() => {
-                          const hasTicket = ticketedEventIds.has(liveEvent.id);
-                          const ticketedSlotNum = ticketedEventSlots[liveEvent.id] || null;
+                          const hasTicket = ticketedEventIds.has(event.id);
+                          const ticketedSlotNum = ticketedEventSlots[event.id] || null;
 
                           // Already registered: always show View Ticket, using
                           // their booked slot's details if we have a real one
@@ -891,21 +1133,21 @@ useFocusEffect(
                           // legacy ticket from before this event had slots).
                           if (hasTicket) {
                             const registeredSlot = ticketedSlotNum
-                              ? (liveEvent.slots || []).find((s) => s.number === ticketedSlotNum)
+                              ? (event.slots || []).find((s) => s.number === ticketedSlotNum)
                               : null;
                             return (
                               <>
                                 <View style={styles.infoRow}>
                                   <Ionicons name="location" size={18} color={theme.accent} />
                                   <Text style={[styles.location, { color: theme.accent }]}>
-                                    {registeredSlot?.venue || liveEvent.venue}
+                                    {registeredSlot?.venue || event.venue}
                                   </Text>
                                 </View>
 
                                 <View style={styles.infoRow}>
                                   <Feather name="calendar" size={16} color={theme.accent} />
                                   <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                                    {liveEvent.date}
+                                    {event.date}
                                   </Text>
                                 </View>
 
@@ -913,16 +1155,16 @@ useFocusEffect(
                                   <View style={styles.infoRow}>
                                     <Feather name="clock" size={16} color={theme.accent} />
                                     <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                                      {registeredSlot?.time || liveEvent.time}
+                                      {registeredSlot?.time || event.time}
                                     </Text>
                                   </View>
                                   {userRole !== "faculty" && (
                                     <TouchableOpacity
                                       style={[styles.arrowCircle, { borderColor: theme.accent }]}
-                                      onPress={() => handleRegisterPress(liveEvent.id, true)}
-                                      disabled={registeringId === liveEvent.id}
+                                      onPress={() => handleRegisterPress(event.id, true)}
+                                      disabled={registeringId === event.id}
                                     >
-                                      {registeringId === liveEvent.id ? (
+                                      {registeringId === event.id ? (
                                         <ActivityIndicator size="small" color={theme.accent} />
                                       ) : (
                                         <Ionicons name="qr-code" size={24} color={theme.accent} />
@@ -942,8 +1184,8 @@ useFocusEffect(
 
                           // Not registered yet: need a slot picked before
                           // showing its details / letting them register.
-                          const activeSlot = (liveEvent.slots || []).find(
-                            (s) => s.number === selectedLiveSlot
+                          const activeSlot = (event.slots || []).find(
+                            (s) => s.number === (selectedLiveSlots[event.id] ?? null)
                           );
 
                           if (!activeSlot) {
@@ -963,14 +1205,14 @@ useFocusEffect(
                               <View style={styles.infoRow}>
                                 <Ionicons name="location" size={18} color={theme.accent} />
                                 <Text style={[styles.location, { color: theme.accent }]}>
-                                  {activeSlot.venue || liveEvent.venue}
+                                  {activeSlot.venue || event.venue}
                                 </Text>
                               </View>
 
                               <View style={styles.infoRow}>
                                 <Feather name="calendar" size={16} color={theme.accent} />
                                 <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                                  {liveEvent.date}
+                                  {event.date}
                                 </Text>
                               </View>
 
@@ -978,7 +1220,7 @@ useFocusEffect(
                                 <View style={styles.infoRow}>
                                   <Feather name="clock" size={16} color={theme.accent} />
                                   <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                                    {activeSlot.time || liveEvent.time}
+                                    {activeSlot.time || event.time}
                                   </Text>
                                 </View>
                                 {userRole !== "faculty" && (
@@ -989,11 +1231,11 @@ useFocusEffect(
                                     ]}
                                     onPress={() =>
                                       canRegister &&
-                                      handleRegisterPress(liveEvent.id, false, activeSlot.number)
+                                      handleRegisterPress(event.id, false, activeSlot.number)
                                     }
-                                    disabled={registeringId === liveEvent.id || !canRegister}
+                                    disabled={registeringId === event.id || !canRegister}
                                   >
-                                    {registeringId === liveEvent.id ? (
+                                    {registeringId === event.id ? (
                                       <ActivityIndicator size="small" color={theme.accent} />
                                     ) : (
                                       <Ionicons name="arrow-forward" size={24} color={theme.accent} />
@@ -1019,14 +1261,14 @@ useFocusEffect(
                         <View style={styles.infoRow}>
                           <Ionicons name="location" size={18} color={theme.accent} />
                           <Text style={[styles.location, { color: theme.accent }]}>
-                            {liveEvent.venue}
+                            {event.venue}
                           </Text>
                         </View>
 
                         <View style={styles.infoRow}>
                           <Feather name="calendar" size={16} color={theme.accent} />
                           <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                            {liveEvent.date}
+                            {event.date}
                           </Text>
                         </View>
 
@@ -1034,22 +1276,22 @@ useFocusEffect(
                           <View style={styles.infoRow}>
                             <Feather name="clock" size={16} color={theme.accent} />
                             <Text style={[styles.infoText, { color: theme.textSecondary }]}>
-                              {liveEvent.time}
+                              {event.time}
                             </Text>
                           </View>
                           {userRole !== "faculty" && (
                             <TouchableOpacity
                               style={[styles.arrowCircle, { borderColor: theme.accent }]}
                               onPress={() =>
-                                handleRegisterPress(liveEvent.id, ticketedEventIds.has(liveEvent.id))
+                                handleRegisterPress(event.id, ticketedEventIds.has(event.id))
                               }
-                              disabled={registeringId === liveEvent.id}
+                              disabled={registeringId === event.id}
                             >
-                              {registeringId === liveEvent.id ? (
+                              {registeringId === event.id ? (
                                 <ActivityIndicator size="small" color={theme.accent} />
                               ) : (
                                 <Ionicons
-                                  name={ticketedEventIds.has(liveEvent.id) ? "qr-code" : "arrow-forward"}
+                                  name={ticketedEventIds.has(event.id) ? "qr-code" : "arrow-forward"}
                                   size={24}
                                   color={theme.accent}
                                 />
@@ -1065,8 +1307,45 @@ useFocusEffect(
                     No live event right now. Check back soon!
                   </Text>
                 )}
+                <AnimatedBlurView
+                  intensity={blurIntensity}
+                  tint={isDarkMode ? "dark" : "light"}
+                  pointerEvents="none"
+                  style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
+                />
               </View>
               </View>
+                      </Animated.View>
+                      </View>
+                      );
+                    })}
+                  </Animated.ScrollView>
+
+                  {liveEvents.length > 1 && (
+                    <>
+                      <View style={styles.liveDotsRow}>
+                        {liveEvents.map((event, index) => (
+                          <View
+                            key={event.id}
+                            style={[
+                              styles.liveDot,
+                              {
+                                backgroundColor:
+                                  index === activeLiveIndex ? theme.accent : theme.lineColor,
+                                width: index === activeLiveIndex ? 18 : 7,
+                              },
+                            ]}
+                          />
+                        ))}
+                      </View>
+                      <Text style={[styles.liveSwipeHint, { color: theme.textSecondary }]}>
+                        {liveEvents.length} live events • swipe to see more →
+                      </Text>
+                    </>
+                  )}
+                </>
+              )}
+            </>
 
               {upcomingEvents.length > 0 && (
                 <View style={styles.upcomingSection}>
@@ -1208,6 +1487,22 @@ const styles = StyleSheet.create({
   // a visible two-tone seam regardless of the photo's own colour.
   liveCardSheen: {
     height: 110,
+  },
+  liveDotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
+  },
+  liveDot: {
+    height: 7,
+    borderRadius: 4,
+  },
+  liveSwipeHint: {
+    textAlign: "center",
+    fontSize: 12,
+    marginTop: 6,
   },
   tabsContainer: {
     flex: 1,

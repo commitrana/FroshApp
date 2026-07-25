@@ -22,6 +22,14 @@ const ClassDetails = () => {
   const [todaysSession, setTodaysSession] = useState<AttendanceSession | null>(null);
   const [checkingToday, setCheckingToday] = useState(true);
 
+  // Today's actual weekday name (e.g. "Monday") — used to tell whether the
+  // scheduled `day` for this class is today at all. A recurring class can
+  // only ever be started on its own scheduled day of the week; the backend
+  // enforces this too (belt-and-braces), but checking here lets us show a
+  // clear message instead of a generic error after tapping the button.
+  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  const isScheduledToday = !day || day.trim().toLowerCase() === todayName.toLowerCase();
+
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -43,6 +51,11 @@ const ClassDetails = () => {
   );
 
   const handleStartAttendance = async () => {
+    if (!isScheduledToday) {
+      Alert.alert('Not today', `This class is scheduled for ${day}. You can only start attendance on ${day}.`);
+      return;
+    }
+
     try {
       setStarting(true);
 
@@ -144,6 +157,27 @@ const ClassDetails = () => {
               <Text style={styles.attendanceButtonText}>View Attendance</Text>
             </TouchableOpacity>
           </>
+        ) : todaysSession && todaysSession.status === 'ended' ? (
+          // Attendance for this recurring class was already taken today.
+          // Read-only from here — no way back into marking. It'll be
+          // startable again on the class's next scheduled occurrence.
+          <>
+            <View style={[styles.alreadyRanBanner, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}>
+              <Text style={[styles.alreadyRanText, { color: FacultyTheme.textSecondary }]}>
+                 Attendance for this class has already been taken today. It will open again on the next scheduled day.
+              </Text>
+            </View>
+            <TouchableOpacity style={[styles.attendanceButton, { backgroundColor: FacultyTheme.accent }]} onPress={handleViewAttendance}>
+              <Text style={styles.attendanceButtonText}>View Attendance</Text>
+            </TouchableOpacity>
+          </>
+        ) : !isScheduledToday ? (
+          
+          <View style={[styles.alreadyRanBanner, { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor }]}>
+            <Text style={[styles.alreadyRanText, { color: FacultyTheme.textSecondary }]}>
+              This class is scheduled for {day}. You can only start attendance on {day}.
+            </Text>
+          </View>
         ) : (
           <TouchableOpacity
             style={[styles.attendanceButton, { backgroundColor: FacultyTheme.accent }, starting && styles.attendanceButtonDisabled]}
