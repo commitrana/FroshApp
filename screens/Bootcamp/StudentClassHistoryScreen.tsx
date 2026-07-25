@@ -162,7 +162,7 @@ const StudentClassHistoryScreen = () => {
           >
             {loadError ? (
               <View style={[styles.emptyState, styles.errorState, { backgroundColor: glassBg, borderColor: glassBorder, borderWidth: 1 }]}>
-                <Text style={styles.errorStateText}> {loadError}</Text>
+                <Text style={styles.errorStateText}>⚠️ {loadError}</Text>
               </View>
             ) : rows.length === 0 ? (
               <View style={[styles.emptyState, { 
@@ -221,7 +221,7 @@ const StudentClassHistoryScreen = () => {
                       <Text style={[styles.subject, { color: theme.textPrimary }]}>{row.subject}</Text>
                       <Text style={[styles.meta, { color: theme.textSecondary }]}>
                         {row.day} · {row.slot}
-                        {row.venue ? ` ·  ${row.venue}` : ''}
+                        {row.venue ? ` · 📍 ${row.venue}` : ''}
                       </Text>
                       {row.faculty ? (
                         <Text style={[styles.meta, { color: theme.textSecondary }]}>{row.faculty}</Text>

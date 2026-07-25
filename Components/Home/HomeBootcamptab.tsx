@@ -50,7 +50,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
     ({ boxShadow: `0px ${offsetY}px ${shadowRadius}px 0px ${hexToRgba(shadowColor, shadowOpacity)}` } as any);
 
   const [batch, setBatch] = useState<string | null>(null);
-  const [timetableImage, setTimetableImage] = useState<string | null>(null);
+  
   const [classSchedule, setClassSchedule] = useState<MyTimetableResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const hasLoadedOnce = useRef(false);
@@ -85,10 +85,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
         await AsyncStorage.setItem('studentData', JSON.stringify(student));
       }
 
-      if (batchCode) {
-        const imageUrl = await getBatchTimetableImage(batchCode);
-        setTimetableImage(imageUrl);
-      }
+     
     } catch (error) {
       console.error('Error fetching batch data:', error);
     } finally {
@@ -406,7 +403,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
 
           <View
             style={[
-              styles.timetableCard,
+              
               cardShadow(
                 theme.topCard?.shadowColor ?? theme.shadowColor,
                 theme.topCard?.shadowOpacity ?? 0.2,
@@ -428,24 +425,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
               style={styles.glassSheen}
               pointerEvents="none"
             />
-            <Text style={[styles.timetableLabel, { color: theme.textSecondary }]}>Timetable</Text>
-            {timetableImage ? (
-              <ImageWithLoader
-                source={{ uri: timetableImage }}
-                style={styles.timetableImage}
-                resizeMode="contain"
-                onError={() => setTimetableImage(null)}
-              />
-            ) : (
-              <View style={[styles.noImageBox, { backgroundColor: 'rgba(255,255,255,0.04)' }]}>
-                <Text style={[styles.noImageText, { color: theme.textSecondary }]}>
-                  No timetable uploaded yet
-                </Text>
-                <Text style={[styles.noImageSubText, { color: theme.textSecondary }]}>
-                  Check back later!
-                </Text>
-              </View>
-            )}
+            
           </View>
         </>
       )}
@@ -544,12 +524,7 @@ const styles = StyleSheet.create({
   cellEmptyDash: { fontSize: 14 },
   note: { fontSize: 12, marginTop: 10, textAlign: 'center' },
 
-  timetableCard: {
-    borderRadius: 24,
-    padding: 18,
-    alignItems: 'center',
-    marginTop: 10,
-  },
+  
   timetableLabel: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, alignSelf: 'flex-start' },
   timetableImage: { width: '100%', height: 300, borderRadius: 14 },
   noImageBox: { width: '100%', height: 180, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
