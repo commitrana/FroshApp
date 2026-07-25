@@ -833,8 +833,21 @@ useFocusEffect(
                                 return (
                                   <TouchableOpacity
                                     key={slot.number}
-                                    disabled={isLocked}
-                                    onPress={() => setSelectedLiveSlot(slot.number)}
+                                    onPress={() => {
+                                      // Already booked a DIFFERENT slot on this
+                                      // event: don't silently no-op (that just
+                                      // looks broken) and don't let them
+                                      // switch either — tell them why.
+                                      if (isLocked && !isSelected) {
+                                        Alert.alert(
+                                          'Already booked',
+                                          "You've already booked another slot for this event. You can only hold one slot per event."
+                                        );
+                                        return;
+                                      }
+                                      if (isLocked) return; // tapping their own booked slot chip does nothing
+                                      setSelectedLiveSlot(slot.number);
+                                    }}
                                     style={[
                                       styles.slotChip,
                                       {
