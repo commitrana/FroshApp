@@ -24,6 +24,7 @@ import Icon from '@expo/vector-icons/Ionicons';
 
 import { useAppTheme } from '../../context/ThemeContext';
 import { useOurTeamTheme } from '../../constants/ourTeamThemes';
+import MentorWall from '../../Components/OurTeam/MentorWall';
 
 const { width, height: screenHeight } = Dimensions.get('window');
 
@@ -251,15 +252,6 @@ export default function OurTeamScreen() {
     </View>
   ), [theme]);
 
-  const renderMentorItem = useCallback(({ item }: { item: MentorMember }) => (
-    <View style={styles.gridItem}>
-      <View style={[styles.card, { backgroundColor: theme.cardBg, borderColor: theme.lineColor }]}>
-        <Image source={item.imageUrl ? { uri: item.imageUrl } : memberImg} style={styles.cardImage} />
-      </View>
-      <Text style={[styles.cardName, { color: theme.textPrimary }]}>{item.name}</Text>
-    </View>
-  ), [theme]);
-
   const renderBranchItem = useCallback(({ item, index }: { item: BranchMember; index: number }) => {
     const isLeft = index % 2 === 0;
     return (
@@ -346,19 +338,7 @@ export default function OurTeamScreen() {
         return teamData.mentor.length === 0 ? (
           renderLoadingOrEmpty('No mentors added yet.')
         ) : (
-          <FlatList
-            key="mentor-cols-2"
-            data={teamData.mentor}
-            keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
-            columnWrapperStyle={styles.gridRow}
-            contentContainerStyle={styles.listContainer}
-            renderItem={renderMentorItem}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            windowSize={9}
-            removeClippedSubviews
-          />
+          <MentorWall mentors={teamData.mentor} theme={theme} />
         );
       default:
         return null;
