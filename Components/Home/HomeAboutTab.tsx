@@ -48,6 +48,13 @@ export default function HomeAboutTab({ theme }: { theme: HomeTheme }) {
       icon: "school-outline",
       onPress: () => navigation.navigate("LifeAtThapar"),
     },
+    {
+      id: "map",
+      title: "MAP",
+      subtitle: "Find your way around campus",
+      icon: "map-outline",
+      onPress: () => navigation.navigate("CampusMap"),
+    },
   ];
 
   return (
