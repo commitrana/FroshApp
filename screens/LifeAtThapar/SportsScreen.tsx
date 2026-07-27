@@ -23,6 +23,8 @@ import { useHomeTheme } from "../../constants/homeThemes";
 const { height: screenHeight } = Dimensions.get("window");
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
+const BasketBall = require("../../assets/sports/basketball.jpeg");
+const swim = require("../../assets/sports/swimming.jpeg");
 
 type Venue = {
   id: string;
@@ -63,7 +65,7 @@ const SPORTS: Venue[] = [
       "Half-court pickup games at sunset, full-court runs on weekends — the hoop lights up campus energy long after classes end.",
     icon: "basketball-outline",
     accent: "#F0563C",
-    image: hostelImage,
+    image: BasketBall,
   },
   {
     id: "swimming",
@@ -73,7 +75,7 @@ const SPORTS: Venue[] = [
       "Laps before breakfast or a cool-off after a brutal exam week — the pool is campus's reset button, chlorine and all.",
     icon: "water-outline",
     accent: "#4C9BE8",
-    image: hostelImage,
+    image: swim,
   },
 ];
 

@@ -23,6 +23,9 @@ import { useHomeTheme } from "../../constants/homeThemes";
 const { height: screenHeight } = Dimensions.get("window");
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
+const Library = require("../../assets/studyzones/libraryy.jpeg");
+const LP = require("../../assets/studyzones/lp.jpeg");
+const activity = require("../../assets/studyzones/activity.jpeg");
 
 type StudySpot = {
   id: string;
@@ -43,7 +46,7 @@ const STUDY_SPOTS: StudySpot[] = [
       "Rows of lecture theatres and labs where the actual syllabus happens — from 8 AM back-to-backs to last-minute pre-quiz cramming.",
     icon: "school-outline",
     accent: "#5B8DEF",
-    image: hostelImage,
+    image: LP,
   },
   {
     id: "activity-space",
@@ -53,7 +56,7 @@ const STUDY_SPOTS: StudySpot[] = [
       "Where societies build, rehearse and tinker — robotics rigs, dance practice and workshop prototypes all share the same buzzing floor.",
     icon: "construct-outline",
     accent: "#4FBF8B",
-    image: hostelImage,
+    image: activity,
   },
   {
     id: "library",
@@ -63,7 +66,7 @@ const STUDY_SPOTS: StudySpot[] = [
       "Silent floors, endless stacks and the only place on campus where a pin-drop is actually audible during finals week.",
     icon: "library-outline",
     accent: "#C9974B",
-    image: hostelImage,
+    image: Library,
   },
 ];
 

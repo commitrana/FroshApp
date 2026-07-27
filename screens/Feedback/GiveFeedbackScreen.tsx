@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,29 @@ const GiveFeedbackScreen = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Tracks whether feedback has actually been submitted, so the guard below
+  // knows to let the "leave" navigation action through. A ref (not state)
+  // because the beforeRemove listener closes over it and must read the
+  // latest value without needing to be re-subscribed every render.
+  const submittedRef = useRef(false);
+
+  // Attendance isn't final until feedback is submitted (see /mark on the
+  // backend — the scan alone only creates a pending record). Leaving this
+  // screen any other way — header back button, Android hardware back
+  // button, or the iOS swipe-back gesture — all funnel through this single
+  // 'beforeRemove' event, so blocking it here covers all three at once.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (submittedRef.current) return; // already submitted — let them leave
+      e.preventDefault();
+      Alert.alert(
+        "You haven't submitted feedback",
+        "You won't be marked present for this class until you submit the feedback form. Please complete it to finish marking your attendance.",
+        [{ text: 'OK' }]
+      );
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -110,6 +133,7 @@ const GiveFeedbackScreen = () => {
     try {
       setSubmitting(true);
       await submitFeedback(sessionId, answers);
+      submittedRef.current = true;
       Alert.alert('Thank you!', 'Your feedback has been submitted.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);

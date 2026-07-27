@@ -188,7 +188,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ScanAttendance" component={ScanAttendanceScreen} />
         <Stack.Screen name="FeedbackQuestions" component={FeedbackQuestionsScreen} />
         <Stack.Screen name="FeedbackResponses" component={FeedbackResponsesScreen} />
-        <Stack.Screen name="GiveFeedback" component={GiveFeedbackScreen} />
+        <Stack.Screen name="GiveFeedback" component={GiveFeedbackScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen
           name="EateryPoints"
           component={EateryScreen}

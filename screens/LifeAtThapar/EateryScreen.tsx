@@ -23,6 +23,7 @@ import { useHomeTheme } from "../../constants/homeThemes";
 const { height: screenHeight } = Dimensions.get("window");
 
 const hostelImage = require("../../assets/uiux/cos.jpg");
+const jaggi = require("../../assets/Eatery/Jaggi.jpg");
 
 type Eatery = {
   id: string;
@@ -53,7 +54,7 @@ const EATERIES: Eatery[] = [
       "A Thapar institution. Legendary parathas, chole bhature and chai strong enough to survive an 8 AM class. Half the campus has a Jaggi origin story.",
     icon: "fast-food-outline",
     accent: "#F0563C",
-    image: hostelImage,
+    image: jaggi,
   },
   {
     id: "kravings",
