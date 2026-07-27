@@ -64,6 +64,11 @@ const EnterAttendanceCodeScreen = () => {
         studentAccuracy: position.coords.accuracy ?? 20,
       });
 
+      if (data.requiresFeedback) {
+        navigation.replace('GiveFeedback', { sessionId: data.sessionId });
+        return;
+      }
+
       setResult(data);
     } catch (error: any) {
       const message = error?.response?.data?.error || 'Could not mark attendance. Please try again.';

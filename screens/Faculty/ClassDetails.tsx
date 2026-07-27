@@ -7,6 +7,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
 import { startAttendanceSession, getTodaysSessionForSlot, AttendanceSession } from '../../services/attendance';
+import { getSlotFeedbackQuestions } from '../../services/feedback';
 import { useFacultyTheme } from '../../constants/facultyTheme'; // ← Changed
 
 type ClassDetailsRouteProp = RouteProp<RootStackParamList, 'ClassDetails'>;
@@ -21,6 +22,11 @@ const ClassDetails = () => {
 
   const [todaysSession, setTodaysSession] = useState<AttendanceSession | null>(null);
   const [checkingToday, setCheckingToday] = useState(true);
+
+  // Feedback questions are mandatory before attendance can start — this
+  // tracks whether the 5 questions have already been set for this slot.
+  const [questionsSet, setQuestionsSet] = useState(false);
+  const [checkingQuestions, setCheckingQuestions] = useState(true);
 
   // Today's actual weekday name (e.g. "Monday") — used to tell whether the
   // scheduled `day` for this class is today at all. A recurring class can
@@ -50,9 +56,39 @@ const ClassDetails = () => {
     }, [day, slot])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      setCheckingQuestions(true);
+      getSlotFeedbackQuestions(day, slot)
+        .then((questions) => {
+          if (!cancelled) setQuestionsSet(questions.length === 5);
+        })
+        .catch((error) => {
+          console.log('Error checking slot feedback questions:', error);
+          if (!cancelled) setQuestionsSet(false);
+        })
+        .finally(() => {
+          if (!cancelled) setCheckingQuestions(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [day, slot])
+  );
+
+  const handleAddOrEditQuestions = () => {
+    navigation.navigate('FeedbackQuestions', { day, slot, subject });
+  };
+
   const handleStartAttendance = async () => {
     if (!isScheduledToday) {
       Alert.alert('Not today', `This class is scheduled for ${day}. You can only start attendance on ${day}.`);
+      return;
+    }
+
+    if (!questionsSet) {
+      Alert.alert('Feedback questions required', 'Add the 5 feedback questions for this class before starting attendance.');
       return;
     }
 
@@ -142,6 +178,33 @@ const ClassDetails = () => {
           </View>
         </View>
 
+        {checkingQuestions ? (
+          <View style={styles.checkingBox}>
+            <ActivityIndicator color={FacultyTheme.accent} />
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.questionsCard,
+              { backgroundColor: FacultyTheme.cardBg, shadowColor: FacultyTheme.shadowColor, borderColor: FacultyTheme.accent },
+              !questionsSet && styles.questionsCardMissing,
+            ]}
+            onPress={handleAddOrEditQuestions}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.questionsCardTitle, { color: FacultyTheme.textPrimary }]}>
+                {questionsSet ? '📝 Feedback Questions' : '⚠️ Feedback Questions Required'}
+              </Text>
+              <Text style={[styles.questionsCardSubtitle, { color: FacultyTheme.textSecondary }]}>
+                {questionsSet
+                  ? 'Set — tap to edit the 5 questions for this class.'
+                  : 'Add 5 questions before you can start attendance.'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={FacultyTheme.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         {checkingToday ? (
           <View style={styles.checkingBox}>
             <ActivityIndicator color={FacultyTheme.accent} />
@@ -179,17 +242,28 @@ const ClassDetails = () => {
             </Text>
           </View>
         ) : (
-          <TouchableOpacity
-            style={[styles.attendanceButton, { backgroundColor: FacultyTheme.accent }, starting && styles.attendanceButtonDisabled]}
-            onPress={handleStartAttendance}
-            disabled={starting}
-          >
-            {starting ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.attendanceButtonText}>Start Attendance</Text>
+          <>
+            <TouchableOpacity
+              style={[
+                styles.attendanceButton,
+                { backgroundColor: FacultyTheme.accent },
+                (starting || !questionsSet) && styles.attendanceButtonDisabled,
+              ]}
+              onPress={handleStartAttendance}
+              disabled={starting || !questionsSet}
+            >
+              {starting ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.attendanceButtonText}>Start Attendance</Text>
+              )}
+            </TouchableOpacity>
+            {!questionsSet && (
+              <Text style={[styles.note, { color: FacultyTheme.textSecondary }]}>
+                Add the 5 feedback questions above to enable this.
+              </Text>
             )}
-          </TouchableOpacity>
+          </>
         )}
       </View>
     </SafeAreaView>
@@ -210,6 +284,22 @@ const styles = StyleSheet.create({
   detailLabel: { fontSize: 15, fontWeight: '600' },
   detailValue: { fontSize: 15, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
   checkingBox: { paddingVertical: 20, alignItems: 'center' },
+  questionsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  questionsCardMissing: { borderWidth: 1.5 },
+  questionsCardTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  questionsCardSubtitle: { fontSize: 12.5 },
+  note: { fontSize: 12.5, textAlign: 'center', marginTop: 10 },
   alreadyRanBanner: { borderRadius: 14, padding: 14, marginBottom: 14, shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   alreadyRanText: { fontSize: 13, textAlign: 'center', fontWeight: '600' },
   attendanceButton: { borderRadius: 16, paddingVertical: 16, alignItems: 'center' },

@@ -60,6 +60,8 @@ export type RootStackParamList = {
   AttendanceSession: {
     sessionId: string;
     subject: string;
+    day?: string;
+    slot?: string;
   };
   FlaggedReview: {
     sessionId: string;
@@ -81,8 +83,12 @@ export type RootStackParamList = {
   EnterAttendanceCode: undefined;
   ScanAttendance: undefined;
   FeedbackQuestions: {
-    sessionId: string;
+    day: string;
+    slot: string;
     subject: string;
+    // Present when editing from an already-active session, so the save
+    // also pushes the edit into that live session immediately.
+    sessionId?: string;
   };
   FeedbackResponses: {
     sessionId: string;

@@ -15,7 +15,6 @@ import {
   getRotatingCode,
   endAttendanceSession,
 } from '../../services/attendance';
-import { startSessionFeedback } from '../../services/feedback';
 import { useFacultyTheme } from '../../constants/facultyTheme'; // ← Changed
 
 type RouteProps = RouteProp<RootStackParamList, 'AttendanceSession'>;
@@ -31,7 +30,6 @@ const AttendanceSessionScreen = () => {
   const [live, setLive] = useState<AttendanceLiveCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [ending, setEnding] = useState(false);
-  const [startingFeedback, setStartingFeedback] = useState(false);
   const [rotatingCode, setRotatingCode] = useState<RotatingCode | null>(null);
   const [rotatingCodeError, setRotatingCodeError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -171,17 +169,14 @@ const AttendanceSessionScreen = () => {
     ]);
   };
 
-  const handleStartFeedback = async () => {
-    try {
-      setStartingFeedback(true);
-      await startSessionFeedback(sessionId);
-      await fetchData();
-    } catch (error: any) {
-      const message = error?.response?.data?.error || 'Could not start feedback.';
-      Alert.alert('Error', message);
-    } finally {
-      setStartingFeedback(false);
-    }
+  const handleEditQuestions = () => {
+    if (!session) return;
+    navigation.navigate('FeedbackQuestions', {
+      day: session.day,
+      slot: session.slot,
+      subject: session.subject,
+      sessionId: session._id,
+    });
   };
 
   const handleBackToDashboard = () => {
@@ -280,6 +275,15 @@ const AttendanceSessionScreen = () => {
         <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>👥 Manage Attendance (mark manually)</Text>
       </TouchableOpacity>
 
+      {!!(session.day && session.slot) && (
+        <TouchableOpacity
+          style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }]}
+          onPress={handleEditQuestions}
+        >
+          <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>📝 Edit Feedback Questions</Text>
+        </TouchableOpacity>
+      )}
+
       {!isEnded ? (
         <TouchableOpacity
           style={[styles.endButton, { backgroundColor: FacultyTheme.danger }, ending && styles.endButtonDisabled]}
@@ -290,30 +294,7 @@ const AttendanceSessionScreen = () => {
         </TouchableOpacity>
       ) : (
         <>
-          {session.feedbackStatus === 'not_set' && session.feedbackQuestions.length === 0 && (
-            <TouchableOpacity
-              style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }]}
-              onPress={() => navigation.navigate('FeedbackQuestions', { sessionId, subject })}
-            >
-              <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>📝 Add Feedback Questions (5)</Text>
-            </TouchableOpacity>
-          )}
-
-          {session.feedbackStatus === 'not_set' && session.feedbackQuestions.length === 5 && (
-            <TouchableOpacity
-              style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }, startingFeedback && styles.endButtonDisabled]}
-              onPress={handleStartFeedback}
-              disabled={startingFeedback}
-            >
-              {startingFeedback ? (
-                <ActivityIndicator color={FacultyTheme.accent} />
-              ) : (
-                <Text style={[styles.manageButtonText, { color: FacultyTheme.accent }]}>▶️ Start Feedback</Text>
-              )}
-            </TouchableOpacity>
-          )}
-
-          {(session.feedbackStatus === 'open' || session.feedbackStatus === 'closed') && (
+          {session.feedbackQuestions.length === 5 && (
             <TouchableOpacity
               style={[styles.manageButton, { backgroundColor: 'rgba(55,148,255,0.1)', borderColor: FacultyTheme.accent }]}
               onPress={() => navigation.navigate('FeedbackResponses', { sessionId })}

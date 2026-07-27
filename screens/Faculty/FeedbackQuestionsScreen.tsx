@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
-import { setSessionFeedbackQuestions, QuestionDef, QuestionType } from '../../services/feedback';
+import { getSlotFeedbackQuestions, setSlotFeedbackQuestions, QuestionDef, QuestionType } from '../../services/feedback';
 import { useFacultyTheme } from '../../constants/facultyTheme';
 
 type RouteProps = RouteProp<RootStackParamList, 'FeedbackQuestions'>;
@@ -55,13 +55,42 @@ const emptyQuestion = (): DraftQuestion => ({
 const FeedbackQuestionsScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
-  const { sessionId, subject } = route.params;
+  const { day, slot, subject, sessionId } = route.params;
   const FacultyTheme = useFacultyTheme();
 
   const [questions, setQuestions] = useState<DraftQuestion[]>(
     Array.from({ length: QUESTION_COUNT }, emptyQuestion)
   );
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const existing = await getSlotFeedbackQuestions(day, slot);
+        if (cancelled) return;
+        if (existing.length === 5) {
+          setQuestions(
+            existing.map((q) => ({
+              text: q.text,
+              type: q.type,
+              options: q.options && q.options.length >= 2 ? q.options : ['', ''],
+              scaleMin: q.scaleMin ?? 1,
+              scaleMax: q.scaleMax ?? 5,
+            }))
+          );
+        }
+      } catch (error) {
+        console.log('Error loading slot feedback questions:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [day, slot]);
 
   const updateQuestion = (index: number, patch: Partial<DraftQuestion>) => {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)));
@@ -114,8 +143,10 @@ const FeedbackQuestionsScreen = () => {
 
     try {
       setSaving(true);
-      await setSessionFeedbackQuestions(sessionId, payload);
-      Alert.alert('Questions saved', 'Tap "Start Feedback" on the session screen to open it to students.', [
+      await setSlotFeedbackQuestions(day, slot, payload, sessionId);
+      Alert.alert('Questions saved', sessionId
+        ? 'Students will see the updated questions right away.'
+        : 'Students will be asked these right after marking attendance for this class.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
@@ -138,11 +169,15 @@ const FeedbackQuestionsScreen = () => {
         </View>
       </View>
 
+      {loading ? (
+        <ActivityIndicator color={FacultyTheme.accent} size="large" style={{ marginTop: 40 }} />
+      ) : (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={[styles.hint, { color: FacultyTheme.textSecondary }]}>
-            Add exactly 5 questions for this session — pick any question type per question, just
-            like Google Forms. Students will also answer the 5 fixed questions set by the admin.
+            Add exactly 5 questions for this class — pick any question type per question, just
+            like Google Forms. Students answer these (plus 5 fixed admin questions) right after
+            marking attendance, and must submit them before attendance is marked.
           </Text>
 
           {questions.map((q, i) => (
@@ -237,6 +272,7 @@ const FeedbackQuestionsScreen = () => {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+      )}
     </SafeAreaView>
   );
 };

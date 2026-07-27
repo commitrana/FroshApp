@@ -31,6 +31,8 @@ export type QuestionDef = {
 // ---------- FACULTY ----------
 
 // Faculty adds exactly 5 questions for a session they just ended.
+// Kept for backward compatibility — the current flow sets questions on the
+// timetable slot instead (see below), before attendance even starts.
 export const setSessionFeedbackQuestions = async (
   sessionId: string,
   questions: QuestionDef[]
@@ -40,9 +42,35 @@ export const setSessionFeedbackQuestions = async (
 };
 
 // Faculty opens feedback collection — students then see "Give Feedback".
+// No longer called from the app — feedback now opens automatically as soon
+// as a session starts (questions are mandatory before Start Attendance).
 export const startSessionFeedback = async (sessionId: string): Promise<void> => {
   const config = await facultyAuthHeader();
   await API.post(`/feedback/session/${sessionId}/start`, {}, config);
+};
+
+// ---------- FACULTY: slot-level questions (set before attendance starts) ----------
+
+// Gets the 5 draft questions already saved for one of the faculty's own
+// timetable slots (day + slot), if any. Returns [] if never set.
+export const getSlotFeedbackQuestions = async (day: string, slot: string): Promise<QuestionDef[]> => {
+  const config = await facultyAuthHeader();
+  const res = await API.get(`/feedback/slot/questions`, { ...config, params: { day, slot } });
+  return res.data.questions || [];
+};
+
+// Saves (creates or edits) exactly 5 questions for a timetable slot. Pass
+// sessionId when editing while that slot's attendance session is currently
+// active, so the live session picks up the edit immediately.
+export const setSlotFeedbackQuestions = async (
+  day: string,
+  slot: string,
+  questions: QuestionDef[],
+  sessionId?: string
+): Promise<QuestionDef[]> => {
+  const config = await facultyAuthHeader();
+  const res = await API.put(`/feedback/slot/questions`, { day, slot, questions, sessionId }, config);
+  return res.data.questions || [];
 };
 
 export type FeedbackAnswer = {

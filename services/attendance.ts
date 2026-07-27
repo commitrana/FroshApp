@@ -155,6 +155,9 @@ export type RosterStudent = {
   status: 'present' | 'flagged' | 'rejected' | 'absent';
   markedManually: boolean;
   recordId: string | null;
+  // True if they scanned/entered a code but haven't submitted the
+  // mandatory feedback yet — so they're not counted as present quite yet.
+  pendingFeedback?: boolean;
 };
 
 export const getSessionRoster = async (sessionId: string): Promise<RosterStudent[]> => {
@@ -246,6 +249,11 @@ export type MarkAttendanceResult = {
   message: string;
   status: "present" | "flagged" | "rejected";
   distanceFromAnchor: number;
+  // True when this scan/code entry still needs the mandatory feedback form
+  // before it counts as marked. When true, the app should navigate straight
+  // to GiveFeedback (with sessionId) instead of showing the result screen.
+  requiresFeedback: boolean;
+  sessionId: string;
 };
 
 export const markAttendance = async (params: {

@@ -50,6 +50,11 @@ interface FacultyLectureSlot {
   // lecture, which the backend auto-clears from the schedule the moment
   // the faculty ends attendance for it (see attendance.js session/:id/end).
   recurring?: boolean;
+  // The 5 feedback questions set for this slot (see routes/feedback.js
+  // /slot/questions) — students answer these right after marking
+  // attendance. Undefined/empty = not set yet, so Start Attendance for
+  // this class is blocked until they're added.
+  feedbackQuestions?: { text: string }[];
 }
 
 interface FacultyProfileData {
@@ -226,6 +231,27 @@ useFocusEffect(
       venue: lecture.venue,
       batches: lecture.batches || [],
     });
+  };
+
+  // Flattened list of every class on this faculty's own timetable, in
+  // day/slot order — powers the "Feedback Questions" section below the
+  // weekly grid, where each class can have its 5 questions added/edited.
+  const facultyClassList = FACULTY_DAYS.flatMap((day) =>
+    facultyTimeSlots
+      .filter((slot) => facultyScheduleMap[day]?.[slot])
+      .map((slot) => {
+        const lecture = facultyScheduleMap[day][slot];
+        return {
+          day,
+          slot,
+          subject: lecture.subject,
+          questionsSet: (lecture.feedbackQuestions?.length ?? 0) === 5,
+        };
+      })
+  );
+
+  const handleEditSlotQuestions = (day: string, slot: string, subject: string) => {
+    navigation.navigate("FeedbackQuestions", { day, slot, subject });
   };
 
   // ----- Real backend data -----
@@ -872,6 +898,38 @@ useFocusEffect(
               <Text style={[styles.note, { color: theme.textSecondary }]}>
                 Tap a class to start or view attendance.
               </Text>
+
+              {facultyClassList.length > 0 && (
+                <View style={styles.feedbackQuestionsSection}>
+                  <Text style={[styles.timeTableTitle, { color: theme.textPrimary, marginBottom: 10 }]}>
+                    Feedback Questions
+                  </Text>
+                  {facultyClassList.map(({ day, slot, subject, questionsSet }) => (
+                    <TouchableOpacity
+                      key={`${day}-${slot}`}
+                      style={[styles.feedbackQuestionRow, { backgroundColor: theme.cardBg, shadowColor: theme.shadowColor }]}
+                      onPress={() => handleEditSlotQuestions(day, slot, subject)}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.feedbackQuestionSubject, { color: theme.textPrimary }]} numberOfLines={1}>
+                          {subject}
+                        </Text>
+                        <Text style={[styles.feedbackQuestionMeta, { color: theme.textSecondary }]}>
+                          {day.slice(0, 3)} · {slot}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.feedbackQuestionStatus,
+                          { color: questionsSet ? theme.accent : '#EF4444' },
+                        ]}
+                      >
+                        {questionsSet ? 'Edit' : 'Add 5 →'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           ) : isFrosh ? (
             <>
@@ -1686,6 +1744,21 @@ const styles = StyleSheet.create({
   cellBatches: { fontSize: 9, marginTop: 2, textAlign: "center", fontWeight: "700" },
   cellEmptyDash: { fontSize: 14 },
   note: { fontSize: 12, marginTop: 10, textAlign: "center" },
+  feedbackQuestionsSection: { marginTop: 24 },
+  feedbackQuestionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+  },
+  feedbackQuestionSubject: { fontSize: 14, fontWeight: "700" },
+  feedbackQuestionMeta: { fontSize: 12, marginTop: 2 },
+  feedbackQuestionStatus: { fontSize: 13, fontWeight: "700", marginLeft: 10 },
   modalOverlayTransparent: {
     flex: 1,
     backgroundColor: 'transparent',
