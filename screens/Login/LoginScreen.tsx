@@ -158,6 +158,14 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               )}
 
+              <TouchableOpacity
+                style={styles.forgotPasswordLink}
+                onPress={() => navigation.navigate("ResetPassword")}
+                disabled={loading}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+              </TouchableOpacity>
+
               {showQuickLogin && (
   <View style={styles.devSection}>
     <Text style={styles.devLabel}>Quick Login</Text>
@@ -221,6 +229,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loginButtonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+
+  forgotPasswordLink: { alignItems: "center", marginTop: -8, marginBottom: 12 },
+  forgotPasswordText: { color: "#6c8cff", fontSize: 14, fontWeight: "600" },
 
   devSection: { marginTop: 4, marginBottom: 12 },
   devLabel: {

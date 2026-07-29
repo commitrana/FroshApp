@@ -117,6 +117,40 @@ export const login = async (email: string, password: string) => {
   }
 };
 
+// ============ RESET PASSWORD (student / faculty only) ============
+// role must be 'student' or 'faculty'. Backend verifies oldPassword before
+// updating to newPassword. Throws with a readable message on failure.
+export const resetPassword = async (
+  role: 'student' | 'faculty',
+  email: string,
+  oldPassword: string,
+  newPassword: string
+) => {
+  try {
+    const endpoint =
+      role === 'student'
+        ? `${API_URL}/student/reset-password`
+        : `${API_URL}/faculty/reset-password`;
+
+    const response = await axios.post(endpoint, {
+      email: email.trim().toLowerCase(),
+      oldPassword: oldPassword.trim(),
+      newPassword: newPassword.trim(),
+    });
+
+    if (response.data.success) {
+      return { success: true, message: response.data.message || 'Password updated successfully' };
+    }
+
+    throw new Error(response.data.message || 'Could not reset password');
+  } catch (error: any) {
+    console.log('Reset password failed:', error.response?.data || error.message);
+    throw new Error(
+      error.response?.data?.message || 'Old password is incorrect or something went wrong.'
+    );
+  }
+};
+
 // ============ REFRESH MEMBER STATUS (live from server) ============
 export const refreshMemberStatus = async () => {
   try {

@@ -8,6 +8,7 @@ export type RootStackParamList = {
   // Auth Screens
   Splash: undefined;
   Login: undefined;
+  ResetPassword: undefined;
 
   // Main App
   MainTabs: undefined;
