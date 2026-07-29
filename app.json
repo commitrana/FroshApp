@@ -11,7 +11,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Used to scan the attendance QR code shown by your professor.",
         "NSLocationWhenInUseUsageDescription": "Used to verify you're in the classroom when marking attendance."
-      }
+      },
+      "bundleIdentifier": "froshtiet.in"
     },
     "android": {
       "adaptiveIcon": {
@@ -50,7 +51,8 @@
         {
           "locationWhenInUsePermission": "Used to verify you're in the classroom when marking attendance."
         }
-      ]
+      ],
+      "./plugins/withExpoGLSwift5"
     ],
     "extra": {
       "eas": {
