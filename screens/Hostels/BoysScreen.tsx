@@ -19,7 +19,16 @@ import Icon from "@expo/vector-icons/Ionicons";
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 
-const hostelImage = require("../../assets/uiux/cos.jpg");
+const vyan = require("../../assets/boyshostel/vyan.png");
+const agira = require("../../assets/boyshostel/agira.png");
+const ambram = require("../../assets/boyshostel/ambram.png");
+const amritam = require("../../assets/boyshostel/amritam.png");
+const neeram = require("../../assets/boyshostel/neeram.png");
+const prithvi = require("../../assets/boyshostel/prithvi.png");
+const viyat = require("../../assets/boyshostel/viyat.png");
+const vyom = require("../../assets/boyshostel/vyom.png");
+const tejas = require("../../assets/boyshostel/tejas.png");
+const anantam = require("../../assets/boyshostel/anantam.png");
 const { height: screenHeight } = Dimensions.get("window");
 
 type Room = {
@@ -32,16 +41,16 @@ type Room = {
 };
 
 const rooms: Room[] = [
-  { id: 1, name: "Agira Hall", nickname: "Hostel A", seating: "Two seater(AC)", capacity: "928 capacity", image: hostelImage },
-  { id: 2, name: "Amritam Hall", nickname: "Hostel B", seating: "One seater (AC)/Two seater(AC)", capacity: "928 capacity", image: hostelImage },
-  { id: 3, name: "Prithvi Hall", nickname: "Hostel C", seating: "Two seater(AC)/Three seater(AC)", capacity: "387 capacity", image: hostelImage },
-  { id: 4, name: "Neeram Hall", nickname: "Hostel D", seating: "Two seater(AC)", capacity: "928 capacity", image: hostelImage },
-  { id: 5, name: "Vyan Hall", nickname: "Hostel H", seating: "Four seater(AC)", capacity: "670 capacity", image: hostelImage },
-  { id: 6, name: "Tejas Hall", nickname: "Hostel J", seating: "One seater(Non AC)/Two seater(AC)", capacity: "950 capacity", image: hostelImage },
-  { id: 7, name: "Ambaram Hall", nickname: "Hostel K", seating: "Two seater (AC/Non AC)", capacity: "600 capacity", image: hostelImage },
-  { id: 8, name: "Viyat Hall", nickname: "Hostel L", seating: "Two seater (AC)", capacity: "200 capacity", image: hostelImage },
-  { id: 9, name: "Anantam Hall", nickname: "Hostel M", seating: "Two seater(AC)/One seater(AC)", capacity: "1148 capacity", image: hostelImage },
-  { id: 10, name: "Vyom Hall", nickname: "Hostel O", seating: "Two seater(AC)", capacity: "928 capacity", image: hostelImage },
+  { id: 1, name: "Agira Hall", nickname: "Hostel A", seating: "Two seater(AC)", capacity: "928 capacity", image: agira },
+  { id: 2, name: "Amritam Hall", nickname: "Hostel B", seating: "One seater (AC)/Two seater(AC)", capacity: "928 capacity", image: amritam },
+  { id: 3, name: "Prithvi Hall", nickname: "Hostel C", seating: "Two seater(AC)/Three seater(AC)", capacity: "387 capacity", image: prithvi },
+  { id: 4, name: "Neeram Hall", nickname: "Hostel D", seating: "Two seater(AC)", capacity: "928 capacity", image: neeram },
+  { id: 5, name: "Vyan Hall", nickname: "Hostel H", seating: "Four seater(AC)", capacity: "670 capacity", image: vyan },
+  { id: 6, name: "Tejas Hall", nickname: "Hostel J", seating: "One seater(Non AC)/Two seater(AC)", capacity: "950 capacity", image: tejas },
+  { id: 7, name: "Ambaram Hall", nickname: "Hostel K", seating: "Two seater (AC/Non AC)", capacity: "600 capacity", image: ambram },
+  { id: 8, name: "Viyat Hall", nickname: "Hostel L", seating: "Two seater (AC)", capacity: "200 capacity", image: viyat },
+  { id: 9, name: "Anantam Hall", nickname: "Hostel M", seating: "Two seater(AC)/One seater(AC)", capacity: "1148 capacity", image: anantam },
+  { id: 10, name: "Vyom Hall", nickname: "Hostel O", seating: "Two seater(AC)", capacity: "928 capacity", image: vyom },
 ];
 
 export default function BoysScreen() {

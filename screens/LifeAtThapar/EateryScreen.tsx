@@ -21,10 +21,10 @@ import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 
 const { height: screenHeight } = Dimensions.get("window");
-
-const hostelImage = require("../../assets/uiux/cos.jpg");
+const ahaar = require("../../assets/Eatery/ahaar.png");
+const kravings = require("../../assets/Eatery/kravings.jpeg");
 const jaggi = require("../../assets/Eatery/Jaggi.jpg");
-
+const nescafe = require("../../assets/Eatery/nescafe.png");
 type Eatery = {
   id: string;
   name: string;
@@ -44,7 +44,7 @@ const EATERIES: Eatery[] = [
       "The heart of campus dining. Thalis, tadka dals and quick Indo-Chinese fixes — Ahaar is where everyone ends up when hunger strikes between lectures.",
     icon: "restaurant-outline",
     accent: "#F5A742",
-    image: hostelImage,
+    image: ahaar,
   },
   {
     id: "jaggi",
@@ -64,7 +64,7 @@ const EATERIES: Eatery[] = [
       "Sweet-tooth headquarters. Loaded shakes, waffles and desserts built for celebrating a good result — or surviving a bad one.",
     icon: "ice-cream-outline",
     accent: "#E85BA0",
-    image: hostelImage,
+    image: kravings,
   },
   {
     id: "nescafe",
@@ -74,7 +74,7 @@ const EATERIES: Eatery[] = [
       "The unofficial study lounge. Strong coffee, low lights and just enough buzz to fuel a 2 AM assignment sprint.",
     icon: "cafe-outline",
     accent: "#C9974B",
-    image: hostelImage,
+    image: nescafe,
   },
 ];
 

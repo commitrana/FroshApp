@@ -22,8 +22,9 @@ import { useHomeTheme } from "../../constants/homeThemes";
 
 const { height: screenHeight } = Dimensions.get("window");
 
-const hostelImage = require("../../assets/uiux/cos.jpg");
-
+const mainaudi = require("../../assets/cultural/mainaudi.png");
+const oat = require("../../assets/cultural/oat.png");
+const fete = require("../../assets/cultural/fete.png");
 type CulturalSpot = {
   id: string;
   name: string;
@@ -43,7 +44,7 @@ const CULTURAL_SPOTS: CulturalSpot[] = [
       "The big stage for the big nights — annual fests, guest lectures and the shows that fill every seat and half the aisles.",
     icon: "film-outline",
     accent: "#B571E8",
-    image: hostelImage,
+    image: mainaudi,
   },
   {
     id: "oat",
@@ -53,7 +54,7 @@ const CULTURAL_SPOTS: CulturalSpot[] = [
       "Under-the-sky performances, open mics and jam sessions — the OAT trades a roof for atmosphere, and it's worth it every time.",
     icon: "partly-sunny-outline",
     accent: "#F0A63C",
-    image: hostelImage,
+    image: oat,
   },
   {
     id: "fete-area",
@@ -63,7 +64,7 @@ const CULTURAL_SPOTS: CulturalSpot[] = [
       "Stalls, lights and pop-up chaos — the fete area turns into a mini carnival every time campus has something to celebrate.",
     icon: "balloon-outline",
     accent: "#E85BA0",
-    image: hostelImage,
+    image: fete,
   },
 ];
 
