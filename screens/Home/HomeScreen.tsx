@@ -79,7 +79,7 @@ const LIVE_CARD_SIDE_INSET = 22;
 // card is a fraction of the screen so its neighbours peek in on both
 // sides — those peeking neighbours are shrunk + blurred (see the scroll
 // interpolation below) and grow sharp again as they're swiped to center.
-const LIVE_CAROUSEL_CARD_RATIO = 0.7;
+const LIVE_CAROUSEL_CARD_RATIO = 0.85;
 const LIVE_CAROUSEL_SPACING = 10;
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
 const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
