@@ -40,7 +40,10 @@ export const registerForEvent = async (eventId: string, slot?: number): Promise<
   const res = await API.post("/tickets/register", body, config);
   return res.data.ticket;
 };
-
+export async function refreshTicketQR(ticketId: string): Promise<Ticket> {
+  const res = await API.post(`/tickets/${ticketId}/refresh-qr`);
+  return res.data;
+}
 // All tickets belonging to the logged-in student — used to decide
 // whether to show "Register" or "View Ticket" for each event.
 // Student-only: if there's no student token in storage (e.g. a faculty

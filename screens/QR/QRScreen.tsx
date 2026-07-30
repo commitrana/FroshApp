@@ -11,7 +11,9 @@ import {
   Platform,
   Animated,
   Easing,
+  Alert,
 } from "react-native";
+import * as ScreenCapture from "expo-screen-capture";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,7 +25,7 @@ import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 import QRPlaceholder from "../../Components/QR/QRPlaceholder";
 import { QR_INFO } from "../../constants/qr";
-import { Ticket, getMyTickets } from "../../services/tickets";
+import { Ticket, getMyTickets, refreshTicketQR } from "../../services/tickets";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
 
 export default function QRScreen() {
@@ -68,6 +70,47 @@ export default function QRScreen() {
   }, []);
 
   useAutoRefresh(fetchTickets, 15000);
+
+  // Screenshot protection for the ticket QR
+  // - Android: actually blocks the screenshot (secure flag), no further action needed
+  // - iOS: cannot be blocked by Apple, so on detection we invalidate every visible
+  //   ticket's QR token server-side and pull the fresh one — the screenshot becomes
+  //   useless even though we can't stop it from being taken
+  const ticketsRef = useRef<Ticket[]>([]);
+  useEffect(() => {
+    ticketsRef.current = tickets;
+  }, [tickets]);
+
+  useEffect(() => {
+    ScreenCapture.preventScreenCaptureAsync();
+
+    let subscription: { remove: () => void } | undefined;
+    if (Platform.OS === "ios") {
+      subscription = ScreenCapture.addScreenshotListener(async () => {
+        Alert.alert(
+          "Screenshot Not Allowed",
+          "For your security, this ticket's QR code has been invalidated. Please refresh to get a new one and show it directly at the venue instead of sharing a screenshot.",
+          [{ text: "OK" }]
+        );
+
+        try {
+          const idsToInvalidate = ticketsRef.current
+            .filter((t) => t.status !== "used")
+            .map((t) => t._id);
+
+          await Promise.all(idsToInvalidate.map((id) => refreshTicketQR(id)));
+          await fetchTickets();
+        } catch (err) {
+          console.log("Failed to invalidate ticket QR after screenshot:", err);
+        }
+      });
+    }
+
+    return () => {
+      ScreenCapture.allowScreenCaptureAsync();
+      subscription?.remove();
+    };
+  }, [fetchTickets]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
