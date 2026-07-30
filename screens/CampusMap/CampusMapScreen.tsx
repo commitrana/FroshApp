@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTopInset } from '../../hooks/useTopInset';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -82,6 +83,7 @@ function MapMarker({
 export default function CampusMapScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { colors, isDarkMode } = useTheme();
+  const topInset = useTopInset();
 
   const [activeLocation, setActiveLocation] = useState<CampusLocation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -165,8 +167,8 @@ export default function CampusMapScreen() {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
       <LinearGradient colors={bgGradient} style={styles.gradient}>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.header}>
+        <SafeAreaView style={styles.container} edges={["bottom"]}>
+          <View style={[styles.header, { marginTop: topInset }]}>
             <TouchableOpacity
               style={[styles.backBtn, { backgroundColor: glassBg, borderColor: glassBorder }]}
               onPress={() => navigation.goBack()}
@@ -313,7 +315,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: Platform.OS === 'android' ? 30 : 10,
     paddingVertical: 8,
   },
   backBtn: {

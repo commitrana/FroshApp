@@ -8,13 +8,13 @@ import {
   StatusBar,
   Animated,
   Easing,
-  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../../types/navigation';
 import { useTheme } from '../../theme/theme';
+import { useTopInset } from '../../hooks/useTopInset';
 import { LinearGradient } from 'expo-linear-gradient';
 // Reusing the exact same component Home renders inline for its About tab,
 // so this screen (reached via navigation.navigate('About')) and Home's
@@ -26,6 +26,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const AboutScreen = () => {
   const navigation = useNavigation<NavigationProp>();
   const { colors, isDarkMode } = useTheme();
+  const topInset = useTopInset();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -71,7 +72,7 @@ const AboutScreen = () => {
       <LinearGradient colors={bgGradient} style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Header — kept here since HomeAboutTab has no back button of its own */}
-          <View style={styles.header}>
+          <View style={[styles.header, { marginTop: topInset }]}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
@@ -95,7 +96,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: Platform.OS === 'ios' ? 75 : 50, // extra top padding on iOS only — StatusBar's `translucent` prop has no effect on iOS, so this screen needs its own notch/Dynamic Island clearance; Android's 50 is untouched
     paddingVertical: 8,
     marginBottom: 8,
   },

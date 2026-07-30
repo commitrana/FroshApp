@@ -14,7 +14,6 @@ import {
   Easing,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -22,6 +21,7 @@ import Icon from '@expo/vector-icons/Ionicons';
 import { Platform } from 'react-native';
 import { useAppTheme } from '../../context/ThemeContext';
 import { useHomeTheme } from '../../constants/homeThemes';
+import { useTopInset } from '../../hooks/useTopInset';
 
 const { width, height } = Dimensions.get('window');
 
@@ -345,6 +345,7 @@ export default function SocietiesScreen() {
   const navigation = useNavigation();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null);
 
@@ -457,8 +458,8 @@ export default function SocietiesScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <View style={[styles.header, { marginTop: topInset }]}>
             <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
               <Icon name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
@@ -475,7 +476,7 @@ export default function SocietiesScreen() {
             showsVerticalScrollIndicator={false}
             columnWrapperStyle={styles.columnWrapper}
           />
-        </SafeAreaView>
+        </View>
       </LinearGradient>
       </Animated.View>
 
@@ -527,7 +528,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: Platform.OS === 'ios' ? 22 : 10,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },

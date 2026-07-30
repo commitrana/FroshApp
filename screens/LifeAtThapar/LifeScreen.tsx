@@ -9,7 +9,6 @@ import {
   Animated,
   Easing,
   Dimensions,
-  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,6 +16,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import Spacing from "../../constants/spacing";
+import { useTopInset } from "../../hooks/useTopInset";
 
 const { height: screenHeight } = Dimensions.get("window");
 
@@ -75,6 +76,7 @@ export default function LifeScreen() {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset(Spacing.lg);
 
   const scaleAnims = useRef(CARD_DATA.map(() => new Animated.Value(1))).current;
 
@@ -236,7 +238,7 @@ export default function LifeScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingTop: topInset }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
           </TouchableOpacity>
@@ -271,7 +273,6 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 22,
-    paddingTop: Platform.OS === 'ios' ? 80 : 55, // extra top padding on iOS only — StatusBar's `translucent` prop has no effect on iOS, so this screen needs its own notch/Dynamic Island clearance; Android's 55 is untouched
     paddingBottom: 40,
   },
   backButton: {

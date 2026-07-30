@@ -30,6 +30,7 @@ import { getEvents } from "../../services/events";
 import { getMyTickets, registerForEvent } from "../../services/tickets";
 import { logout } from "../../services/auth";
 import { useAutoRefresh } from "../../hooks/useAutoRefresh";
+import { useTopInset } from "../../hooks/useTopInset";
 import { useHomeTheme } from "../../constants/homeThemes";
 import { useAppTheme } from "../../context/ThemeContext";
 import HomeAboutTab from "../../Components/Home/HomeAboutTab";
@@ -110,6 +111,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<HomeNavProp>();
   const { isDarkMode, toggleDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   // ----- ui_ux Home shell state -----
   const [activeTab, setActiveTab] = useState("frosh");
@@ -673,7 +675,7 @@ useFocusEffect(
           }
         >
           {/* HEADER */}
-          <View style={styles.header}>
+          <View style={[styles.header, { marginTop: topInset }]}>
             <View>
               <Text style={[styles.hello, { color: theme.textPrimary }]}>
                 Hi, {userName || "Guest"}
@@ -1492,7 +1494,6 @@ const styles = StyleSheet.create({
   rootShell: { flex: 1 },
   container: { flex: 1 },
   header: {
-    marginTop: 55,
     paddingHorizontal: 24,
     flexDirection: "row",
     justifyContent: "space-between",

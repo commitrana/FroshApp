@@ -21,6 +21,7 @@ import Feather from "@expo/vector-icons/Feather";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import { useTopInset } from "../../hooks/useTopInset";
 
 const { height: screenHeight } = Dimensions.get("window");
 
@@ -68,6 +69,7 @@ export default function HostelsScreen() {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   // --- Entry / exit animations (same as AccountScreen) ---
   const slideY = useRef(new Animated.Value(screenHeight)).current;
@@ -215,13 +217,13 @@ export default function HostelsScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <SafeAreaView style={styles.safeArea}>
+          <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
             >
               {/* Header with back button (matches AccountScreen style) */}
-              <View style={styles.header}>
+              <View style={[styles.header, { marginTop: topInset }]}>
                 <TouchableOpacity onPress={handleBack}>
                   <Icon name="arrow-back" size={26} color={theme.iconColor} />
                 </TouchableOpacity>
@@ -331,7 +333,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 20 : 8,
     marginBottom: 16,
   },
   heading: {

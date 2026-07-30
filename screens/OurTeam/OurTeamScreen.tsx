@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -24,6 +23,8 @@ import Icon from '@expo/vector-icons/Ionicons';
 import { Platform } from 'react-native';
 import { useAppTheme } from '../../context/ThemeContext';
 import { useOurTeamTheme } from '../../constants/ourTeamThemes';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTopInset } from '../../hooks/useTopInset';
 import MentorWall from '../../Components/OurTeam/MentorWall';
 
 const { width, height: screenHeight } = Dimensions.get('window');
@@ -56,6 +57,7 @@ export default function OurTeamScreen() {
   const navigation = useNavigation();
   const { isDarkMode } = useAppTheme();
   const theme = useOurTeamTheme();
+  const topInset = useTopInset();
   const [activeTab, setActiveTab] = useState<TabKey>('faculty');
 
   // --- Team data fetch (unchanged) ---
@@ -365,8 +367,8 @@ export default function OurTeamScreen() {
       >
         <LinearGradient colors={theme.bgGradient} style={styles.container}>
           <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }}>
-              <View style={styles.header}>
+            <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
+              <View style={[styles.header, { marginTop: topInset }]}>
                 <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
                   <Icon name="arrow-back" size={24} color={theme.textPrimary} />
                 </TouchableOpacity>
@@ -468,7 +470,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: Platform.OS === 'ios' ? 60 : 50,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },
