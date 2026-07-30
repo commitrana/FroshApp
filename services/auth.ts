@@ -142,11 +142,13 @@ export const resetPassword = async (
       return { success: true, message: response.data.message || 'Password updated successfully' };
     }
 
-    throw new Error(response.data.message || 'Could not reset password');
+    throw new Error(response.data.error || response.data.message || 'Could not reset password');
   } catch (error: any) {
     console.log('Reset password failed:', error.response?.data || error.message);
     throw new Error(
-      error.response?.data?.message || 'Old password is incorrect or something went wrong.'
+      error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Old password is incorrect or something went wrong.'
     );
   }
 };
