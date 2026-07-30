@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,18 @@ const BootcampScreen = () => {
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setRefreshSignal((n) => n + 1);
+  }, []);
+
+  const handleRefreshHandled = useCallback(() => {
+    setRefreshing(false);
+  }, []);
+
   return (
     <LinearGradient colors={theme.bgGradient as [string, string, ...string[]]} style={styles.container}>
       <StatusBar
@@ -26,7 +39,18 @@ const BootcampScreen = () => {
         backgroundColor="transparent"
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.accent}
+            colors={[theme.accent]}
+          />
+        }
+      >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Main')}>
             <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
@@ -34,7 +58,11 @@ const BootcampScreen = () => {
           <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Bootcamp</Text>
           <View style={{ width: 40 }} />
         </View>
-        <HomeBootcampTab theme={theme} />
+        <HomeBootcampTab
+          theme={theme}
+          refreshSignal={refreshSignal}
+          onRefreshHandled={handleRefreshHandled}
+        />
       </ScrollView>
     </LinearGradient>
   );

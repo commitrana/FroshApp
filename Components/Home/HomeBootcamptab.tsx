@@ -36,7 +36,23 @@ function hexToRgba(hex: string, alpha: number): string {
 
 // This is the student "Bootcamp" tab content — batch, weekly class
 // schedule (grid), live-class/attendance card and timetable image.
-export default function HomeBootcampTab({ theme }: { theme: any }) {
+export default function HomeBootcampTab({
+  theme,
+  refreshSignal,
+  onRefreshHandled,
+}: {
+  theme: any;
+  // Bump this number from the parent (e.g. on pull-to-refresh) to trigger
+  // a re-fetch. We use a plain prop + effect instead of a ref because refs
+  // on function components can silently fail to attach depending on how
+  // the parent renders/wraps this component — a stale/null ref would make
+  // pull-to-refresh look like it's working (spinner spins) while doing
+  // nothing at all.
+  refreshSignal?: number;
+  // Called once the triggered refresh has actually finished, so the parent
+  // can stop its RefreshControl spinner.
+  onRefreshHandled?: () => void;
+}) {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
 
@@ -71,6 +87,7 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
       ]);
 
       setClassSchedule(schedule);
+      console.log('[HomeBootcampTab] fetched timetable classes:', schedule?.classes?.length, schedule?.classes);
 
       if (!studentDataRaw) {
         return;
@@ -114,6 +131,24 @@ export default function HomeBootcampTab({ theme }: { theme: any }) {
   }, []);
 
   useAutoRefresh(fetchActiveSession, 8000);
+
+  // Respond to pull-to-refresh: parent bumps refreshSignal, we refetch
+  // everything and then tell the parent we're done.
+  const isFirstRefreshSignal = useRef(true);
+  useEffect(() => {
+    if (isFirstRefreshSignal.current) {
+      // Don't fire on initial mount — useFocusEffect already handles that.
+      isFirstRefreshSignal.current = false;
+      return;
+    }
+    console.log('[HomeBootcampTab] refreshSignal changed, refetching…', refreshSignal);
+    (async () => {
+      await Promise.all([fetchData(false), fetchActiveSession()]);
+      console.log('[HomeBootcampTab] refresh fetch complete');
+      onRefreshHandled?.();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
 
   // Pop-in animation
   const contentOpacity = useRef(new Animated.Value(0)).current;
