@@ -1091,7 +1091,11 @@ useFocusEffect(
                 {event ? (
                   <>
                     <ImageWithLoader 
-                      source={event.imageUrl ? { uri: `${SERVER_ORIGIN}${event.imageUrl}` } : DEFAULT_IMAGE}
+                      source={
+                          event.imageUrl
+                          ? { uri: event.imageUrl.startsWith('http') ? event.imageUrl : `${SERVER_ORIGIN}${event.imageUrl}` }
+                          : DEFAULT_IMAGE
+                        }
                       style={styles.eventImage}
                     />
 
