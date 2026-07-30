@@ -8,6 +8,7 @@ import {
   StatusBar,
   Animated,
   Easing,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -94,7 +95,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === 'ios' ? 75 : 50, // extra top padding on iOS only — StatusBar's `translucent` prop has no effect on iOS, so this screen needs its own notch/Dynamic Island clearance; Android's 50 is untouched
     paddingVertical: 8,
     marginBottom: 8,
   },

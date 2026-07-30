@@ -15,6 +15,7 @@ import {
   Dimensions,
   Alert,
   Modal,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -384,6 +385,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: Platform.OS === "ios" ? 20 : 8,
     marginBottom: 20,
   },
   loader: { marginTop: 60 },

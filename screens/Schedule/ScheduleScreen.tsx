@@ -6,6 +6,7 @@ import {
   Dimensions,
   Easing,
   FlatList,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -281,6 +282,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: Platform.OS === "ios" ? 20 : 8,
   },
   subHeading: {
     marginTop: 6,
