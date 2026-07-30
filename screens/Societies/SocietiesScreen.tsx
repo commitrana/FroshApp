@@ -313,7 +313,7 @@ const societies: Society[] = [
     id: 52, 
     name: 'TNT', 
     description: 'Thapar Nautanki Team- promotes theatre and performing arts through plays and dramatic competitions',
-    logo: require('../../assets/societies/TNT.jpg')
+    logo: require('../../assets/societies/TNT.png')
   },
   { 
     id: 41, 
