@@ -18,8 +18,12 @@ import Icon from "@expo/vector-icons/Ionicons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
-
-const hostelImage = require("../../assets/uiux/cos.jpg");
+const vahni = require("../../assets/girlshostel/vahni.png");
+const dhriti = require("../../assets/girlshostel/dhriti.png");
+const pavani = require("../../assets/girlshostel/pavani.png");
+const vasudha = require("../../assets/girlshostel/vasudha.png");
+const ira = require("../../assets/girlshostel/ira.png");
+const ananta = require("../../assets/girlshostel/ananta.png");
 const { height: screenHeight } = Dimensions.get("window");
 
 type Room = {
@@ -32,12 +36,12 @@ type Room = {
 };
 
 const rooms: Room[] = [
-  { id: 1, name: "Vasudha Hall", nickname: "Hostel G/E", seating: "Three seater(AC)/Four seater(AC)", capacity: "360 capacity", image: hostelImage },
-  { id: 2, name: "Ira Hall", nickname: "Hostel I", seating: "One seater (Non AC)/Three seater(AC)", capacity: "320 capacity", image: hostelImage },
-  { id: 3, name: "Ananta Hall", nickname: "Hostel N", seating: "One seater(AC)/Two seater(AC)", capacity: "500 capacity", image: hostelImage },
-  { id: 4, name: "Dhriti Hall", nickname: "Hostel PG-I", seating: "Two seater(AC)", capacity: "928 capacity", image: hostelImage },
-  { id: 5, name: "Avni Hall", nickname: "Hostel PG-II", seating: "Two seater(AC)", capacity: "400 capacity", image: hostelImage },
-  { id: 6, name: "Vahni Hall", nickname: "", seating: "Two seater(AC)", capacity: "400 capacity", image: hostelImage },
+  { id: 1, name: "Vasudha Hall", nickname: "Hostel G/E", seating: "Three seater(AC)/Four seater(AC)", capacity: "360 capacity", image: vasudha },
+  { id: 2, name: "Ira Hall", nickname: "Hostel I", seating: "One seater (Non AC)/Three seater(AC)", capacity: "320 capacity", image: ira },
+  { id: 3, name: "Ananta Hall", nickname: "Hostel N", seating: "One seater(AC)/Two seater(AC)", capacity: "500 capacity", image: ananta },
+  { id: 4, name: "Dhriti Hall", nickname: "Hostel PG-I", seating: "Two seater(AC)", capacity: "928 capacity", image: dhriti },
+  { id: 5, name: "Pavni Hall", nickname: "Hostel PG-II", seating: "Two seater(AC)", capacity: "400 capacity", image: pavani },
+  { id: 6, name: "Vahni Hall", nickname: "", seating: "Two seater(AC)", capacity: "400 capacity", image: vahni },
 ];
 
 export default function GirlsScreen() {

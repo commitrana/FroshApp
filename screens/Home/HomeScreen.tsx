@@ -79,7 +79,7 @@ const LIVE_CARD_SIDE_INSET = 22;
 // card is a fraction of the screen so its neighbours peek in on both
 // sides — those peeking neighbours are shrunk + blurred (see the scroll
 // interpolation below) and grow sharp again as they're swiped to center.
-const LIVE_CAROUSEL_CARD_RATIO = 0.7;
+const LIVE_CAROUSEL_CARD_RATIO = 0.85;
 const LIVE_CAROUSEL_SPACING = 10;
 const SERVER_ORIGIN = "https://frosh-app-backend.onrender.com";
 const DEFAULT_IMAGE = require('../../assets/uiux/concert.jpg');
@@ -997,18 +997,10 @@ useFocusEffect(
                     // scale 1 while swiped-to cards landed a few px short.
                     disableIntervalMomentum
                     contentContainerStyle={{
-                      paddingHorizontal: liveCarouselSidePad,
-                      // Without this, RN's default cross-axis behavior
-                      // (stretch) forces every card to the height of
-                      // whichever one is currently tallest — e.g. a card
-                      // showing slot chips vs one that isn't. A shrunk card
-                      // then scales down from the center of that taller,
-                      // artificial box instead of the center of its own
-                      // visible content, which reads as the card sinking
-                      // downward instead of shrinking in place. Centering
-                      // keeps each card sized to its own content.
-                      alignItems: "center",
-                    }}
+  paddingHorizontal: liveCarouselSidePad,
+  paddingVertical: 36,   // ADD THIS — gives the boxShadow room instead of clipping
+  alignItems: "center",
+}}
                     onScroll={handleLiveCarouselScroll}
                     scrollEventThrottle={16}
                   >
@@ -1396,9 +1388,6 @@ useFocusEffect(
                           />
                         ))}
                       </View>
-                      <Text style={[styles.liveSwipeHint, { color: theme.textSecondary }]}>
-                        {liveEvents.length} live events • swipe to see more →
-                      </Text>
                     </>
                   )}
                 </>
@@ -1550,6 +1539,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    alignSelf: "center",
     gap: 6,
     marginTop: 12,
   },
@@ -1594,7 +1584,7 @@ const styles = StyleSheet.create({
   },
   liveCardShadowWrapper: {
     marginHorizontal: 22,
-    marginTop: 24,
+    marginTop: 8,
     borderRadius: 28,
   },
   liveCard: {
@@ -1606,6 +1596,7 @@ const styles = StyleSheet.create({
   liveHeadingContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 14,
   },
   line: { flex: 1, height: 2 },

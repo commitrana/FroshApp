@@ -21,8 +21,8 @@ import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
 
 const { height: screenHeight } = Dimensions.get("window");
-
-const hostelImage = require("../../assets/uiux/cos.jpg");
+const badminton = require("../../assets/sports/Badminton.png");
+const football = require("../../assets/sports/Football.png");
 const BasketBall = require("../../assets/sports/basketball.jpeg");
 const swim = require("../../assets/sports/swimming.jpeg");
 
@@ -45,7 +45,7 @@ const SPORTS: Venue[] = [
       "Fast rallies, faster footwork. The indoor courts stay booked from early morning smashes to late-night doubles with the hostel crew.",
     icon: "tennisball-outline",
     accent: "#4FD1C5",
-    image: hostelImage,
+    image: badminton,
   },
   {
     id: "football",
@@ -55,7 +55,7 @@ const SPORTS: Venue[] = [
       "The main turf for five-a-side evenings, department leagues and the odd impromptu match that turns into a two-hour tournament.",
     icon: "football-outline",
     accent: "#5CC26E",
-    image: hostelImage,
+    image: football,
   },
   {
     id: "basketball",
