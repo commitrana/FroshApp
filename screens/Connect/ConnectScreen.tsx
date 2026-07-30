@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -13,7 +12,6 @@ import {
   Dimensions,
   Animated,
   Easing,
-  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -23,6 +21,8 @@ import { Feather } from "@expo/vector-icons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTopInset } from "../../hooks/useTopInset";
 
 const { width, height: screenHeight } = Dimensions.get("window");
 
@@ -56,6 +56,7 @@ export default function ConnectScreen() {
   const navigation = useNavigation();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -179,8 +180,8 @@ export default function ConnectScreen() {
           style={styles.container}
         >
           <BlurTargetView ref={blurTargetRef} style={{ flex: 1 }}>
-            <SafeAreaView style={{ flex: 1 }}>
-              <View style={styles.header}>
+            <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
+              <View style={[styles.header, { marginTop: topInset }]}>
                 <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
                   <Icon name="arrow-back" size={24} color={theme.textPrimary} />
                 </TouchableOpacity>
@@ -291,7 +292,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: Platform.OS === "ios" ? 20 : 8,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },

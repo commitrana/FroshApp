@@ -15,7 +15,6 @@ import {
   Dimensions,
   Alert,
   Modal,
-  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +28,7 @@ import { getMyProfile, uploadProfilePhoto, StudentProfile } from "../../services
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import { useTopInset } from "../../hooks/useTopInset";
 import ProfileHeader from "../../Components/Account/ProfileHeader";
 import InfoCard from "../../Components/Account/InfoCard";
 
@@ -64,6 +64,7 @@ export default function AccountScreen() {
   const navigation = useNavigation<RootNavProp>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   const [role, setRole] = useState<string | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
@@ -263,7 +264,7 @@ export default function AccountScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <SafeAreaView style={styles.safeArea}>
+          <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
             <ScrollView
               contentContainerStyle={styles.container}
               showsVerticalScrollIndicator={false}
@@ -275,7 +276,7 @@ export default function AccountScreen() {
                 />
               }
             >
-              <View style={styles.header}>
+              <View style={[styles.header, { marginTop: topInset }]}>
                 <TouchableOpacity onPress={handleBack}>
                   <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
                 </TouchableOpacity>
@@ -359,7 +360,7 @@ export default function AccountScreen() {
             onPress={() => setPhotoViewerVisible(false)}
           >
             <TouchableOpacity
-              style={styles.viewerCloseBtn}
+              style={[styles.viewerCloseBtn, { top: topInset }]}
               onPress={() => setPhotoViewerVisible(false)}
             >
               <Ionicons name="close" size={28} color="#fff" />
@@ -385,7 +386,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 20 : 8,
     marginBottom: 20,
   },
   loader: { marginTop: 60 },
@@ -430,7 +430,6 @@ const styles = StyleSheet.create({
   },
   viewerCloseBtn: {
     position: "absolute",
-    top: 50,
     right: 20,
     zIndex: 10,
     padding: 8,

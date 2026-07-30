@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import { useTopInset } from "../../hooks/useTopInset";
 
 const { height: screenHeight } = Dimensions.get("window");
 const ahaar = require("../../assets/Eatery/ahaar.png");
@@ -84,6 +85,7 @@ export default function EateryScreen() {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   const bgColor = theme.bgGradient[0];
 
@@ -213,9 +215,9 @@ export default function EateryScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <SafeAreaView style={styles.safeArea}>
+          <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-              <View style={styles.header}>
+              <View style={[styles.header, { marginTop: topInset }]}>
                 <TouchableOpacity onPress={handleBack}>
                   <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
                 </TouchableOpacity>
@@ -311,7 +313,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 20 : 8,
     marginBottom: 16,
   },
   heading: {

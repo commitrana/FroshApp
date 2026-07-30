@@ -6,7 +6,6 @@ import {
   Dimensions,
   Easing,
   FlatList,
-  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import { useTopInset } from "../../hooks/useTopInset";
 import { Event, EventStatus } from "../../constants/events";
 import { getEvents } from "../../services/events";
 import { getMyTickets, registerForEvent } from "../../services/tickets";
@@ -37,6 +37,7 @@ export default function ScheduleScreen() {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   const [selectedFilter, setSelectedFilter] = useState<FilterType>("all");
   const [events, setEvents] = useState<Event[]>([]);
@@ -184,9 +185,9 @@ export default function ScheduleScreen() {
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         >
-          <SafeAreaView style={styles.safeArea}>
+          <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
             <View style={styles.container}>
-              <View style={styles.header}>
+              <View style={[styles.header, { marginTop: topInset }]}>
                 <TouchableOpacity onPress={handleBack}>
                   <Ionicons name="arrow-back" size={26} color={theme.iconColor} />
                 </TouchableOpacity>
@@ -282,7 +283,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Platform.OS === "ios" ? 20 : 8,
   },
   subHeading: {
     marginTop: 6,

@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -9,7 +8,6 @@ import {
   ScrollView,
   StatusBar,
   Animated,
-  Platform,
   Easing,
   Dimensions,
 } from "react-native";
@@ -19,6 +17,8 @@ import Icon from "@expo/vector-icons/Ionicons";
 
 import { useAppTheme } from "../../context/ThemeContext";
 import { useHomeTheme } from "../../constants/homeThemes";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useTopInset } from "../../hooks/useTopInset";
 
 const vyan = require("../../assets/boyshostel/vyan.png");
 const agira = require("../../assets/boyshostel/agira.png");
@@ -58,6 +58,7 @@ export default function BoysScreen() {
   const navigation = useNavigation<any>();
   const { isDarkMode } = useAppTheme();
   const theme = useHomeTheme();
+  const topInset = useTopInset();
 
   // --- Entry & Exit animations (slide from bottom / slide to bottom) ---
   const slideY = useRef(new Animated.Value(screenHeight)).current;
@@ -150,8 +151,8 @@ export default function BoysScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.container}
       >
-        <SafeAreaView style={{ flex: 1 }}>
-          <View style={styles.header}>
+        <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
+          <View style={[styles.header, { marginTop: topInset }]}>
             <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
               <Icon name="arrow-back" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
@@ -196,7 +197,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: Platform.OS === "ios" ? 60 : 50,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },
