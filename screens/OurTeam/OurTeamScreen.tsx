@@ -21,7 +21,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView, BlurTargetView } from 'expo-blur';
 import Icon from '@expo/vector-icons/Ionicons';
-
+import { Platform } from 'react-native';
 import { useAppTheme } from '../../context/ThemeContext';
 import { useOurTeamTheme } from '../../constants/ourTeamThemes';
 import MentorWall from '../../Components/OurTeam/MentorWall';
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === 'ios' ? 60 : 50,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },

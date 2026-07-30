@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,36 +24,23 @@ import { useTheme } from '../../theme/theme';
 import { CAMPUS_LOCATIONS, CampusLocation } from '../../data/campusMapLocations';
 import { campusMapImages, campusMapBackground } from '../../assets/campusMapImages';
 
-/* ============================================================
-   Ported from the website's src/pages/CampusMap.tsx.
-   Same data (43 campus locations), same interactions (tap a
-   marker → preview → open a detail card with an image gallery,
-   facts, and "Get Directions"), same GPS behaviour — Directions
-   opens the device's Maps app with the destination coordinates,
-   which uses the phone's own GPS location as the starting point,
-   exactly like the website's `window.open(...google.com/maps/dir)`.
-============================================================ */
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// Intrinsic size of campus-map.webp (2640×1290) — used to keep markers
-// aligned with the image regardless of how wide it's rendered.
-const MAP_ASPECT_RATIO = 1290 / 2640;
+const MAP_ASPECT_RATIO = 800 / 1600; // height / width, in the image's ORIGINAL orientation (campusmap.png is 1600x800)
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const MAP_DISPLAY_WIDTH = SCREEN_WIDTH;
-const MAP_DISPLAY_HEIGHT = MAP_DISPLAY_WIDTH * MAP_ASPECT_RATIO;
+
+const MAP_INNER_HEIGHT = SCREEN_WIDTH; // becomes the visual WIDTH after rotating
+const MAP_INNER_WIDTH = SCREEN_WIDTH / MAP_ASPECT_RATIO; // becomes the visual HEIGHT after rotating
+const MAP_DISPLAY_WIDTH = SCREEN_WIDTH; // outer frame — visual width post-rotation
+const MAP_DISPLAY_HEIGHT = MAP_INNER_WIDTH; // outer frame — visual height post-rotation
 
 function getLocationImages(loc: CampusLocation | null) {
   if (!loc || !loc.images?.length) return [campusMapBackground];
   return loc.images.map((filename) => campusMapImages[filename] ?? campusMapBackground);
 }
 
-/* ------------------------------------------------------------
-   A single marker: dot + looping pulse ring, driven off one
-   shared Animated.Value so 43 markers don't each run their own
-   native loop.
------------------------------------------------------------- */
 function MapMarker({
   loc,
   pulse,
@@ -162,139 +150,155 @@ export default function CampusMapScreen() {
     });
   }, [activeLocation]);
 
+  const bgGradient: [string, string, string] = isDarkMode
+    ? ['#020B18', '#061528', '#041220']
+    : ['#F5F9FF', '#E8F0FE', '#D6E4F5'];
+
+  const glassBg = isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.55)';
+  const glassBorder = isDarkMode ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.8)';
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={{ flex: 1 }}>
       <StatusBar
         translucent
         backgroundColor="transparent"
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
       />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Campus Map</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <Text style={[styles.subhead, { color: colors.textSecondary }]}>
-        Pinch to zoom in, tap a marker to open the full record.
-      </Text>
-
-      <ScrollView
-        style={styles.mapScroll}
-        contentContainerStyle={styles.mapScrollContent}
-        showsVerticalScrollIndicator={false}
-        showsHorizontalScrollIndicator={false}
-        minimumZoomScale={1}
-        maximumZoomScale={4}
-        bouncesZoom
-      >
-        <View style={[styles.mapFrame, { width: MAP_DISPLAY_WIDTH, height: MAP_DISPLAY_HEIGHT }]}>
-          <Image
-            source={campusMapBackground}
-            style={styles.mapImage}
-            resizeMode="contain"
-          />
-          {CAMPUS_LOCATIONS.map((loc) => (
-            <MapMarker
-              key={loc.id}
-              loc={loc}
-              pulse={pulse}
-              isActive={activeLocation?.id === loc.id && isModalOpen}
-              onPress={() => openModal(loc)}
-            />
-          ))}
-        </View>
-      </ScrollView>
-
-      {/* Detail modal */}
-      <Modal
-        visible={isModalOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeModal}
-      >
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closeModal} />
-
-          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
-            <TouchableOpacity style={styles.modalClose} onPress={closeModal}>
-              <Ionicons name="close" size={22} color={colors.textPrimary} />
+      <LinearGradient colors={bgGradient} style={styles.gradient}>
+        <SafeAreaView style={styles.container}>
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={[styles.backBtn, { backgroundColor: glassBg, borderColor: glassBorder }]}
+              onPress={() => navigation.goBack()}
+            >
+              <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
             </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Campus Map</Text>
+            <View style={{ width: 36 }} />
+          </View>
 
-            <View style={styles.modalMedia}>
-              <Image
-                source={currentImages[imageIndex]}
-                style={styles.modalImage}
-                resizeMode="cover"
-              />
 
-              {hasGallery && (
-                <>
-                  <TouchableOpacity style={[styles.modalArrow, styles.modalArrowLeft]} onPress={showPrevImage}>
-                    <Ionicons name="chevron-back" size={20} color="#1F2A1C" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.modalArrow, styles.modalArrowRight]} onPress={showNextImage}>
-                    <Ionicons name="chevron-forward" size={20} color="#1F2A1C" />
-                  </TouchableOpacity>
-                  <View style={styles.modalDots}>
-                    {currentImages.map((_, i) => (
-                      <View
-                        key={i}
-                        style={[styles.modalDot, i === imageIndex && styles.modalDotActive]}
-                      />
-                    ))}
-                  </View>
-                </>
-              )}
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {!!activeLocation?.eyebrow && (
-                <Text style={styles.modalEyebrow}>{activeLocation.eyebrow}</Text>
-              )}
-
-              <Animated.Text
+          <ScrollView
+            style={styles.mapScroll}
+            contentContainerStyle={styles.mapScrollContent}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            minimumZoomScale={1}
+            maximumZoomScale={4}
+            bouncesZoom
+          >
+            <View
+              style={[
+                styles.mapFrame,
+                {
+                  width: MAP_DISPLAY_WIDTH - 32,
+                  height: MAP_DISPLAY_HEIGHT - 32,
+                },
+              ]}
+            >
+              <View
                 style={[
-                  styles.modalTitle,
-                  { color: colors.textPrimary, opacity: titleAnim },
+                  styles.mapInner,
+                  { width: MAP_INNER_WIDTH - 32, height: MAP_INNER_HEIGHT - 32 },
                 ]}
               >
-                {activeLocation?.name ?? ''}
-              </Animated.Text>
+                <Image source={campusMapBackground} style={styles.mapImage} resizeMode="contain" />
+                {CAMPUS_LOCATIONS.map((loc) => (
+                  <MapMarker
+                    key={loc.id}
+                    loc={loc}
+                    pulse={pulse}
+                    isActive={activeLocation?.id === loc.id && isModalOpen}
+                    onPress={() => openModal(loc)}
+                  />
+                ))}
+              </View>
+            </View>
+          </ScrollView>
 
-              {!!activeLocation?.description && (
-                <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                  {activeLocation.description}
-                </Text>
-              )}
+          {/* Detail modal */}
+          <Modal visible={isModalOpen} transparent animationType="fade" onRequestClose={closeModal}>
+            <View
+              style={[
+                styles.modalOverlay,
+                { backgroundColor: isDarkMode ? 'rgba(2, 6, 16, 0.75)' : 'rgba(15, 23, 42, 0.45)' },
+              ]}
+            >
+              <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closeModal} />
 
-              {!!activeLocation?.facts && Object.keys(activeLocation.facts).length > 0 && (
-                <View style={styles.factsList}>
-                  {Object.entries(activeLocation.facts).map(([label, value]) => (
-                    <View key={label} style={styles.factRow}>
-                      <Text style={styles.factLabel}>{label}</Text>
-                      <Text style={[styles.factValue, { color: colors.textPrimary }]}>{value}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={[styles.directionsBtn, { backgroundColor: colors.primary }]}
-                onPress={openDirections}
-                activeOpacity={0.85}
+              <View
+                style={[
+                  styles.modalCard,
+                  { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 },
+                ]}
               >
-                <Ionicons name="navigate" size={16} color="#fff" />
-                <Text style={styles.directionsBtnText}>Get Directions</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+                <TouchableOpacity style={styles.modalClose} onPress={closeModal}>
+                  <Ionicons name="close" size={22} color="#1F2A1C" />
+                </TouchableOpacity>
+
+                <View style={[styles.modalMedia, { backgroundColor: colors.surface }]}>
+                  <Image source={currentImages[imageIndex]} style={styles.modalImage} resizeMode="cover" />
+
+                  {hasGallery && (
+                    <>
+                      <TouchableOpacity style={[styles.modalArrow, styles.modalArrowLeft]} onPress={showPrevImage}>
+                        <Ionicons name="chevron-back" size={20} color="#1F2A1C" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.modalArrow, styles.modalArrowRight]} onPress={showNextImage}>
+                        <Ionicons name="chevron-forward" size={20} color="#1F2A1C" />
+                      </TouchableOpacity>
+                      <View style={styles.modalDots}>
+                        {currentImages.map((_, i) => (
+                          <View key={i} style={[styles.modalDot, i === imageIndex && styles.modalDotActive]} />
+                        ))}
+                      </View>
+                    </>
+                  )}
+                </View>
+
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                  {!!activeLocation?.eyebrow && (
+                    <Text style={styles.modalEyebrow}>{activeLocation.eyebrow}</Text>
+                  )}
+
+                  <Animated.Text
+                    style={[styles.modalTitle, { color: colors.textPrimary, opacity: titleAnim }]}
+                  >
+                    {activeLocation?.name ?? ''}
+                  </Animated.Text>
+
+                  {!!activeLocation?.description && (
+                    <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+                      {activeLocation.description}
+                    </Text>
+                  )}
+
+                  {!!activeLocation?.facts && Object.keys(activeLocation.facts).length > 0 && (
+                    <View style={styles.factsList}>
+                      {Object.entries(activeLocation.facts).map(([label, value]) => (
+                        <View key={label} style={styles.factRow}>
+                          <Text style={styles.factLabel}>{label}</Text>
+                          <Text style={[styles.factValue, { color: colors.textPrimary }]}>{value}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.directionsBtn, { backgroundColor: colors.primary }]}
+                    onPress={openDirections}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="navigate" size={16} color="#fff" />
+                    <Text style={styles.directionsBtnText}>Get Directions</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+          </Modal>
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
   );
 }
 
@@ -302,31 +306,46 @@ const MAROON = '#8C1D40';
 const GOLD = '#C9A227';
 
 const styles = StyleSheet.create({
+  gradient: { flex: 1 },
   container: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: Platform.OS === 'android' ? 30 : 0,
+    marginTop: Platform.OS === 'android' ? 30 : 10,
     paddingVertical: 8,
   },
-  backBtn: { padding: 4 },
-  headerTitle: { fontSize: 20, fontWeight: '700', letterSpacing: 2 },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: { fontSize: 26, fontWeight: '700' },
   subhead: {
     fontSize: 13,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 14,
   },
 
   mapScroll: { flex: 1 },
   mapScrollContent: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
     paddingBottom: 24,
   },
   mapFrame: {
     position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapInner: {
+    position: 'relative',
+    transform: [{ rotate: '90deg' }],
   },
   mapImage: {
     width: '100%',
@@ -363,7 +382,6 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(20, 26, 17, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

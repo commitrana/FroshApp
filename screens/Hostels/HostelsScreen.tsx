@@ -24,7 +24,8 @@ import { useHomeTheme } from "../../constants/homeThemes";
 
 const { height: screenHeight } = Dimensions.get("window");
 
-const hostelImage = require("../../assets/uiux/cos.jpg");
+const girls = require("../../assets/girlshostel/pavani.png");
+const boys = require("../../assets/boyshostel/anantam.png");
 
 const NOTCH_COUNT = 14;
 
@@ -145,7 +146,7 @@ export default function HostelsScreen() {
         "Built for comfort, made for brotherhood — late-night mess runs, early gym sessions and a room that always feels like home base.",
       icon: "man-outline",
       accent: theme.accent,
-      image: hostelImage,
+      image: boys,
       route: "Boys",
       facilities: [
         { lib: "feather", name: "wifi", label: "Wi-Fi" },
@@ -161,7 +162,7 @@ export default function HostelsScreen() {
         "A space to thrive and a community to grow — cozy common rooms, warm mess evenings and friendships that outlast the degree.",
       icon: "woman-outline",
       accent: "#A86CFF",
-      image: hostelImage,
+      image: girls,
       route: "Girls",
       facilities: [
         { lib: "feather", name: "wifi", label: "Wi-Fi" },
@@ -330,7 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: Platform.OS === "ios" ? 20 : 8,
     marginBottom: 16,
   },
   heading: {

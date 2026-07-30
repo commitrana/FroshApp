@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
   gradient: { flex: 1 },
   scrollContent: {
     paddingHorizontal: 22,
-    paddingTop: 55,
+    paddingTop: Platform.OS === 'ios' ? 80 : 55, // extra top padding on iOS only — StatusBar's `translucent` prop has no effect on iOS, so this screen needs its own notch/Dynamic Island clearance; Android's 55 is untouched
     paddingBottom: 40,
   },
   backButton: {
