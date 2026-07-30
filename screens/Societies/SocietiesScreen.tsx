@@ -19,7 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import Icon from '@expo/vector-icons/Ionicons';
-
+import { Platform } from 'react-native';
 import { useAppTheme } from '../../context/ThemeContext';
 import { useHomeTheme } from '../../constants/homeThemes';
 
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginTop: 10,
+    marginTop: Platform.OS === 'ios' ? 22 : 10,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },

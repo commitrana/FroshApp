@@ -9,6 +9,7 @@ import {
   ScrollView,
   StatusBar,
   Animated,
+  Platform,
   Easing,
   Dimensions,
 } from "react-native";
@@ -195,7 +196,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === "ios" ? 60 : 50,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },

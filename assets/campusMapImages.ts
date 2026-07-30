@@ -8,7 +8,7 @@
 export const campusMapImages: Record<string, any> = {
   "b block.webp": require('../assets/campus_images/b block.webp'),
   "c-block.webp": require('../assets/campus_images/c-block.webp'),
-  "campus-map.webp": require('../assets/campus_images/campus-map.webp'),
+  "campusmap.png": require('../assets/campus_images/campusmap.png'),
   "cos.webp": require('../assets/campus_images/cos.webp'),
   "cricket.webp": require('../assets/campus_images/cricket.webp'),
   "cs-block-1.webp": require('../assets/campus_images/cs-block-1.webp'),
@@ -54,4 +54,4 @@ export const campusMapImages: Record<string, any> = {
 };
 
 // The full campus map background image.
-export const campusMapBackground = require('../assets/campus_images/campus-map.webp');
+export const campusMapBackground = require('../assets/campus_images/campusmap.png');

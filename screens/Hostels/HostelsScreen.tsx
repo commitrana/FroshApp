@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: Platform.OS === "ios" ? 20 : 8,
     marginBottom: 16,
   },
   heading: {

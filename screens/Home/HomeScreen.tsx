@@ -667,7 +667,7 @@ useFocusEffect(
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 110 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />
           }
@@ -998,7 +998,7 @@ useFocusEffect(
                     disableIntervalMomentum
                     contentContainerStyle={{
   paddingHorizontal: liveCarouselSidePad,
-  paddingVertical: 36,   // ADD THIS — gives the boxShadow room instead of clipping
+  paddingVertical: 47,   // ADD THIS — gives the boxShadow room instead of clipping
   alignItems: "center",
 }}
                     onScroll={handleLiveCarouselScroll}
@@ -1695,10 +1695,10 @@ const styles = StyleSheet.create({
     gap: 6,
     borderWidth: 1.5,
     borderRadius: 18,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     paddingVertical: 7,
   },
-  slotChipText: { fontSize: 13, fontWeight: "700" },
+  slotChipText: { fontSize: 11, fontWeight: "700" },
   slotStatusDot: { width: 7, height: 7, borderRadius: 4 },
   slotHint: { fontSize: 12, marginTop: 8 },
 

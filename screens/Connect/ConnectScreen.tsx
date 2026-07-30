@@ -13,6 +13,7 @@ import {
   Dimensions,
   Animated,
   Easing,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    marginTop: 50,
+    marginTop: Platform.OS === "ios" ? 20 : 8,
     paddingVertical: 8,
   },
   backBtn: { padding: 4 },
