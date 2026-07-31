@@ -55,6 +55,13 @@ export default function HomeAboutTab({ theme }: { theme: HomeTheme }) {
       icon: "map-outline",
       onPress: () => navigation.navigate("CampusMap"),
     },
+    {
+      id: "magazine",
+      title: "MAGAZINE",
+      subtitle: "Read our latest issues",
+      icon: "book-outline",
+      onPress: () => navigation.navigate("Magazine"),
+    },
   ];
 
   return (

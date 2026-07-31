@@ -336,7 +336,6 @@ export default function AccountScreen() {
                   <InfoCard label="Branch" value={studentProfile.branch} />
                   <InfoCard label="Phone Number" value={studentProfile.phoneNo} />
                   <InfoCard label="Date of Birth" value={formatDob(studentProfile.dob)} />
-                  <InfoCard label="Slot" value={`Slot ${studentProfile.slotNumber}`} />
                   <InfoCard label="Bootcamp Batch" value={studentProfile.batch || "Not assigned yet"} />
                   <InfoCard label="Father's Name" value={studentProfile.fatherName} />
                   <InfoCard label="Mother's Name" value={studentProfile.motherName} />

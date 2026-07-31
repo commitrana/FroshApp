@@ -13,6 +13,8 @@ import GirlsScreen from "../screens/Hostels/GirlsScreen";
 import SocietiesScreen from "../screens/Societies/SocietiesScreen";
 import LifeScreen from "../screens/LifeAtThapar/LifeScreen";
 import CampusMapScreen from "../screens/CampusMap/CampusMapScreen";
+// TODO: adjust this path if MagazineScreen.tsx lives somewhere else in your project
+import Magazinescreen from "../screens/Magazine/Magazinescreen";
 import SocietyDashboardScreen from "../screens/SocietyAdmin/SocietyDashboardScreen";
 import MemberDashboardScreen from "../screens/Memberdashboard";
 import SplashScreen from "../screens/Splash/splashscreen";
@@ -121,6 +123,7 @@ export default function AppNavigator() {
           }}
         />
         <Stack.Screen name="CampusMap" component={CampusMapScreen} />
+        <Stack.Screen name="Magazine" component={Magazinescreen} />
 
         {/* Shared screens reachable from any nested tree */}
         <Stack.Screen name="Help" component={HelpScreen} />

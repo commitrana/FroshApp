@@ -97,6 +97,7 @@ export type RootStackParamList = {
   GiveFeedback: {
     sessionId: string;
   };
+  Magazine: { issueNumber?: number } | undefined;
 };
 
 // Bottom Tab Navigator Param List (student)
